@@ -1,0 +1,28 @@
+version: "2"
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+linters:
+  default: none
+  enable:
+    - errcheck
+    - staticcheck
+    - unused
+    - ineffassign
+    - bodyclose
+    - durationcheck
+    - nilerr
+    - makezero
+  settings:
+    staticcheck:
+      checks: ["all"]
+  exclusions:
+    generated: disable
+    presets: []
+    paths:
+      - ^_ref/
+      - ^out/
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

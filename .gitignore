@@ -1,0 +1,22 @@
+# Build artifacts, tool installations, caches, reports, and local exploration.
+/out/
+
+# Go dependencies.
+vendor/
+
+# Local CPA configuration, credentials, and runtime state.
+/auths/
+/data/
+/plugins/
+/config.yaml
+.env
+.env.*
+!.env.example
+
+# Editor and operating-system files.
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp

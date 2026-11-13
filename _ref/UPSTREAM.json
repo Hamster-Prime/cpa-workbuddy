@@ -1,0 +1,325 @@
+{
+  "repository": "https://github.com/magpie-community/plugins",
+  "commit": "0135b7b0ea979c94033a7712a0c6ca1be8dafb70",
+  "source_directory": "packages/workbuddy",
+  "package_version": "0.2.31",
+  "retrieved_date": "2026-11-13",
+  "license_origin": "repository root LICENSE",
+  "files": [
+    {
+      "path": "README.md",
+      "git_blob_sha1": "8324b7c86eabf08eeb936fea8f89ac0146f3b40b",
+      "size": 34024,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/README.md",
+      "sha256": "fc07e873f7897a5dd2fe719404fcd8fc8ac7c01ccd1ba218d5308e9dd69c7e5d"
+    },
+    {
+      "path": "REFUSED.md",
+      "git_blob_sha1": "0928bf32701dda708df31a9716bc760f6ef90a5c",
+      "size": 7044,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/REFUSED.md",
+      "sha256": "b71b924b004f26d20dd50880b714d91def7c0599f53bc2fed5f970bc13c88e0d"
+    },
+    {
+      "path": "aftertools.test.mjs",
+      "git_blob_sha1": "59ba298a48cd0f382c82b943e3d35fd6a0cd1502",
+      "size": 5009,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/aftertools.test.mjs",
+      "sha256": "6db76e5fc3a42fa46e99c76f37d8cf0236287ea2a7077f9328339130f8da33e9"
+    },
+    {
+      "path": "apikey.test.mjs",
+      "git_blob_sha1": "ca4b23bd4d21ab0a7a16945709af04153768a4ae",
+      "size": 6985,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/apikey.test.mjs",
+      "sha256": "70569c7baf277dd50b23d6921acc952cf60a00dff2a17baf0f86a3ccf43e3fa1"
+    },
+    {
+      "path": "checkin.test.mjs",
+      "git_blob_sha1": "8cd7be0bc10533475faba8eaa6a971746101cbfc",
+      "size": 8991,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/checkin.test.mjs",
+      "sha256": "c011c7e2844e68b4ee30d1ff2fded821cc9edb78e1c4ef769fa863f8434a71e6"
+    },
+    {
+      "path": "comma.test.mjs",
+      "git_blob_sha1": "ea68aa0abaf80e45bef5fbd1ee2ec751e4bd9245",
+      "size": 6582,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/comma.test.mjs",
+      "sha256": "d6ad6d0fe8d1b4903715f0ad9e997bdf62607c1a29a5eaea36b1c11f1d81bca7"
+    },
+    {
+      "path": "conversation.test.mjs",
+      "git_blob_sha1": "63521ddd5799be4eb6c1b8537230fa756d5d4a43",
+      "size": 13777,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/conversation.test.mjs",
+      "sha256": "164a517b70840f9ae900b34b0a3068b6a2ef568c0a0d82c329611963e3bcb343"
+    },
+    {
+      "path": "custom.test.mjs",
+      "git_blob_sha1": "4db8d33e886785db5d2b627582215da20bec548c",
+      "size": 3858,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/custom.test.mjs",
+      "sha256": "a0267cbb3cbbb7b4337ebbc73df24776d704cea3878321c8d3d5f7e502fafacd"
+    },
+    {
+      "path": "declared-images.test.mjs",
+      "git_blob_sha1": "4ddf9afd7341319c0b2d434b6f4fd0ed243a19f5",
+      "size": 1487,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/declared-images.test.mjs",
+      "sha256": "8634c0510fb9d12ce54c387c963aaad70eb9254302b8a7f1246a00baaae7c1b1"
+    },
+    {
+      "path": "deepseek-flash.test.mjs",
+      "git_blob_sha1": "f2dc7c729ccfa42987373bb44951c0add00e00be",
+      "size": 6942,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/deepseek-flash.test.mjs",
+      "sha256": "2692c25c8e7969817f8072b1fc5f5aeb8db282fe4fc6aacd64d1550ffec41aa1"
+    },
+    {
+      "path": "default-effort.test.mjs",
+      "git_blob_sha1": "ace6974ae3bfc7dff877dc918c714206b0f4a043",
+      "size": 9684,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/default-effort.test.mjs",
+      "sha256": "bb2b9570bb30ee5fc0bae887c526b0093483391504da9b6be7a7fc0496004a34"
+    },
+    {
+      "path": "efforts.test.mjs",
+      "git_blob_sha1": "c2212bd0fa35c9cb1bda460f8fe1bbdc510633c8",
+      "size": 1783,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/efforts.test.mjs",
+      "sha256": "c23bb5d8b71bfa5461bb25fa1d3b53cd4ed75b6f4dcd54f8c82174fbe962921c"
+    },
+    {
+      "path": "enterprise.test.mjs",
+      "git_blob_sha1": "b13d7a72c2e016918d7da35c82aa8454b1720ec1",
+      "size": 5717,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/enterprise.test.mjs",
+      "sha256": "d41a9438f718354af87ebe1a478231af1afd2bb7653da377984fdcf1784e3a60"
+    },
+    {
+      "path": "filtered.test.mjs",
+      "git_blob_sha1": "fb488e553f1647d3b7a3210b19303881fb396bd3",
+      "size": 10908,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/filtered.test.mjs",
+      "sha256": "a128a70875ad9fab2d85314a385d6702618b3cca1e46736442f408c91b6a4bb9"
+    },
+    {
+      "path": "freeonly.test.mjs",
+      "git_blob_sha1": "8664f6346fedc7d313ae59f005edc3ee079edd7d",
+      "size": 7642,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/freeonly.test.mjs",
+      "sha256": "4a3d5b31aef8da991611338745b69687a1374ca992c79ee8552ff57d0c12c5f1"
+    },
+    {
+      "path": "freewindow.test.mjs",
+      "git_blob_sha1": "ecdf832f1b849304bd07cb1d4f80048e8ea2df3f",
+      "size": 58489,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/freewindow.test.mjs",
+      "sha256": "ba8df26ed453da658ad5492fb062a5c954379faead2513c91df0484e5e1f785e"
+    },
+    {
+      "path": "growth.test.mjs",
+      "git_blob_sha1": "34537ab674be42b553f26b7bc91bf331e952c7c3",
+      "size": 5139,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/growth.test.mjs",
+      "sha256": "8bfd40b75a91e46248f9701ac47d1172a22ee82c3ba61e264dddb02995e42a72"
+    },
+    {
+      "path": "hidedsh.test.mjs",
+      "git_blob_sha1": "85fe05d711f2c64d4a9b41c354b110ae79b1b261",
+      "size": 9677,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/hidedsh.test.mjs",
+      "sha256": "2a806061754274dff499aa295151c1e74655183e5f7f7076129a5d9af2361dd4"
+    },
+    {
+      "path": "images.test.mjs",
+      "git_blob_sha1": "9593b0b00187b5b70f661b3697eff47cbbbd14cb",
+      "size": 4552,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/images.test.mjs",
+      "sha256": "c0f756ff3802cea3b1eaafe424cfb11366ed942974f1c55839c74d31f6b5ff33"
+    },
+    {
+      "path": "index.mjs",
+      "git_blob_sha1": "2141f1b87c75fde60cb60e35eb7056aa267c1a79",
+      "size": 217780,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/index.mjs",
+      "sha256": "5f76ebebb9c8edc56f647d6906410b56b6a25fd7e4481bf61ce523a622659d34"
+    },
+    {
+      "path": "native.test.mjs",
+      "git_blob_sha1": "801db4e98c0d3699bf2c120e62f0d528d828b273",
+      "size": 27761,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/native.test.mjs",
+      "sha256": "72904431745ffd165cfebedd9b1f1ac42372b13dcfb57ec6ab4f72b68504c6f0"
+    },
+    {
+      "path": "oneparse.test.mjs",
+      "git_blob_sha1": "29fea25b2f28fb8871fbe89504fc2015d78962e7",
+      "size": 8987,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/oneparse.test.mjs",
+      "sha256": "b619b17986e0e0094f74878d91e78e2c31454f77ece27a2ec729ccba3b697c13"
+    },
+    {
+      "path": "opencode.mjs",
+      "git_blob_sha1": "93faad6d945965a77f46157e341f4dc64715988b",
+      "size": 324,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/opencode.mjs",
+      "sha256": "2219195390e62ca907145a12d442a1605f42a9f84320d6a6173167201e29eaa6"
+    },
+    {
+      "path": "opencode2.mjs",
+      "git_blob_sha1": "b9393085ebfbd12b8da9c9422ca196308f7c56e5",
+      "size": 25482,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/opencode2.mjs",
+      "sha256": "062365696c3d64a6526f6514093a315ecb4d14be738ab779ffaf2394c4ead900"
+    },
+    {
+      "path": "package.json",
+      "git_blob_sha1": "14e2aeec3503f46f9da69873b34fb84bbd4bc078",
+      "size": 669,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/package.json",
+      "sha256": "1ab1cd53a0cae011ffbd0fe4bec7a37048aaac5b4a3b2fae6b024f43cf9dafee"
+    },
+    {
+      "path": "price.test.mjs",
+      "git_blob_sha1": "5eab0c58481bedbb2ec8b5eb4662f366efe38059",
+      "size": 6003,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/price.test.mjs",
+      "sha256": "917780ea46cc93519222ab013499d80672a42764814e2f2680e0cc7ccc9766d0"
+    },
+    {
+      "path": "reasoning.test.mjs",
+      "git_blob_sha1": "4f884cc606f562096a9a5368d847e1cee76a37ae",
+      "size": 3151,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/reasoning.test.mjs",
+      "sha256": "68408420d5574d888e7ff5c54f7aae72ea2650b722b7f65509fa439e844bb47a"
+    },
+    {
+      "path": "refresh.test.mjs",
+      "git_blob_sha1": "4230f3c9801e6b91bf5135920e410240dfac18b7",
+      "size": 5900,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/refresh.test.mjs",
+      "sha256": "a2e51bb172dfc543c590854261a090d3e2a6fe2f5ac51675ce2380235b520f51"
+    },
+    {
+      "path": "refused.test.mjs",
+      "git_blob_sha1": "a895b5e13589c5c2437669dc7309d91e399971bd",
+      "size": 8983,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/refused.test.mjs",
+      "sha256": "864aeb038776d68963573c7713269b8fc86d1b83bcf4d24f79b4dfa63f3e957d"
+    },
+    {
+      "path": "request.test.mjs",
+      "git_blob_sha1": "e6a1e41a69ef79cbc31926e7f61cae66bde12666",
+      "size": 3515,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/request.test.mjs",
+      "sha256": "bfff5cc6cfdd3becb00107609ff02af4d8dfbe135b49929806ebdfc00bac8409"
+    },
+    {
+      "path": "reset.test.mjs",
+      "git_blob_sha1": "c5bb9d97cab5e8d0044f7ed5e39ead0e28165b68",
+      "size": 5713,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/reset.test.mjs",
+      "sha256": "a1d321c97dae787fe030288e4ecd0986213932a531592e66422131b72c8ebb91"
+    },
+    {
+      "path": "sent.test.mjs",
+      "git_blob_sha1": "ff4b2b6333acb98a49ec66640757ce21adea6aa8",
+      "size": 1481,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/sent.test.mjs",
+      "sha256": "5a96f77aacf67680869f03610c84fe5086dbc91faa2bf01a08dd84cdb7667739"
+    },
+    {
+      "path": "signin.test.mjs",
+      "git_blob_sha1": "1e71f8bd061613579a972fb68283d115f8e611e2",
+      "size": 3583,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/signin.test.mjs",
+      "sha256": "f17ca75c7cf8e8c2cf971f2fa3f80c60846e92ed1b105ddb407f586343fb2b4b"
+    },
+    {
+      "path": "systemasuser.test.mjs",
+      "git_blob_sha1": "2c2a84a9648aece39a59e5bec9270021bcc7ccd4",
+      "size": 13398,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/systemasuser.test.mjs",
+      "sha256": "d6ee3fe9705b81eeb22cc3e260061a31925d95681c968dcb5f17b67cd72cfffb"
+    },
+    {
+      "path": "testdata/config-561.json",
+      "git_blob_sha1": "6e7e2c71e77ef93205ffd8c16f92af8811c25ae6",
+      "size": 5333,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/testdata/config-561.json",
+      "sha256": "4c529730b0b8052dc59e506c85f82deb2d8def1f1a434dd92565160be8bf729d"
+    },
+    {
+      "path": "testdata/config-efforts.json",
+      "git_blob_sha1": "c849a647a9913e52817952d02c997cec60dc7feb",
+      "size": 4873,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/testdata/config-efforts.json",
+      "sha256": "f9034e103596c8e875dc90596f7606159138f0778afe8d7eeed863e2fe29f162"
+    },
+    {
+      "path": "testdata/sent-0.1.43.json",
+      "git_blob_sha1": "730c53d61f85506d16b4916a832d532fbf44d14f",
+      "size": 7191,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/testdata/sent-0.1.43.json",
+      "sha256": "4c4f6a1084d3ad841d47a1c37acf59b3d97a9f50414daf16bc2e499f6ab8566d"
+    },
+    {
+      "path": "testdata/sent.mjs",
+      "git_blob_sha1": "a9bad178ec493f92c21739a721ae8ea4afab2bdd",
+      "size": 9443,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/testdata/sent.mjs",
+      "sha256": "e81a6ec30669149cd08c649b852f7cc4a723e38b8973367bf73bc34647544385"
+    },
+    {
+      "path": "testdata/unz.mjs",
+      "git_blob_sha1": "39b431e3b40cf4ba7d61dfc3671b5ce0f7e86c02",
+      "size": 455,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/testdata/unz.mjs",
+      "sha256": "b8c58d32358731a0d5f81bdaf1efaf57bcedddc00daaca35d6b489777b26c75f"
+    },
+    {
+      "path": "tools.test.mjs",
+      "git_blob_sha1": "42b39cba0878cfeac794d59a548b91167920f5fc",
+      "size": 12645,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/tools.test.mjs",
+      "sha256": "1bd8c2fd90de56290960fc795242059c85a636327db3fd461affeda8a3cbacae"
+    },
+    {
+      "path": "unauthorized.test.mjs",
+      "git_blob_sha1": "63fa18d7f4018f1b7690f000023ea7eec57ea916",
+      "size": 15336,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/unauthorized.test.mjs",
+      "sha256": "3982d0b56072ec102716cb70445bfc4905e22089bc68c9287ed60181b473e4bd"
+    },
+    {
+      "path": "unflag.test.mjs",
+      "git_blob_sha1": "4ee2b21cf089658a165273c66df45d6a78fecaa3",
+      "size": 4775,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/unflag.test.mjs",
+      "sha256": "53de2b2f0d1586e280a4ae9087ccaab0e1788a190144c190b2d3a850fc65b756"
+    },
+    {
+      "path": "usage.test.mjs",
+      "git_blob_sha1": "bcf8e6982b12201d441379e3fa7900414e2f44fe",
+      "size": 61025,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/usage.test.mjs",
+      "sha256": "14ec8d54dadc4800345722ba619c800cb177fe480a1c89c65749a1e2f7929f0c"
+    },
+    {
+      "path": "wecom.test.mjs",
+      "git_blob_sha1": "7c67266ee094047a24cb89f5955d844cb2d6c36d",
+      "size": 1689,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy/wecom.test.mjs",
+      "sha256": "1e4aaa8f9140fcb517854bce3e0f5a790411281f4a27541a567e3a559baf7f1d"
+    },
+    {
+      "path": "LICENSE",
+      "git_blob_sha1": "e6bc674fe754064cf69682d9960d7e98d0354038",
+      "size": 1086,
+      "url": "https://raw.githubusercontent.com/magpie-community/plugins/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/LICENSE",
+      "sha256": "5e8730b694ba31696dd68d693f8bf5e2c75f7e40fd5f6fbc3f067cf9490b24fb"
+    }
+  ]
+}

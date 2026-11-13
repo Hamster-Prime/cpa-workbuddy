@@ -1,0 +1,7 @@
+out/
+vendor/
+*.min.*
+*.map
+*.svg
+*.lock
+go.sum

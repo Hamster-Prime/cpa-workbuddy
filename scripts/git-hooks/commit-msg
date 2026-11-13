@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+go=$(git config --local --get workbuddy.go)
+exec "$go" run ./cmd/project commit-msg --message-file "$1"

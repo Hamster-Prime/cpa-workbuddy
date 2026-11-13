@@ -1,0 +1,20 @@
+name: Fixed native toolchain
+description: Install the same tool versions used by the root quality gate
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version: '1.27.1'
+        cache: false
+    - name: Configure project-local Go state
+      shell: bash
+      run: |
+        mkdir -p out/cache/go-build out/cache/go-mod out/tmp/go
+        printf 'GOCACHE=%s/out/cache/go-build\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+        printf 'GOMODCACHE=%s/out/cache/go-mod\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+        printf 'GOTMPDIR=%s/out/tmp/go\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+        printf 'GOTOOLCHAIN=local\nGOWORK=off\nGOTELEMETRY=off\n' >> "$GITHUB_ENV"
+    - name: Bootstrap fixed quality tools
+      shell: bash
+      run: go run ./cmd/project bootstrap

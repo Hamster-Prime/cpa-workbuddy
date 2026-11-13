@@ -1,0 +1,167 @@
+# cpa-workbuddy 兼容性、来源与核验记录
+
+> 证据记录，不是功能完成声明。产品范围见 [requirements.md](requirements.md)，技术边界见 [architecture.md](architecture.md)，验收状态见 [14 片任务](tasks/workbuddy-plugin.md)。所有未运行项目写“未验证”，不以源码推断替代实际宿主结果。
+
+## 当前证据等级与宿主边界
+
+| 项目 | 已知事实或证据 | 状态与限制 |
+|---|---|---|
+| 产品版本 | 根 `VERSION` 为唯一来源，当前 `0.1.0` | 已通过独立原生探针核对实际注册/status 返回版本与清单 |
+| 原生 ABI | `../.cpa-upstream-src/sdk/pluginabi/types.go:7` 为 `ABIVersion = 1` | 本次已读源码；不代表已运行 CPA |
+| JSON schema | 同文件 `:20` 为 `SchemaVersion = 6` | 本次已读源码；schema 与 C ABI 不能混称版本 |
+| CPA 能力契约 | `sdk/pluginapi/types.go:72-100` 的 capabilities 为可选接口；`:274-279`、`:394-396`、`:594-607` 分别规定认证、模型与执行/宿主网络接口 | 本次已读源码；Slice 01 只声明真实实现能力 |
+| 最小注册约束 | `../.cpa-upstream-src/internal/pluginhost/host.go:1025-1060` 要求 Name/Version/Author/GitHubRepository 非空且至少一项能力 | 已核实；Slice 01 声明真实只读 `management_api` |
+| 管理状态能力 | `GET /v0/management/plugins/cpa-workbuddy/status` 返回身份/版本/ABI/schema，接入 CPA 管理路由 | 原生 RPC smoke 通过；目标 CPA 的 HTTP 请求及鉴权联调未验证，无独立页面 |
+| 作者与仓库 | 用户已批准作者 `sheepyu`、计划仓库 `ygq-future/cpa-workbuddy` | 远程尚未创建；注册所需仓库元数据不表示已创建、提交或发布 |
+| 固定 WorkBuddy 基线 | `_ref/UPSTREAM.json:2-7`：commit `0135b7b0ea979c94033a7712a0c6ca1be8dafb70`、包 `0.2.31`、根 MIT 许可证 | 读取来源记录；本次文档迁移不重新下载或改写参考文件 |
+| 协议常量 | `_ref/index.mjs:68-114`：国内/国际 endpoint、platform、app `5.9.3`、CLI `2.165.0`；国际 `glm-*` 图片限制 | 本次已读源码；是快照记录，不保证在线版本永久有效 |
+| 浏览器协议 | `_ref/index.mjs:1824-1895`：state → token → account、11217/12151、企业身份与 token 字段 | 本次已读源码；真实账号登录未验证 |
+| 模型解析 | `_ref/index.mjs:3667-3733`：CLI、`custom:`、原始 ID、同名展示区分 | 本次已读源码；真实账号模型权限未验证 |
+| 全局模型合并 | `internal/registry/model_registry.go:670-675`、`:1183-1204`、`:1347-1364` | 本次已读源码；每凭证支持列表与全局公开 Info 是两层 |
+| 永久失效与恢复 | `sdk/cliproxy/auth/conductor_refresh.go:374-414`、`:552-586` | 本次已读源码；仅刷新返回错误不能保证撤销凭证立即停调度 |
+| 原生测试宿主加载 | Windows amd64；Go1.27.1；MinGW GCC14.2.0；独立 C 进程加载实际 DLL | 通过；注册/status、ABI/schema/参数/JSON/未知方法边界、响应释放与卸载均由 smoke 验证 |
+| 实际 CPA 加载 | CPA 版本/commit、二进制来源、平台架构、配置、加载日志 | 未验证；必须与原生测试宿主 smoke 分开记录 |
+| 管理前端与账号 | 双站点入口、卡片状态、重新登录恢复、真实请求 | 未验证；不得从后端接口或 ABI 声明推断 UI/账号已可用 |
+| 发布平台 | Windows amd64 DLL 构建与原生探针加载通过；Linux amd64/arm64、macOS amd64/arm64 未验证 | 实际 CPA 加载在所有目标平台均未验证；五平台交付由 Slice 14 验收 |
+
+CPA `v7.3.15` 参考版本和 `v7.2.155` schema 起点属于此前调研记录。本次未重新联网核对，不据此设定正式支持下限；正式版本选择须通过 Web Search 并打开官方来源验证，再附实际加载证据。
+
+## 来源与历史源码定位
+
+### 参考来源
+
+| 来源 | 用途与边界 |
+|---|---|
+| `../.cpa-upstream-src/` | CPA ABI、宿主回调、认证、模型注册与执行契约；只读参考 |
+| `../cpa-secret-manager/` | 现有 CGO 插件桥接样例；具体接口仍以目标 CPA 源码为准 |
+| `https://github.com/magpie-community/plugins/tree/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy` | 固定 commit 的 WorkBuddy 协议、行为与测试基线 |
+| `_ref/` | 完整 WorkBuddy 包源码、33 个测试文件及 5 个 testdata 样本；包版本 `0.2.31`；附上游根许可证，不进入插件发布包 |
+| `_ref/UPSTREAM.json` | 来源仓库、commit、文件清单、Git blob SHA-1、SHA-256 与大小；下载后逐文件核验 |
+| `out/scratch/workbuddy-go-spike/` | 本地 Go 探索材料，不属于 Magpie 源码，不作为协议依据或已完成实现 |
+
+`_ref/` 的上游文件保持原文并纳入项目版本控制，修改业务行为不能直接改写参考源码来使其“匹配”。当前固定 commit 为 `0135b7b0ea979c94033a7712a0c6ca1be8dafb70`，文件清单及校验记录见 `UPSTREAM.json`。上游更新时显式调整基线并重新检查行为差异，不静默追踪 main。
+
+行号均指当前固定参考快照，源码更新后应同时更新证据。参考实现中的实测结论是其快照记录，不代表本项目已经对真实账号完成实测。
+
+### 按参考源码迁移的约束
+
+- WorkBuddy 协议与业务逻辑以 `_ref/index.mjs` 及其测试为直接依据，按功能迁移到 Go；CPA ABI、存储及格式适配以 CPA 源码为依据。
+- 每个功能的迁移验收记录对应的上游函数/行号、相关上游测试、CPA 适配位置和本地验证结果。测试与 testdata 保留为行为依据，不能只根据 README 或模型记忆补写协议。
+- 浏览器登录、账号/企业头、刷新、模型配置解析、请求整形、工具映射、会话标识、Chat/Messages、SSE 及兼容重试均需要逐项对照；参考实现未证明的请求字段、错误语义或模型能力先核验，再实现。
+- 按需求已确认的范围移植浏览器登录和聊天相关逻辑；桌面登录、API key、签到及用量等参考能力仍完整保存在 `_ref/` 供查证，不因此自动扩展首版交付范围。
+- 站点模型前缀、CPA 状态集成、账号模型列表缓存等本项目约定与上游适配分别记录。行为差异遵循需求，不能把项目自行增加的策略描述成 Magpie 原有逻辑。
+- 遇到参考代码、测试及本地运行证据冲突时，说明具体差异并定位原因；架构或产品行为需要改变时重新确认，不自行猜测上游协议。
+
+### 接口与行为定位
+
+| 事实 | 证据位置 |
+|---|---|
+| 当前参考 JSON 契约的 `SchemaVersion` 为 6 | `../.cpa-upstream-src/sdk/pluginabi/types.go:20` |
+| 插件能力含单个 AuthProvider、ModelProvider、Executor 及格式声明 | `../.cpa-upstream-src/sdk/pluginapi/types.go:72-100` |
+| 认证包含解析、登录启动、轮询和刷新 | `../.cpa-upstream-src/sdk/pluginapi/types.go:274-279` |
+| 轮询成功可返回一个或多个 AuthData | `../.cpa-upstream-src/sdk/pluginapi/types.go:336-345` |
+| 静态模型与账号模型是独立接口 | `../.cpa-upstream-src/sdk/pluginapi/types.go:394-396` |
+| executor 还包含 CountTokens 和 HttpRequest | `../.cpa-upstream-src/sdk/pluginapi/types.go:594-599` |
+| 上游 HTTP 必须经过宿主 transport policy | `../.cpa-upstream-src/sdk/pluginapi/types.go:602-607` |
+| 登录 URL query 会转交插件 metadata | `../.cpa-upstream-src/internal/api/handlers/management/auth_files_oauth_callback.go:194-195` |
+| 账号模型先排除/别名处理，后由宿主加 AuthData.Prefix | `../.cpa-upstream-src/sdk/cliproxy/service_executors.go:562-565` |
+| 非强制前缀模式会同时保留原模型 ID | `../.cpa-upstream-src/sdk/cliproxy/service_models.go:622-665` |
+| 参考实现对国内 Claude 选择 WorkBuddy Messages 路由 | `_ref/index.mjs:168-183` |
+| CLI 模型及企业 custom 模型的配置解析 | `_ref/index.mjs:3667-3733` |
+
+### 版本与部署核验
+
+- 目标插件协议为 schema 6；此前版本调研定位到 CPA `v7.2.155` 开始提供该协议，参考源码版本为 `v7.3.15`。正式兼容声明必须附实际加载验收的 CPA 版本，不能仅凭版本号推断全部行为相同。
+- 业务实施前核对目标 CPA 的版本、ABI 头文件、Go/CGO 工具链及平台架构。schema 6 是当前最低能力要求；旧协议适配属于单独范围。
+- Windows amd64 作为首个加载验证平台；发布构建覆盖 Linux amd64/arm64、macOS amd64/arm64。构建成功与实际宿主加载成功分别记录。
+- 容器内运行不需要桌面环境。用户在自己的浏览器中完成登录，容器通过服务端轮询获取结果；验证容器重启后凭证、刷新时间及模型快照可恢复。
+- 后端已支持 `GET /v0/management/workbuddy-auth-url` 及登录状态轮询。现有管理前端是否支持动态显示插件登录入口、选择站点，必须在目标版本核验；后端接口存在不等于界面自动出现按钮。
+- 若目标管理前端缺少入口，先确认其现有插件认证扩展点。需要修改 CPA/管理前端时，应列明外部仓库改动并确认范围，不能以独立插件页面代替已确定的集成目标。
+
+## 认证失效与重新登录的宿主边界
+
+已核实的宿主行为与接入限制：
+
+- CPA 列表返回 `status`、`status_message`、`disabled`、`unavailable`：`../.cpa-upstream-src/internal/api/handlers/management/auth_files.go:654-665`；对持续认证失败保留错误状态的逻辑位于同文件 `:487-503`、`:544-549`。
+- 当前参考源码的刷新失败分支，在 access token 的时间仍有效时会保留原可用状态；无有效 token 时才按错误类别更新错误状态和刷新时间：`../.cpa-upstream-src/sdk/cliproxy/auth/conductor_refresh.go:552-586`。因此仅向宿主返回刷新错误，不足以保证所有永久失效场景都正确展示与停用。
+- `AuthData` 提供 Disabled 等字段，但没有直接设置 Status/StatusMessage/Unavailable 的字段：`../.cpa-upstream-src/sdk/pluginapi/types.go:224-246`。`host.auth.save` 是凭证文件保存接口，不能直接视为运行状态更新接口：`../.cpa-upstream-src/internal/pluginhost/auth_callbacks.go:116-132`。
+- Slice 01 记录目标宿主已有的认证失败上报、调度阻断及持久化边界，Slice 07 完成实际接入验收。若无法满足需求契约，列为宿主兼容性缺口并明确所需外部改动。
+
+宿主提供的基础与仍需验证的边界：
+
+- 登录保存前按文件名/ID读取旧记录并合并管理元数据：`../.cpa-upstream-src/internal/api/handlers/management/auth_files_fields.go:904-937`；保存入口在同文件 `:941-1002`。凭证文件写入使用原子替换：`../.cpa-upstream-src/internal/pluginhost/auth_provider.go:443-457`。
+- 宿主更新检测到凭证变化时会清理 unauthorized 相关状态，但也可能继承已有 ModelStates 并保留配额冷却：`../.cpa-upstream-src/sdk/cliproxy/auth/conductor_lifecycle.go:218-243`；凭证变化比较规则位于 `../.cpa-upstream-src/sdk/cliproxy/auth/conductor_refresh.go:374-414`。
+- 因此稳定文件名只解决更新目标，不等于卡片状态和所有调度状态已经恢复；必须以完整重新登录后的列表、模型注册、实际调度及重启恢复验收。
+
+Slice 01 记录当前可确认的宿主边界；认证恢复行为由 Slice 07 完整验收。发现外部宿主缺口必须明确列出，并在业务实施前确认外部改动范围。
+
+## 五项问答的源码对应
+
+五项完整问答在 [需求附录](requirements.md#附录-acpa-凭证与模型机制问答) 维护。以下为按问答顺序记录的源码定位；除上表特别标明本次已读的行段外，后续适配时逐项复核。
+
+- 保存登录记录：`../.cpa-upstream-src/internal/api/handlers/management/auth_files_provider_oauth.go:1025`。
+- 构造凭证列表项：`../.cpa-upstream-src/internal/api/handlers/management/auth_files.go:637`，字段从 `:655` 起。
+- 模型获取入口：`../.cpa-upstream-src/sdk/cliproxy/service_models.go:67`、`service_executors.go:498`。
+- 以 auth.ID 注册：`../.cpa-upstream-src/sdk/cliproxy/service_executors.go:428`、`:454`。
+- 支持性检查：`../.cpa-upstream-src/sdk/cliproxy/auth/conductor_selection.go:985`，通过 `ClientSupportsModel(auth.ID, routeModel)` 判断。
+- AuthData 转换优先使用 FileName，再使用 ID：`../.cpa-upstream-src/internal/pluginhost/auth_provider.go:565`。
+- 文件路径解析：`../.cpa-upstream-src/sdk/auth/filestore.go:411-440`。
+- 同名模型再次注册时更新计数与公开 Info：`../.cpa-upstream-src/internal/registry/model_registry.go:670-675`。
+
+第五项的关键含义：`RegisterClient(auth.ID, "workbuddy", models)` 的每凭证列表决定候选资格；全局按 modelID 合并计数、provider 和一份公开 Info。同站点同 ID 的公开元数据可能被后注册者更新，不证明所有账号能力、配额相同。`wb/glm-5.3` 与 `wb-ai/glm-5.3` 是不同模型 ID。
+
+## 上游函数、测试与 CPA 适配对应表
+
+函数与行号基于固定 `_ref/index.mjs`；上游测试作为行为来源保留，不代表 Go 迁移已通过。CPA/Go 位置写“待实现”的条目必须在对应切片完成时替换为真实位置及验证结果，不创建占位代码。
+
+| 切片/行为 | 上游函数与定位 | 对应上游测试/样本 | CPA / Go 适配与本地结果 |
+|---|---|---|---|
+| 01 原生加载/管理状态 | WorkBuddy 参考包不提供 CPA C ABI；以 CPA `sdk/pluginabi/types.go:5-20`、`sdk/pluginapi/types.go:72-100`、`internal/pluginhost/host.go:1025-1060` 及桥接样例为依据 | `native_integration_test.go` + 独立 `testdata/abi/probe.c`；`internal/plugin/runtime_test.go` | `cmd/cpa-workbuddy/`、`internal/plugin/`、根 `version.go`；完整质量门禁及 Windows 原生 smoke 通过，实际 CPA 未验证 |
+| 02 浏览器登录/凭证恢复 | `poll:1824`、`browserSignIn:1837`、`success:1882`、`merge:232` | `enterprise.test.mjs:66`、`:95`、`:116`；`wecom.test.mjs` | `AuthProvider.StartLogin/PollLogin/ParseAuth`；待实现/未验证 |
+| 03 个人/企业身份 | `enterpriseHeaders:440`、`enterpriseOf:457`、`accountName:490`、`scopeOf:823` | `enterprise.test.mjs:20`、`:29`、`:37`、`:77`、`:107` | `AuthData.ID/FileName/Label/StorageJSON` 与宿主元数据合并；待实现/未验证 |
+| 04 模型与快照 | `textOnly:150`、`configModels:3469`、`modelOf:3483`、`priceOf:3560`、`effortsOf:3587`、`defaultEffortOf:3630`、`liveModels:3667` | `custom.test.mjs:73`、`:81`；`efforts.test.mjs`、`declared-images.test.mjs`、`price.test.mjs`；`testdata/config-561.json`、`config-efforts.json` | `ModelProvider.ModelsForAuth/StaticModels`、`RegisterClient` 与账号快照；待实现/未验证 |
+| 05 Chat 文本/会话/SSE | `sign:349`、`cliAgent:376`、`chatHeaders:394`、`signatureParts:553`、`turnParts:612`、`conversationParts:633`、`attendChat:789`、`systemOn:952`、`gzipped:1606`、`prepared:1620`、`makePlugin:3885` | `request.test.mjs`、`sent.test.mjs`、`conversation.test.mjs:51`、`:128`、`:153`、`:229`；`testdata/sent-0.1.43.json`、`sent.mjs` | 宿主 HTTP/stream 回调与 executor；非流式 SSE 聚合为本项目适配；待实现/未验证 |
+| 06 刷新与一次恢复 | `stale:245`、`refreshable:256`、`renew:262`、`merged:287`、`fresh:298`、`refreshed:320`、`reissued:2115` | `refresh.test.mjs:43`、`:63`、`:86`、`:96`、`:106`；`unauthorized.test.mjs:80`、`:121`、`:154`、`:165` | `AuthProvider.RefreshAuth`、`host.auth.save`、凭证代次；待实现/未验证 |
+| 07 失效/重新登录 | `refusedText:2161`、`signedOut:2187`、`reissued:2115`；Magpie 标记语义须适配 CPA，不能直接照搬 | `unauthorized.test.mjs:97`、`:113`、`:131`；重新登录/重启是新增 CPA 验收 | 宿主状态持久化、候选过滤、凭证变化检测和错误冷却清理；待实现/未验证 |
+| 08 工具调用 | `toolChoiceOn:1126`、`safeName:1173`、`fitSchema:1190`、`fitShape:1291`、`objectRoot:1362`、`typeUnions:1416`、`fitTools:1448`、`namedBack:1649`、`renamed:1666` | `tools.test.mjs:13`、`:28`、`:41`、`:73`、`:94`、`:181` | executor 整形/流事件与历史反向映射；待实现/未验证 |
+| 09 图片/reasoning | `textOnly:150`、`reasoningOf:917`、`asReasoning:926`、`withDefaultEffort:3652`、`namesEffort:3663` | `images.test.mjs`、`reasoning.test.mjs`、`default-effort.test.mjs`、`efforts.test.mjs` | CPA 可表达模型字段、请求/响应语义；待实现/未验证 |
+| 10 国内 Messages | `nativeOf:182`、`isMessages:652`、`withoutUnsigned:703`、`unsignedOn:709`、`withoutSignedThinking:728`、`effortsOf:3587`、`makePlugin:3885` | `native.test.mjs:39`、`:46`、`:110`、`:210`、`:283`、`:320`、`:334` | 国内 Claude 路由、Messages 原生执行与签名恢复；待实现/未验证 |
+| 11 CPA 协议转换 | `nativeOf:182`、`isMessages:652`、`modelOf:3483`；参考包不是 CPA 翻译器 | `native.test.mjs`；新增 Chat/Responses/Claude/Gemini 双向场景 | executor formats 与宿主 translator 分工先核对再实现；待实现/未验证 |
+| 12 兼容纠正与故障 | `unflag:872`、`systemAsUserOn:1016`、`commaPausedOn:1080`、`withGrowth:1531`、`replyAfterToolsOn:3761`、`hideDsh:3823`、`explained:4459` | `unflag.test.mjs`、`comma.test.mjs`、`systemasuser.test.mjs`、`aftertools.test.mjs`、`hidedsh.test.mjs`、`deepseek-flash.test.mjs`、`growth.test.mjs`、`filtered.test.mjs`、`native.test.mjs` | 有界重试/错误映射/取消/shutdown；待实现/未验证 |
+| 13 管理与容器 | CPA 管理认证保存、列表、调度、持久化代码；没有可替代实际宿主验收的 JS 函数 | 需求 R4 验收矩阵，真实账号人工清单 | 实际 CPA/管理前端/容器版本与结果待实现后记录 |
+| 14 构建交付 | 以目标 CPA C ABI、平台 CGO 与动态链接依赖为准 | 各平台构建和实际加载分别留证 | `go run ./cmd/project build/package`；多平台未验证 |
+
+## 项目策略与上游行为差异
+
+- 站点前缀、稳定 CPA 文件名、账号成功快照和首次失败无路由资格是本项目约定，不能描述成 Magpie 现有策略。参考包保留桌面/API key/用量/签到等功能不等于迁移它们。
+- 参考 `_ref/index.mjs:20-22` 区分执行前 1 分钟 stale、宿主预刷提前 5 分钟和刷新结果缓存 60 秒；需求的提前 5 分钟计划须映射 CPA 调度，不能把参考两个窗口误写为相同逻辑。
+- 参考浏览器 URL 只证明 HTTPS 检查；目标域校验是本项目要求，允许的真实登录域须以双站点来源核验，不能任意猜测或只硬编码 API 域。
+- 参考 JS 可直接 fetch，CPA 插件必须通过宿主 transport policy。非流式聚合、CPA 多客户端协议、认证失效卡片及调度恢复均需宿主适配和独立验证。
+- 参考中图片支持、Claude Messages、count_tokens 404 等实测注释属于固定快照的历史记录；不能标为本仓库真实账号验证。
+
+## 风险与待核验项
+
+| 风险/待核验事实 | 处理与验收要求 |
+|---|---|
+| 目标 CPA 版本与管理前端扩展点未现场核验 | 宿主边界核验 先验证 ABI、双站点登录入口及格式转换能力；外部仓库变更单独说明 |
+| 模型首次发现失败时宿主如何恢复注册 | 明确宿主重试/刷新触发，不依赖“请求自然会恢复”的假设 |
+| 同站点不同账号同模型的全局元数据可能覆盖 | 路由以每凭证模型列表为准；测试账号间能力差异，不能把全局元数据等同每账号权限 |
+| refresh token 轮换与持久化失败 | 单飞、短时结果缓存、明确保存失败、重启风险报告；不重复消费旧 token |
+| 终止认证失败不能直接通过 AuthData 设置完整运行状态 | 宿主边界核验 核实宿主状态上报及持久化机制；覆盖 token 尚未到期即撤销，不把返回刷新错误等同完整失效处理 |
+| 重新登录覆盖文件但继承旧错误/冷却或被在途旧结果覆盖 | 同身份稳定记录、凭证代次隔离、管理设置保留及状态恢复联合验收 |
+| WorkBuddy UA/协议版本变化 | 常量集中、10085 可诊断、协议样本可更新；不宣称静态版本永久有效 |
+| Messages 与 Chat 的语义转换损失 | 宿主边界核验 明确翻译归属，Slice 10–11 覆盖工具、reasoning、签名和 usage |
+| 宿主与插件重试相叠加 | 明确责任和总上限，流开始后不重放，保留上游错误及 Retry-After |
+| 容器原生库及 CGO 依赖 | 分平台/架构构建，记录 libc 与运行依赖，实际加载验证独立列出 |
+| 真实账号与平台资源不齐 | 自动化完成可达验证，其余保留具体人工清单，不标为通过 |
+
+后续可单独规划 WorkBuddy 用量/套餐/积分查询、国内签到及免费模型策略。它们不是首版的依赖，也不预建空接口或管理页面。
+
+## 本地验证与后续验收
+
+- 工程命令使用 Go 标准库实现，入口为 `go run ./cmd/project`。完整 10 阶段质量门禁、CLI 行为测试、原生 smoke、hook 与打包的本机运行结果见 [质量契约](quality.md#验证状态与债务)。
+- 格式、类型、LSP、弃用与失败测试须在同一根入口阻断；检查过程保持源码不变。
+- 本机交付包位于 `out/dist/`，使用严格白名单并生成 SHA256；原生构建与实际 CPA 兼容声明分别记录。
+- 文档检查通过：14 片精确依赖、五项原问答、文档本地链接及根 Markdown 目录规则；原始快照 45 文件通过大小/Git blob SHA1/SHA256 校验。
+
+实际 CPA 的版本/二进制/配置与进程加载、管理前端、认证状态通道、容器及真实账号均未验证，按 Slice 02–14 的对应 AC 留证。上述原生探针只证明本地 C ABI 闭环，不替代实际宿主兼容声明。XERJ 验证记录见质量契约，最终审查结论在交付回复中提供。
