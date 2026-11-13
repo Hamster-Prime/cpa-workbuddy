@@ -149,7 +149,7 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 				Author:           "sheepyu",
 				GitHubRepository: "ygq-future/cpa-workbuddy",
 			},
-			Capabilities: capabilities{ManagementAPI: true, AuthProvider: true, ModelProvider: true, Executor: true, ExecutorModelScope: "oauth", ExecutorInputFormats: []string{"openai"}, ExecutorOutputFormats: []string{"openai"}},
+			Capabilities: capabilities{ManagementAPI: true, AuthProvider: true, ModelProvider: true, Executor: true, ExecutorModelScope: "oauth", ExecutorInputFormats: []string{"openai", "claude"}, ExecutorOutputFormats: []string{"openai", "claude"}},
 		})
 	case "plugin.quiesce":
 		r.quiesced = true

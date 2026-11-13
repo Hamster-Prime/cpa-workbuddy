@@ -189,7 +189,6 @@ func TestChatRequestRejectsUnsupportedAndInvalidInputBeforeHTTP(t *testing.T) {
 		{"nested-prefix", "wb/wb/glm-5.3", `{"messages":[{"role":"user","content":"hi"}]}`, "unsupported_model"},
 		{"nested-other-site", "wb/wb-ai/glm-5.3", `{"messages":[{"role":"user","content":"hi"}]}`, "unsupported_model"},
 		{"empty-model", "wb/", `{"messages":[{"role":"user","content":"hi"}]}`, "unsupported_model"},
-		{"claude-messages", "wb/ClAuDe-sonnet-4", `{"messages":[{"role":"user","content":"hi"}]}`, "unsupported_model"},
 		{"array-payload", "wb/glm-5.3", `[]`, "invalid_request"},
 		{"null-payload", "wb/glm-5.3", `null`, "invalid_request"},
 		{"trailing-json", "wb/glm-5.3", `{"messages":[]} {}`, "invalid_request"},

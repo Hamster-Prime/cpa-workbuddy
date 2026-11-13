@@ -33,9 +33,8 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, toolName
 	if err != nil {
 		return nil, failure("invalid_request", "cannot encode the response model", 400)
 	}
-	var line, data, fields []byte
-	var eventName string
-	var skipLF, hasData, done bool
+	var decoder eventStreamDecoder
+	var done bool
 	aggregateSize := 0
 	malformed := func() error {
 		return failure("upstream_stream_malformed", "WorkBuddy returned an invalid chat stream", 502)
@@ -57,14 +56,15 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, toolName
 		}
 		return true
 	}
-	processEvent := func() error {
+	processEvent := func(event streamEvent) error {
+		eventName, fields, hasData := event.name, event.fields, event.hasData
 		if !hasData {
 			if eventName == "error" {
 				return failure("upstream_stream_error", "WorkBuddy chat stream failed", 502)
 			}
 			return nil
 		}
-		payload := bytes.TrimSpace(data[:len(data)-1])
+		payload := bytes.TrimSpace(event.data)
 		if bytes.Equal(payload, []byte("[DONE]")) {
 			if eventName == "error" {
 				return failure("upstream_stream_error", "WorkBuddy chat stream failed", 502)
@@ -249,64 +249,14 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, toolName
 		}
 		return nil
 	}
-	processLine := func() error {
-		if len(line) == 0 {
-			err := processEvent()
-			data, fields = data[:0], fields[:0]
-			eventName, hasData = "", false
-			return err
-		}
-		if line[0] == ':' {
-			return nil
-		}
-		key, value, _ := bytes.Cut(line, []byte(":"))
-		if len(value) > 0 && value[0] == ' ' {
-			value = value[1:]
-		}
-		switch string(key) {
-		case "data":
-			if len(data)+len(fields)+len(value)+1 > chatEventLimit {
-				return tooLarge()
-			}
-			data = append(data, value...)
-			data = append(data, '\n')
-			hasData = true
-		case "event", "id", "retry":
-			if len(data)+len(fields)+len(line)+1 > chatEventLimit {
-				return tooLarge()
-			}
-			fields = append(fields, line...)
-			fields = append(fields, '\n')
-			if string(key) == "event" {
-				eventName = string(value)
-			}
-		}
-		return nil
-	}
 	for !done {
 		payload, terminal, readErr := read()
-		for _, b := range payload {
-			if skipLF {
-				skipLF = false
-				if b == '\n' {
-					continue
-				}
-			}
-			if b == '\r' || b == '\n' {
-				if err := processLine(); err != nil {
-					return nil, err
-				}
-				line = line[:0]
-				skipLF = b == '\r'
-				if done {
-					break
-				}
-			} else {
-				if len(line) == chatEventLimit {
-					return nil, tooLarge()
-				}
-				line = append(line, b)
-			}
+		_, err := decoder.feed(payload, func(event streamEvent) (bool, error) {
+			err := processEvent(event)
+			return done, err
+		}, tooLarge)
+		if err != nil {
+			return nil, err
 		}
 		if done {
 			break

@@ -52,7 +52,7 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	if result.Metadata.Author == "" || result.Metadata.GitHubRepository == "" {
 		t.Fatalf("metadata must meet CPA validPlugin: %+v", result.Metadata)
 	}
-	if len(result.Capabilities) != 7 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai"]` || string(result.Capabilities["executor_output_formats"]) != `["openai"]` {
+	if len(result.Capabilities) != 7 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai","claude"]` || string(result.Capabilities["executor_output_formats"]) != `["openai","claude"]` {
 		t.Fatalf("unexpected capabilities: %v", result.Capabilities)
 	}
 	assertError("plugin.identifier", `{}`, "unknown_method")

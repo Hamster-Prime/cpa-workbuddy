@@ -37,6 +37,7 @@ type preparedChat struct {
 	request   hostRequest
 	model     string
 	toolNames map[string]string
+	messages  bool
 }
 
 const maxChatPayload = 32 << 20
@@ -44,16 +45,15 @@ const maxChatPayload = 32 << 20
 var chatIDSalt = rand.Text()
 
 type chatMessage struct {
-	fields map[string]json.RawMessage
-	role   string
-	text   []string
-	images []string
+	fields     map[string]json.RawMessage
+	role       string
+	text       []string
+	images     []string
+	toolUse    bool
+	toolResult bool
 }
 
 func prepareChat(req executorRequest) (preparedChat, error) {
-	if req.Format != "openai" {
-		return preparedChat{}, failure("unsupported_format", "chat execution requires the openai format", 400)
-	}
 	headers, err := (AuthData{ID: req.AuthID, Provider: req.AuthProvider, StorageJSON: req.StorageJSON}).RequestHeaders()
 	if err != nil {
 		return preparedChat{}, err
@@ -70,8 +70,13 @@ func prepareChat(req executorRequest) (preparedChat, error) {
 	if !matches || !catalogID(model) || strings.HasPrefix(model, "wb/") || strings.HasPrefix(model, "wb-ai/") {
 		return preparedChat{}, failure("unsupported_model", "model does not belong to the selected WorkBuddy site", 400)
 	}
-	if messagesModel(chosen.id, model) {
-		return preparedChat{}, failure("unsupported_model", "this WorkBuddy model requires Messages execution", 400)
+	native := messagesModel(chosen.id, model)
+	format := "openai"
+	if native {
+		format = "claude"
+	}
+	if req.Format != format || req.SourceFormat != "" && req.SourceFormat != format {
+		return preparedChat{}, failure("unsupported_format", "the selected WorkBuddy model requires its native "+format+" format", 400)
 	}
 	if len(req.Payload) > maxChatPayload {
 		return preparedChat{}, failure("request_too_large", "chat payload exceeds the 32 MiB limit", 413)
@@ -79,6 +84,9 @@ func prepareChat(req executorRequest) (preparedChat, error) {
 	var body map[string]json.RawMessage
 	if err := decode(req.Payload, &body); err != nil {
 		return preparedChat{}, err
+	}
+	if native {
+		return prepareMessages(req, stored, chosen, model, headers, body)
 	}
 	for _, field := range []string{"thinking", "generate", "image", "image_generation", "audio"} {
 		if nonemptyChatValue(body[field]) {
@@ -153,6 +161,8 @@ func prepareChat(req executorRequest) (preparedChat, error) {
 		return preparedChat{}, failure("internal_error", "cannot compress chat payload", 500)
 	}
 	setChatHeaders(headers)
+	headers["Content-Encoding"] = []string{"gzip"}
+	headers["Accept"] = []string{"application/json"}
 	return preparedChat{
 		request:   hostRequest{Method: http.MethodPost, URL: chosen.endpoint + "/v2/chat/completions", Headers: headers, Body: compressed.Bytes(), HostCallbackID: req.HostCallbackID},
 		model:     req.Model,
@@ -306,17 +316,18 @@ func normalizeChatReasoningHistory(fields map[string]json.RawMessage) error {
 // A tool's reply, and a user attachment immediately after it, belong to the
 // original user send. System messages between them do not open a new turn.
 func answeredChatBefore(messages []chatMessage, i int) bool {
+	if messages[i].toolResult {
+		return true
+	}
 	previous := i - 1
 	for previous >= 0 && messages[previous].role == "system" {
 		previous--
 	}
-	return previous >= 0 && (messages[previous].role == "tool" || (messages[previous].role == "assistant" && hasChatToolCalls(messages[previous].fields)))
+	return previous >= 0 && (messages[previous].role == "tool" || messages[previous].role == "user" && messages[previous].toolResult || messages[previous].role == "assistant" && (hasChatToolCalls(messages[previous].fields) || messages[previous].toolUse))
 }
 
 func setChatHeaders(headers map[string][]string) {
 	headers["Content-Type"] = []string{"application/json"}
-	headers["Content-Encoding"] = []string{"gzip"}
-	headers["Accept"] = []string{"application/json"}
 	headers["X-Agent-Type"] = []string{"main"}
 	headers["X-Agent-Runtime"] = []string{"local-agent"}
 	headers["X-Stainless-Retry-Count"] = []string{"0"}

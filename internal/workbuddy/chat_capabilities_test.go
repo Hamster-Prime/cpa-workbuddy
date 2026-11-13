@@ -139,8 +139,8 @@ func TestChatCapabilityModelPublicationMatchesExecutableRoutes(t *testing.T) {
 		_, models := discoverChatCapabilities(t, site, "", chatCapabilityConfig)
 		for _, model := range models.Models {
 			if strings.HasSuffix(model.ID, "claude-opus-5.5") && site == "workbuddy" {
-				if model.Thinking != nil || len(model.SupportedInputModalities) != 0 {
-					t.Fatal("Messages capability published before its route")
+				if model.Thinking == nil || !reflect.DeepEqual(model.Thinking.Levels, []string{"none", "high", "max"}) || !reflect.DeepEqual(model.SupportedInputModalities, []string{"text", "image"}) {
+					t.Fatal("native Messages model lost its discovered capabilities")
 				}
 				continue
 			}

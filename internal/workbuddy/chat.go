@@ -123,7 +123,7 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 		return map[string]string{"identifier": provider}, nil
 	}
 	if method == "executor.count_tokens" || method == "executor.http_request" {
-		return nil, failure("unsupported_operation", "WorkBuddy provides model execution through its Chat endpoint", 501)
+		return nil, failure("unsupported_operation", "WorkBuddy does not provide token counting or arbitrary HTTP forwarding", 501)
 	}
 	var req executorRequest
 	if err := decode(raw, &req); err != nil {
@@ -170,6 +170,7 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 		finish()
 		return nil, err
 	}
+	signatureCorrected := false
 	for {
 		var opened struct {
 			StatusCode int                 `json:"status_code"`
@@ -255,6 +256,18 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 				}
 				return nil, errors.Join(stateErr, closeErr)
 			}
+			if prepared.messages && !signatureCorrected && messagesSignatureRejected(body) {
+				rewritten, changed, err := dropMessagesThinking(prepared.request.Body, true)
+				if err != nil {
+					finish()
+					return nil, errors.Join(err, closeErr)
+				}
+				if changed {
+					prepared.request.Body = rewritten
+					signatureCorrected = true
+					continue
+				}
+			}
 			finish()
 			return nil, errors.Join(chatHTTPError(opened.StatusCode, body), closeErr)
 		}
@@ -265,7 +278,7 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 		}
 		read := func() ([]byte, bool, error) { return lease.read(ctx) }
 		if !streaming {
-			payload, parseErr := consumeChatStream(read, prepared.model, prepared.toolNames, nil)
+			payload, parseErr := prepared.consume(read, nil)
 			closeErr := cleanup()
 			finish()
 			if parseErr != nil || closeErr != nil {
@@ -275,7 +288,7 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 		}
 		go func() {
 			defer finish()
-			_, streamErr := consumeChatStream(read, prepared.model, prepared.toolNames, func(payload []byte) error {
+			_, streamErr := prepared.consume(read, func(payload []byte) error {
 				if ctx.Err() != nil {
 					return failure("request_cancelled", "WorkBuddy request was cancelled or expired", 408)
 				}
@@ -296,6 +309,13 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 	}
 }
 
+func (prepared *preparedChat) consume(read func() ([]byte, bool, error), emit func([]byte) error) ([]byte, error) {
+	if prepared.messages {
+		return consumeMessagesStream(read, prepared.model, emit)
+	}
+	return consumeChatStream(read, prepared.model, prepared.toolNames, emit)
+}
+
 func chatHTTPError(status int, body []byte) error {
 	var response struct {
 		Code  json.RawMessage `json:"code"`
@@ -309,5 +329,5 @@ func chatHTTPError(status int, body []byte) error {
 	if status < 400 || status > 599 {
 		status = 502
 	}
-	return failure("upstream_http_failed", "WorkBuddy Chat request failed", status)
+	return failure("upstream_http_failed", "WorkBuddy request failed", status)
 }

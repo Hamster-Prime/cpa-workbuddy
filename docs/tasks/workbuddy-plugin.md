@@ -214,7 +214,7 @@ Implementation decisions:
 
 ## Slice 10: 国内Claude Messages闭环
 
-Status: pending
+Status: completed
 
 Blocked by: 07,08,09
 
@@ -224,13 +224,20 @@ What to build:
 
 Acceptance criteria:
 
-- [ ] 国内 Claude 按已解析模型路由 Messages，国内其他模型和国际所有模型仍 Chat；不因客户端协议、错误或模型名称猜测切换站点，不在失败后自动改投协议。
-- [ ] 保留原生 Messages system、content blocks、tool_use/tool_result、thinking 与合法签名，不套用 Chat 专属整形；企业头及账号会话归属正确。
-- [ ] Messages effort 字段与支持级别真实映射，max 只对支持的模型声明；流式和非流式回答、工具循环、usage、停止原因与模型前缀回写正确。
-- [ ] 无签名 thinking 的参考处理与 11159/包装错误纠正有样本，合法签名保留，纠正次数有界且只在回答尚未输出前发生。
-- [ ] 401 与 07 认证状态路径一致，同账号新凭证恢复不重刷或重复执行；永久失效后 Messages 不继续调度。
-- [ ] `/v1/messages/count_tokens` 的历史 404 与实际宿主估算边界核实；无可用契约时返回明确不支持，不伪造上游计数；`executor.http_request` 支持范围同样明确。
-- [ ] native 上游路由/请求/签名/工具样本与本地真实协议边界对应；本片不以格式字符串声明冒充跨协议转换完成。
+- [x] 国内 Claude 按已解析模型路由 Messages，国内其他模型和国际所有模型仍 Chat；不因客户端协议、错误或模型名称猜测切换站点，不在失败后自动改投协议。
+- [x] 保留原生 Messages system、content blocks、tool_use/tool_result、thinking 与合法签名，不套用 Chat 专属整形；企业头及账号会话归属正确。
+- [x] Messages effort 字段与支持级别真实映射，max 只对支持的模型声明；流式和非流式回答、工具循环、usage、停止原因与模型前缀回写正确。
+- [x] 无签名 thinking 的参考处理与 11159/包装错误纠正有样本，合法签名保留，纠正次数有界且只在回答尚未输出前发生。
+- [x] 401 与 07 认证状态路径一致，同账号新凭证恢复不重刷或重复执行；永久失效后 Messages 不继续调度。
+- [x] `/v1/messages/count_tokens` 的历史 404 与实际宿主估算边界核实；无可用契约时返回明确不支持，不伪造上游计数；`executor.http_request` 支持范围同样明确。
+- [x] native 上游路由/请求/签名/工具样本与本地真实协议边界对应；本片不以格式字符串声明冒充跨协议转换完成。
+
+Implementation decisions:
+
+- 根据凭证站点与宿主已解析模型选择固定协议；Slice 10 声明 openai/claude 两种实际原生格式，原生入参与输出保持同格式，跨协议转换由 Slice 11 独立验收。
+- Messages 使用原生 JSON，统一请求上游 SSE 并为非流式客户端聚合；与 Chat 共用 HTTP stream 所有权、取消、关闭及认证恢复，SSE 传输解码器共用，事件语义由各原生协议维护。
+- 保留 system/content blocks、input_schema 与原始工具名；按固定参考移除无签名 thinking。明确 11159 或签名包装错误最多进行一次 thinking 纠正，并与一次认证恢复独立计数，只发生在接收并输出回答之前。
+- 宿主 CountTokens 适配器直接传播插件错误，没有已核实的估算回退；本片对计数与任意 HTTP 转发保持明确不支持，原生聊天不请求历史 404 的 count_tokens 路径。
 
 ## Slice 11: CPA客户端协议互通
 

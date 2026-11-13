@@ -160,16 +160,13 @@ func (s *Service) models(ctx context.Context, method string, raw []byte, call fu
 			ID: chosen.modelPrefix + model.ID, Object: "model", OwnedBy: provider, Type: provider,
 			DisplayName: model.Name, Name: model.ID, ContextLength: model.ContextLength,
 			InputTokenLimit: model.ContextLength, OutputTokenLimit: model.MaxOutputTokens, MaxCompletionTokens: model.MaxOutputTokens,
+			SupportedInputModalities: []string{"text"}, SupportedOutputModalities: []string{"text"},
 		}
-		if !messagesModel(chosen.id, model.ID) {
-			info.SupportedInputModalities = []string{"text"}
-			info.SupportedOutputModalities = []string{"text"}
-			if catalogImages(chosen.id, model.ID, model.Images) {
-				info.SupportedInputModalities = append(info.SupportedInputModalities, "image")
-			}
-			if len(model.Efforts) > 0 {
-				info.Thinking = &ThinkingSupport{ZeroAllowed: slices.Contains(model.Efforts, "none"), Levels: model.Efforts}
-			}
+		if catalogImages(chosen.id, model.ID, model.Images) {
+			info.SupportedInputModalities = append(info.SupportedInputModalities, "image")
+		}
+		if len(model.Efforts) > 0 {
+			info.Thinking = &ThinkingSupport{ZeroAllowed: slices.Contains(model.Efforts, "none"), Levels: model.Efforts}
 		}
 		result.Models = append(result.Models, info)
 	}

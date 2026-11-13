@@ -24,11 +24,11 @@ Slice 04 声明 `model_provider`：`model.static` 返回空目录，`model.for_a
 
 相同成功模型内容沿用快照采集时间，不产生 AuthUpdate；内容、作用域或失败状态变化时才更新成功快照。CPA watcher 会比较完整凭证元数据，此规则使发现与凭证文件更新收敛。认证请求头由 `AuthData.RequestHeaders` 统一维护，站点应用名和模型前缀由 `selectSite` 提供。
 
-Slice 05 的 executor 以 OAuth 作用域接受和输出 `openai`。请求使用宿主解析的模型与凭证站点，固定发送到该站点 `/v2/chat/completions`；JSON gzip 且上游始终流式。`AuthData.RequestHeaders` 提供认证与应用归属，Chat 层补全上游 SDK 头。会话优先取 CPA canonical/execution/derived session 元数据，再按用户消息派生，账号摘要参与会话和轮次身份。
+executor 以 OAuth 作用域接受和输出原生 `openai` 与 `claude`。请求使用宿主解析的模型与凭证站点：国内 Claude 固定发送到 `/v1/messages`，保留原生 JSON；其他模型固定发送到本站点 `/v2/chat/completions`，JSON gzip。上游始终流式，客户端原生格式须与已选路由匹配。`AuthData.RequestHeaders` 提供认证与应用归属，共用 SDK 头和账号会话派生。会话优先取 CPA canonical/execution/derived session 元数据，再按用户消息派生，账号摘要参与会话和轮次身份。
 
 `host.http.do_stream` 创建宿主持有的上游 HTTP stream，插件读取并在结束、错误或取消时关闭。下游 streaming stream ID 由 CPA 创建；插件异步解析完整 SSE 事件，通过 `host.stream.emit` 推送，最终 `host.stream.close`。Service 记录在途执行，关闭时取消并等待异步 pump 与取消回调退出，原生 Runtime 再完成卸载。非流式调用使用同一个 SSE 解析器聚合；缺少完成事件、未结束 choice、坏事件或读取中断均明确失败。单事件上限 1 MiB，聚合上限 32 MiB，实际 HTTP 取消由宿主请求 context 与 stream close 共同驱动。
 
-Chat 显式拒绝尚未实现的生成能力；国内 Claude 的 Messages 路由由 Slice 10 接入。`count_tokens` 与 `http_request` 返回明确不支持，不构造远端计数或任意 URL 请求。客户端协议互通的适配与证据由 Slice 11 维护。
+Messages 保留 system、content blocks、工具名和 input_schema；移除无签名 thinking，合法签名原样传递。HTTP 明确 11159 或签名拒绝时，最多一次移除历史 thinking 后重试；与一次认证恢复独立计数，最多三次请求，不在回答输出后重放。原生 SSE 校验 message/block 生命周期、增量工具 JSON、thinking 签名、usage 和停止原因；非流式按 block index 聚合。`count_tokens` 与 `http_request` 返回明确不支持，不构造远端计数或任意 URL 请求。客户端协议互通的适配与证据由 Slice 11 维护。
 
 正常流式完成按 emit → close 顺序交付；取消可并发关闭下游，以中断宿主队列中阻塞的 emit。插件在每个后续事件前检查取消，并等待 pump、取消回调和清理诊断全部退出后释放宿主回调。上游启动阶段失败由 RPC error 交回 CPA，CPA 在 `rpc_client_stream.go:24-27` 清理预先分配的下游流。清理失败走带回调上下文的 `host.log`；只有宿主日志通道自身失败时才使用进程 stderr 作为最后诊断出口。
 
@@ -50,7 +50,7 @@ Slice 08 在 Chat 请求整形边界处理工具 Schema 与名称。Schema 只�
 
 Slice 09 的请求能力来自当前 StorageJSON 中通过身份、站点、成功采集时间校验的模型快照。执行不查询全局模型 Info，不在每个请求中重新发现模型；未知能力只允许既有文本路径。`catalogImages` 统一模型发现、声明和请求的国际 GLM 图片限制，image_url 内容块经 gzip 交给本站点上游，插件不下载图片。
 
-显式 reasoning_effort 或 reasoning.effort 保持原位置和取值，并用当前账号的级别核验；相互冲突明确拒绝。默认 effort 仅在未显式选择且输出预算不属于正数 1024 以下窗口时填充。CPA ThinkingSupport 只声明命名级别与可关闭标记，输入/输出模态只描述已经接通的 Chat 路由；国内 Claude 等待 Messages 实现。
+Chat 显式 reasoning_effort 或 reasoning.effort 保持原位置和取值，并用当前账号的级别核验；相互冲突明确拒绝。默认 effort 仅在未显式选择且输出预算不属于正数 1024 以下窗口时填充。Messages 保留原生 thinking/output_config，用账号快照核验 effort 与禁用能力。CPA ThinkingSupport 只声明命名级别与可关闭标记，输入/输出模态描述已经接通的原生路由。
 
 SSE 分别处理 reasoning_content、reasoning 及 reasoning_details，既不互造别名，也不拼进可见 content。结构化 details 按 index/id 归属保留首次出现顺序及不透明元数据；流式只保留有界身份/元数据，正文直接转发，非流式将 thinking、文本和工具合计纳入 32 MiB 聚合限制。
 

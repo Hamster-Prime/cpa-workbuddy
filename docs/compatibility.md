@@ -125,7 +125,7 @@ Slice 01 记录当前可确认的宿主边界；认证恢复行为由 Slice 07 �
 | 07 失效/重新登录 | `refusedText:2161`、`signedOut:2187`、`reissued:2115`；Magpie 标记语义须适配 CPA，不能直接照搬 | `unauthorized.test.mjs:97`、`:113`、`:131`；重新登录/重启是新增 CPA 验收 | `invalidation.go`、credential_state/generation 与宿主兼容补丁；实际 Manager/FileTokenStore/DLL 验证状态恢复、调度阻断、CAS 与原身份重登，真实账号未验证 |
 | 08 工具调用 | `toolChoiceOn:1126`、`safeName:1173`、`fitSchema:1190`、`fitShape:1291`、`objectRoot:1362`、`typeUnions:1416`、`fitTools:1448`、`namedBack:1649`、`renamed:1666` | `tools.test.mjs:13`、`:28`、`:41`、`:73`、`:94`、`:181` | `chat_tools.go`、`tool_schema.go` 与 SSE 工具聚合；公共边界及真实 CPA 双站点流式/非流式工具循环通过，真实账号未验证 |
 | 09 图片/reasoning | `textOnly:150`、`reasoningOf:917`、`asReasoning:926`、`withDefaultEffort:3652`、`namesEffort:3663` | `images.test.mjs`、`reasoning.test.mjs`、`default-effort.test.mjs`、`efforts.test.mjs` | `chat_capabilities.go`、`chat_reasoning_response.go` 与 ModelInfo 声明；公共边界及真实 CPA 账号能力隔离、图片/effort/reasoning 通过，真实账号未验证 |
-| 10 国内 Messages | `nativeOf:182`、`isMessages:652`、`withoutUnsigned:703`、`unsignedOn:709`、`withoutSignedThinking:728`、`effortsOf:3587`、`makePlugin:3885` | `native.test.mjs:39`、`:46`、`:110`、`:210`、`:283`、`:320`、`:334` | 国内 Claude 路由、Messages 原生执行与签名恢复；待实现/未验证 |
+| 10 国内 Messages | `nativeOf:182`、`isMessages:652`、`withoutUnsigned:703`、`unsignedOn:709`、`withoutSignedThinking:728`、`effortsOf:3587`、`makePlugin:3885` | `native.test.mjs:39`、`:46`、`:110`、`:210`、`:283`、`:320`、`:334` | `messages_request.go`、`messages_response.go`、共享执行/认证恢复；原生公共边界与 CPA DLL 验证，真实账号未验证 |
 | 11 CPA 协议转换 | `nativeOf:182`、`isMessages:652`、`modelOf:3483`；参考包不是 CPA 翻译器 | `native.test.mjs`；新增 Chat/Responses/Claude/Gemini 双向场景 | executor formats 与宿主 translator 分工先核对再实现；待实现/未验证 |
 | 12 兼容纠正与故障 | `unflag:872`、`systemAsUserOn:1016`、`commaPausedOn:1080`、`withGrowth:1531`、`replyAfterToolsOn:3761`、`hideDsh:3823`、`explained:4459` | `unflag.test.mjs`、`comma.test.mjs`、`systemasuser.test.mjs`、`aftertools.test.mjs`、`hidedsh.test.mjs`、`deepseek-flash.test.mjs`、`growth.test.mjs`、`filtered.test.mjs`、`native.test.mjs` | 有界重试/错误映射/取消/shutdown；待实现/未验证 |
 | 13 管理与容器 | CPA 管理认证保存、列表、调度、持久化代码；没有可替代实际宿主验收的 JS 函数 | 需求 R4 验收矩阵，真实账号人工清单 | 实际 CPA/管理前端/容器版本与结果待实现后记录 |
@@ -271,3 +271,17 @@ Slice 02 已通过隔离实际 CPA 宿主/管理处理器的 DLL 加载、双站
 - 设置既有原生 smoke 环境变量后，`go -C out/verification/cpa-smoke test -timeout=90s -count=1 -run '^TestCPA(ChatImageAndReasoning|AccountModelDiscovery|ChatTools|ChatExecution)$' -v .` exit 0，日志 `out/logs/slice09-native-capabilities.log`。真实 CPA Manager/native DLL/宿主 HTTP 验证双站点的流式和非流式图片、reasoning/工具/usage、低预算与显式 effort，以及各站点两账号的不同能力。全局 Info 即使含图片和完整级别，也不能给不支持的已选账号开启对应请求；无快照和国际 GLM 在上游请求前拒绝。
 - 原生证明经实际模型发现生成并安装 AuthUpdate 快照；执行期间没有额外配置读取。两个 OFF_TAKEN ID 均接受 none，后续工具历史将 reasoning_content/reasoning_details 整形为参考 reasoning。账号模型发现、既有 Chat 与工具闭环在本片 DLL 上亦通过。模型诊断验收保留身份/状态/原因/快照时间，并直接断言实际凭证令牌不进入日志。
 - 独立审查后的公共边界回归 `TestChatImageOnlyTurnsHaveStableScopedIdentity` 验证纯图片重试、工具延续、换图、新用户轮次和跨账号身份；`TestChatEmptyReasoningControlsPreserveUnadvertisedTextRequests` 验证可选空值透传，默认 effort 继续按键存在性与低预算规则处理。流式结构化 reasoning 仅保留身份/元数据映射，聚合顺序列表只在非流式路径分配。
+
+## Slice 10 国内 Claude Messages 映射
+
+| 固定来源 | 本项目适配 | 公开边界验证 |
+|---|---|---|
+| `_ref/index.mjs:168-183,652-728`；`native.test.mjs:39-110,407-430` | 已解析站点模型选择 `/v1/messages`；`messages_request.go` 保留原生 system/工具/content，处理无签名 thinking | `messages_request_test.go` 原始字段、合法签名、工具轮次/账号归属、图片与 effort；`TestCPANativeMessages` 原生模型发现与调用 |
+| `native.test.mjs:365-403,435-499` 11159、包装错误及权限错误 | `chat.go` 单次签名纠正与单次 401 恢复分别计数 | `TestMessagesSignatureAndAuthenticationRecoveryAreJointlyBounded` 两种恢复顺序最多三次，持续拒绝不循环；CPA 原生证明验证两种输出模式 |
+| 参考原生 SSE；CPA executor payload/stream 契约 | `event_stream.go` 有界共享解码；`messages_response.go` 原生事件状态、工具 JSON、thinking 签名、usage 与聚合 | `messages_response_test.go` 碎片 UTF-8、多行/CRLF、工具/签名、停止原因、未知可表达字段、坏流、取消与大流 |
+
+- `go test -timeout=180s ./internal/workbuddy ./internal/plugin`、`go test -race -timeout=180s ./internal/workbuddy ./internal/plugin` exit 0；完整 `go run ./cmd/project quality` 十阶段 exit 0，包含 hint 级 LSP、lint、DLL 构建与原生 C 验证。日志 `out/logs/slice10-plugin-tests.log`、`slice10-race.log`、`slice10-quality.log`。
+- 计数边界按目标 CPA 实际源码核实：`sdk/api/handlers/claude/code_handlers.go:126-130` 调用 ExecuteCountWithAuthManager；`handlers_execution.go:168-173` 将 Manager 错误直接交回；`internal/pluginhost/adapters_executors.go:966-970` 直接传播插件 CountTokens 错误，没有估算回退。`_ref/native.test.mjs:501-504` 及固定源码内 count_tokens 404 是历史来源，本片没有真实账号复测该远端路径。插件返回 501 `unsupported_operation`，任意 HTTP 转发同样明确不支持。
+- 原生格式声明为 `openai`、`claude`，按已选模型要求实际匹配；跨客户端协议转换仍由 Slice 11 验收。国内其他模型和国际所有模型保持本站点 Chat；不根据错误切协议或换站点。真实账号、完整 server/管理前端、容器及其他平台仍未验证。
+- 设置既有原生 smoke 环境变量后，`go -C out/verification/cpa-smoke test -timeout=90s -count=1 -run '^TestCPANativeMessages$' -v .` exit 0，日志 `out/logs/slice10-native-messages.log`。真实 CPA Manager/FileTokenStore/native DLL/HTTP callbacks 验证国内原生流式与聚合工具闭环、system/cache 控制、合法签名与无签名历史、max 能力、两种签名拒绝及持续拒绝、权限/404 不切协议、输出后流内错误不重放、一次 401 恢复和永久拒绝阻断。国内非 Claude 与国际 Claude 实际保持 Chat，计数和任意 HTTP 转发 501 且上游调用为 0。仅上游服务为协议设施，真实账号结果未验证。
+- 独立架构审查依据 `_ref/index.mjs:4117` 补齐 Messages 共用的 agent/SDK attribution headers；gzip 仅在 Chat 调用处设置，Messages 保持原生 JSON。原生响应中未知 block/message 字段在可表达位置保留；没有规范聚合位置的事件级元数据在流式原样转发、非流式明确返回 `unsupported_upstream_response`，不丢弃后伪造完整聚合。
