@@ -24,7 +24,7 @@ Slice 04 声明 `model_provider`：`model.static` 返回空目录，`model.for_a
 
 相同成功模型内容沿用快照采集时间，不产生 AuthUpdate；内容、作用域或失败状态变化时才更新成功快照。CPA watcher 会比较完整凭证元数据，此规则使发现与凭证文件更新收敛。认证请求头由 `AuthData.RequestHeaders` 统一维护，站点应用名和模型前缀由 `selectSite` 提供。
 
-executor 以 OAuth 作用域接受和输出原生 `openai` 与 `claude`。请求使用宿主解析的模型与凭证站点：国内 Claude 固定发送到 `/v1/messages`，保留原生 JSON；其他模型固定发送到本站点 `/v2/chat/completions`，JSON gzip。上游始终流式，客户端原生格式须与已选路由匹配。`AuthData.RequestHeaders` 提供认证与应用归属，共用 SDK 头和账号会话派生。会话优先取 CPA canonical/execution/derived session 元数据，再按用户消息派生，账号摘要参与会话和轮次身份。
+executor 以 OAuth 作用域接受和输出原生 `openai` 与 `claude`。请求使用宿主解析的模型与凭证站点：国内 Claude 固定发送到 `/v1/messages`，保留原生 JSON；其他模型固定发送到本站点 `/v2/chat/completions`，JSON gzip。上游始终流式，模型发现通过 `NativeFormat` 声明实际协议，CPA 兼容适配器按已解析模型选择格式，验证请求和对应输出模式的 translator，再翻译到原生格式交给插件。`AuthData.RequestHeaders` 提供认证与应用归属，共用 SDK 头和账号会话派生。会话优先取 CPA canonical/execution/derived session 元数据，再按用户消息派生，账号摘要参与会话和轮次身份。
 
 `host.http.do_stream` 创建宿主持有的上游 HTTP stream，插件读取并在结束、错误或取消时关闭。下游 streaming stream ID 由 CPA 创建；插件异步解析完整 SSE 事件，通过 `host.stream.emit` 推送，最终 `host.stream.close`。Service 记录在途执行，关闭时取消并等待异步 pump 与取消回调退出，原生 Runtime 再完成卸载。非流式调用使用同一个 SSE 解析器聚合；缺少完成事件、未结束 choice、坏事件或读取中断均明确失败。单事件上限 1 MiB，聚合上限 32 MiB，实际 HTTP 取消由宿主请求 context 与 stream close 共同驱动。
 
@@ -95,7 +95,7 @@ go run ./cmd/project package
 | 凭证 | 管理接口鉴权、文件位置、保存、列表、禁用/删除、调度与刷新驱动 | 浏览器协议、带版本存储、稳定身份、token 轮换及状态映射 |
 | 网络 | HTTP transport policy、代理、取消与宿主日志 | 只调用宿主 HTTP/流回调；固定站点目标、请求头、gzip 和协议解析 |
 | 模型 | 每凭证注册、全局 ID 汇总、别名/排除、候选调度 | 账号配置发现与成功快照，生成站点前缀，执行前再次检查站点 |
-| 格式 | 根据已声明格式提供的请求/响应翻译 | 明确原生 Chat/Messages 的接受与输出范围，保留可表达语义 |
+| 格式 | 按已解析模型的 NativeFormat 选择原生格式，验证方向与流式/非流式 transformer，翻译请求/响应及适配各 HTTP handler 的流记录契约 | 只接受和输出真实原生 Chat/Messages，按站点及已解析模型声明 NativeFormat，保留可表达语义 |
 | 生命周期 | 加载、回调入口、调度停用和卸载 | ABI 缓冲区与 stream 所有权、有界资源、取消、停止新任务并等待在途任务 |
 
 CPA 登录接口通过 metadata 传 `site`。插件不直接写 auth 目录，不读取桌面登录文件，不启动独立管理页。管理前端是否能显示动态插件入口、选择站点及如何反映永久失效，必须以目标 CPA 版本实际能力验证。若需要外部 CPA/前端改动，列明兼容缺口及外部修改范围，不隐式扩大本仓库交付。

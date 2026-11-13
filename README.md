@@ -2,7 +2,7 @@
 
 面向 CLIProxyAPI（CPA）的 WorkBuddy 原生动态库插件，一个 provider `workbuddy` 承载国内 `copilot.tencent.com` 与国际 `www.workbuddy.ai` 的多个账号及个人/企业身份。
 
-**已实现工程基线及 Slice 01–10：原生接入、双站点浏览器登录与恢复、个人/企业身份管理、账号模型发现、Chat 文本/工具/图片/reasoning、国内 Claude Messages、凭证刷新和永久认证失效恢复。** 同身份重新登录更新原记录并保留宿主管理设置；模型使用 `wb/`、`wb-ai/` 前缀。Chat 与国内 Claude Messages 支持流式、非流式、多轮及客户端工具循环；图片和 effort 依据当前账号成功模型快照核验，国际 GLM 保持文本输入。Messages 保留 system、原生工具名、thinking 与合法签名，并在明确签名拒绝时最多纠正一次。三类刷新共用账号代次协调，首次 401 最多恢复一次。明确的永久认证拒绝保留原记录并停止调度，同身份重新登录恢复认证资格。客户端跨协议互通由 Slice 11 验收。各项验证状态见 [任务表](docs/tasks/workbuddy-plugin.md) 与 [兼容性记录](docs/compatibility.md)。
+**已实现工程基线及 Slice 01–11：原生接入、双站点浏览器登录与恢复、个人/企业身份管理、账号模型发现、Chat 文本/工具/图片/reasoning、国内 Claude Messages、CPA 客户端协议互通、凭证刷新和永久认证失效恢复。** 同身份重新登录更新原记录并保留宿主管理设置；模型使用 `wb/`、`wb-ai/` 前缀。通过兼容 CPA 宿主，OpenAI Chat、Responses、Claude Messages 与 Gemini 客户端按已选站点和模型进入原生路由，并将结果返回客户端格式，支持流式、非流式及客户端工具循环。图片和 effort 依据当前账号成功模型快照核验，国际 GLM 保持文本输入。Messages 保留 system、原生工具名、thinking 与合法签名，并在明确签名拒绝时最多纠正一次。三类刷新共用账号代次协调，首次 401 最多恢复一次。明确的永久认证拒绝保留原记录并停止调度，同身份重新登录恢复认证资格。各项验证状态见 [任务表](docs/tasks/workbuddy-plugin.md) 与 [兼容性记录](docs/compatibility.md)。
 
 插件 ID 为 `cpa-workbuddy`，作者 `sheepyu`。产品版本唯一来源是 [VERSION](VERSION)；计划仓库为 `ygq-future/cpa-workbuddy`，远程仓库尚未创建。提交、推送和发布需用户明确授权。
 
@@ -14,7 +14,7 @@ CPA 宿主要求注册包含有效身份与至少一项真实能力。Slice 01 �
 GET /v0/management/plugins/cpa-workbuddy/status
 ```
 
-接口返回插件身份、产品版本、ABI 和 schema；不创建独立管理页。插件声明 `auth_provider`、`model_provider` 和 OAuth 作用域的 `executor`，直接接受和输出原生 OpenAI Chat `openai` 与 Claude Messages `claude` 格式；静态模型目录为空。国内 Claude 固定走国内 `/v1/messages`，国内其他模型和国际模型固定走对应站点 `/v2/chat/completions`，使用宿主网络与流桥接。当前要求客户端格式与已选模型的原生格式一致。计数与任意 HTTP 转发返回明确不支持。真实原生测试宿主、实际 CPA 宿主与真实账号的证据分别记录。
+接口返回插件身份、产品版本、ABI 和 schema；不创建独立管理页。插件声明 `auth_provider`、`model_provider` 和 OAuth 作用域的 `executor`，直接接受和输出原生 OpenAI Chat `openai` 与 Claude Messages `claude` 格式；静态模型目录为空。模型发现的 `NativeFormat` 指定该模型的原生协议，兼容 CPA 宿主负责客户端请求和响应翻译。国内 Claude 固定走国内 `/v1/messages`，国内其他模型和国际模型固定走对应站点 `/v2/chat/completions`，使用宿主网络与流桥接。不支持的格式在请求上游前明确失败。计数与任意 HTTP 转发返回明确不支持。真实原生测试宿主、实际 CPA 宿主与真实账号的证据分别记录。
 
 交付物为 CPA 加载的 CGO 动态库：Windows `.dll`、Linux `.so`、macOS `.dylib`。库没有独立 `start` / `stop`；加载、停用和卸载由 CPA 管理。首个验证平台为 Windows amd64，其他平台的构建和实际加载将在后续单独记录。
 

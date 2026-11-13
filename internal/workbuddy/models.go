@@ -19,6 +19,7 @@ type ModelInfo struct {
 	Type                      string
 	DisplayName               string
 	Name                      string
+	NativeFormat              string
 	ContextLength             int64
 	InputTokenLimit           int64
 	OutputTokenLimit          int64
@@ -161,6 +162,10 @@ func (s *Service) models(ctx context.Context, method string, raw []byte, call fu
 			DisplayName: model.Name, Name: model.ID, ContextLength: model.ContextLength,
 			InputTokenLimit: model.ContextLength, OutputTokenLimit: model.MaxOutputTokens, MaxCompletionTokens: model.MaxOutputTokens,
 			SupportedInputModalities: []string{"text"}, SupportedOutputModalities: []string{"text"},
+			NativeFormat: "openai",
+		}
+		if messagesModel(chosen.id, model.ID) {
+			info.NativeFormat = "claude"
 		}
 		if catalogImages(chosen.id, model.ID, model.Images) {
 			info.SupportedInputModalities = append(info.SupportedInputModalities, "image")

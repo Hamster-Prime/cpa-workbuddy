@@ -138,6 +138,13 @@ func TestChatCapabilityModelPublicationMatchesExecutableRoutes(t *testing.T) {
 	for _, site := range []string{"workbuddy", "workbuddy-ai"} {
 		_, models := discoverChatCapabilities(t, site, "", chatCapabilityConfig)
 		for _, model := range models.Models {
+			wantFormat := "openai"
+			if site == "workbuddy" && strings.HasSuffix(model.ID, "claude-opus-5.5") {
+				wantFormat = "claude"
+			}
+			if model.NativeFormat != wantFormat {
+				t.Fatalf("model %s native format=%s, want %s", model.ID, model.NativeFormat, wantFormat)
+			}
 			if strings.HasSuffix(model.ID, "claude-opus-5.5") && site == "workbuddy" {
 				if model.Thinking == nil || !reflect.DeepEqual(model.Thinking.Levels, []string{"none", "high", "max"}) || !reflect.DeepEqual(model.SupportedInputModalities, []string{"text", "image"}) {
 					t.Fatal("native Messages model lost its discovered capabilities")

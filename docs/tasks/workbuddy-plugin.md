@@ -241,7 +241,7 @@ Implementation decisions:
 
 ## Slice 11: CPA客户端协议互通
 
-Status: pending
+Status: completed
 
 Blocked by: 10
 
@@ -251,13 +251,19 @@ What to build:
 
 Acceptance criteria:
 
-- [ ] 兼容表记录目标 CPA 实际输入/输出格式、每个转换方向的归属与适配位置；capabilities 只声明真实原生接受和输出格式。
-- [ ] OpenAI Chat 客户端调用国内 Claude，实际使用本站点 Messages 并返回 Chat 语义；Responses 的代表性请求同样贯通。
-- [ ] Claude Messages 客户端调用国内非 Claude 与国际模型，实际使用 Chat 并返回原客户端格式，站点和凭证不改变。
-- [ ] CPA 可转换 Gemini 请求完成代表性双向路径；不支持的格式返回明确错误，不静默吞字段或只宣称两个 format 字符串。
-- [ ] 流式/非流式转换保留文本、可支持图片、工具调用/结果、usage、停止原因与 reasoning 可表达语义；thinking/签名无法表达部分遵循已核实契约而非猜测。
-- [ ] 模型别名执行和站点模型回写在转换后正确；转换失败不触发跨站点重试或重复工具执行，取消和中途失败按客户端协议终止。
-- [ ] 各协议方向均有公共宿主边界测试与实际 CPA 请求证据，动态模型按实际路由和能力验收，不把未实现协议的模型标已支持。
+- [x] 兼容表记录目标 CPA 实际输入/输出格式、每个转换方向的归属与适配位置；capabilities 只声明真实原生接受和输出格式。
+- [x] OpenAI Chat 客户端调用国内 Claude，实际使用本站点 Messages 并返回 Chat 语义；Responses 的代表性请求同样贯通。
+- [x] Claude Messages 客户端调用国内非 Claude 与国际模型，实际使用 Chat 并返回原客户端格式，站点和凭证不改变。
+- [x] CPA 可转换 Gemini 请求完成代表性双向路径；不支持的格式返回明确错误，不静默吞字段或只宣称两个 format 字符串。
+- [x] 流式/非流式转换保留文本、可支持图片、工具调用/结果、usage、停止原因与 reasoning 可表达语义；thinking/签名无法表达部分遵循已核实契约而非猜测。
+- [x] 模型别名执行和站点模型回写在转换后正确；转换失败不触发跨站点重试或重复工具执行，取消和中途失败按客户端协议终止。
+- [x] 各协议方向均有公共宿主边界测试与实际 CPA 请求证据，动态模型按实际路由和能力验收，不把未实现协议的模型标已支持。
+
+Implementation decisions:
+
+- 模型发现通过可选 `NativeFormat` 元数据声明该模型实际接受/输出的协议；宿主按已解析模型选择格式，并验证插件声明与 translator 可用性。国内 Claude 为 claude，其余为 openai；宿主不硬编码 WorkBuddy 模型命名。
+- 复用 CPA 内置请求与响应 translator；插件继续只处理真实原生 Chat/Messages。客户端与原生协议不同的请求只翻译一次，响应回到原客户端格式；图片、工具和 reasoning 按实际 translator 语义验收。
+- CPA 兼容修复位于隔离副本并合入既有累计补丁；原始 CPA 参考目录保持只读。ABI/schema 版本保持，新增模型字段为可选 metadata，其他插件缺省继续既有格式选择。
 
 ## Slice 12: 兼容纠正与故障边界
 

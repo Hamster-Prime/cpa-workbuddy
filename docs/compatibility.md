@@ -285,3 +285,23 @@ Slice 02 已通过隔离实际 CPA 宿主/管理处理器的 DLL 加载、双站
 - 原生格式声明为 `openai`、`claude`，按已选模型要求实际匹配；跨客户端协议转换仍由 Slice 11 验收。国内其他模型和国际所有模型保持本站点 Chat；不根据错误切协议或换站点。真实账号、完整 server/管理前端、容器及其他平台仍未验证。
 - 设置既有原生 smoke 环境变量后，`go -C out/verification/cpa-smoke test -timeout=90s -count=1 -run '^TestCPANativeMessages$' -v .` exit 0，日志 `out/logs/slice10-native-messages.log`。真实 CPA Manager/FileTokenStore/native DLL/HTTP callbacks 验证国内原生流式与聚合工具闭环、system/cache 控制、合法签名与无签名历史、max 能力、两种签名拒绝及持续拒绝、权限/404 不切协议、输出后流内错误不重放、一次 401 恢复和永久拒绝阻断。国内非 Claude 与国际 Claude 实际保持 Chat，计数和任意 HTTP 转发 501 且上游调用为 0。仅上游服务为协议设施，真实账号结果未验证。
 - 独立架构审查依据 `_ref/index.mjs:4117` 补齐 Messages 共用的 agent/SDK attribution headers；gzip 仅在 Chat 调用处设置，Messages 保持原生 JSON。原生响应中未知 block/message 字段在可表达位置保留；没有规范聚合位置的事件级元数据在流式原样转发、非流式明确返回 `unsupported_upstream_response`，不丢弃后伪造完整聚合。
+
+## Slice 11 客户端格式与宿主翻译边界
+
+目标宿主的 `executorAdapter.prepareExecutorCall` 负责把客户端 payload 转成模型原生格式，并在执行后调用 SDK response translator；内置注册由 `sdk/translator/builtin` 加载。仅靠插件级 input/output formats 无法为同一 provider 的模型指定不同协议：原实现 `selectExecutorInputFormat` 优先保留客户端协议。隔离兼容补丁通过模型级可选 `NativeFormat` 选择已解析模型的原生格式，插件只处理自己的原生请求/响应。
+
+| 客户端 | 国内 Claude 原生 | 国内其他/国际模型原生 | 翻译责任与适配位置 |
+|---|---|---|---|
+| OpenAI Chat `openai` | Claude Messages `claude` | Chat `openai` | CPA `internal/translator/claude/openai/chat-completions`；原生 Chat 直接执行 |
+| Responses `openai-response` | Claude Messages `claude` | Chat `openai` | CPA `internal/translator/claude/openai/responses`、`openai/openai/responses` |
+| Claude Messages `claude` | Claude Messages `claude` | Chat `openai` | 原生 Messages 直接执行；CPA `internal/translator/openai/claude` |
+| Gemini `gemini` | Claude Messages `claude` | Chat `openai` | CPA `internal/translator/claude/gemini`、`openai/gemini` |
+
+- SDK stream translator 输入为单条 `data:` 记录，不能直接消费以 `event:` 开头的完整 SSE。HTTP 消费边界不同：OpenAI handler（`openai_handlers.go:539,700`）和 Gemini handler（`gemini_handlers.go:248-251,323-325`）各自加 SSE framing；Claude handler（`code_handlers.go:291-294`）直接写完整事件。宿主适配负责保持对应约定，Manager 测试和实际 handler 测试分别观察。
+- 三种 Claude 非流式 response translator 原来只扫描 SSE data 行；插件返回原生 message JSON 时会产生空回答。兼容副本直接读取聚合块填入既有目标状态，保留文本、thinking、工具参数、usage 与停止原因；不先把整份聚合重建为 SSE。
+- 签名语义按目标协议表达：Chat 只映射可读 reasoning；Responses 以 reasoning encrypted_content 承载 Claude 签名/不透明 reasoning；Gemini 使用现有 signature 兼容规则，不伪造 WorkBuddy 签名。未报告 reasoning token 数时不按文本长度估算；实际 `reasoning_tokens`/`thinking_tokens` 才映射目标计数。Gemini 保留初始 usage，与后续 output usage 合并，并保留 MAX_TOKENS。
+- `go run ./cmd/project quality` 十阶段 exit 0；`go -C out/verification/cpa-compatible test -timeout=180s ./internal/pluginhost ./internal/registry ./sdk/translator ./sdk/pluginapi ./sdk/cliproxy/auth ./internal/translator/claude/openai/chat-completions ./internal/translator/claude/openai/responses ./internal/translator/claude/gemini` exit 0，见 `out/logs/slice11-quality.log`、`slice11-host-tests.log`。SDK registry 原生聚合回归验证三种客户端的块内容、工具参数、实际计数、长度停止及模型回写；宿主测试验证未发布静态模型、严格 provider 作用域、缺 translator、未知格式与转换拒绝。
+- 设置既有 DLL/temp 环境变量后，`go -C out/verification/cpa-smoke test -timeout=120s -count=1 -run '^TestCPA(NativeClientProtocols|ClientProtocolHTTPHandlers|ChatExecution|ChatTools|ChatImageAndReasoning|NativeMessages)$' -v .` exit 0，见 `out/logs/slice11-native-protocols.log`。真实 CPA Manager/DLL 验证七个跨协议方向的两种输出模式、完整工具循环、图片/reasoning、usage/缓存计数、站点/账号与已解析模型归属、取消及流内错误不重放；实际 Gin HTTP handlers 再验证三个站点模型路由 × 四种客户端 × 两种输出模式，OpenAI SSE 只有一次 DONE，payload 是合法 JSON，不重复加 data framing。既有 Chat、工具、图片/reasoning 和原生 Messages 证明在本片兼容宿主上亦通过。
+- 协议上游仍为隔离设施。真实账号、完整 server/管理前端、容器及其他平台未验证。累计 CPA 补丁为 `out/verification/cpa-native-format-contract.patch`，包含此前认证/刷新修复及本片原生格式/翻译修复；独立副本及补丁没有提交 CPA 仓库，原始参考目录保持只读。
+- `go -C out/verification/cpa-compatible test -race -timeout=180s ./internal/pluginhost ./internal/registry ./sdk/translator` exit 0，见 `out/logs/slice11-host-race.log`。首次完整 race 被 Windows 回调测试的整数地址转 Go 指针触发 checkptr 阻断；fixture 改为 ReadProcessMemory 观察请求哨兵、WriteProcessMemory 安装原生响应，不把请求地址变成新的 Go GC root，内存存活与重入栈增长验收继续执行。所有相关宿主文件通过真实 gopls stdio `textDocument/diagnostic`，最终 warning/info/hint 共 0，见 `slice11-host-diagnostics.log`。
+- 宿主转换器把未完成的 SSE 记录限制在 32 MiB 内，超限明确错误；OpenAI/Gemini Manager 流输出 JSON 记录，终止由对应 HTTP handler 负责。已有验证消费者已按这份实际契约迁移。`git -C ../.cpa-upstream-src apply --check <累计补丁绝对路径>` exit 0；补丁 SHA256 为 `0b30e02232fd85728bd942e3c5115f60c375363e34209d71697b698da476c4c6`。
