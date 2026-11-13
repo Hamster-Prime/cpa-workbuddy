@@ -235,7 +235,7 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 			}
 			if opened.StatusCode == 401 && !authRecovered {
 				authRecovered = true
-				next, err := s.renew(ctx, auth, req.HostCallbackID, call)
+				next, err := s.recoverAuthentication(ctx, auth, authenticationReason(opened.StatusCode, opened.Headers, body), req.HostCallbackID, call)
 				if err != nil {
 					finish()
 					return nil, errors.Join(err, closeErr)
@@ -246,6 +246,14 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 				}
 				auth = next
 				continue
+			}
+			if reason := authenticationReason(opened.StatusCode, opened.Headers, body); reason != "" {
+				_, stateErr := s.invalidate(ctx, auth, reason, req.HostCallbackID, call)
+				finish()
+				if stateErr == nil {
+					return nil, failure("credentials_changed", "WorkBuddy credentials changed during this request; retry with the installed credentials", 409)
+				}
+				return nil, errors.Join(stateErr, closeErr)
 			}
 			finish()
 			return nil, errors.Join(chatHTTPError(opened.StatusCode, body), closeErr)

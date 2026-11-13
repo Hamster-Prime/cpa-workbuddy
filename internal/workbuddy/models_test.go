@@ -32,7 +32,7 @@ func discover(t *testing.T, s *workbuddy.Service, auth workbuddy.AuthData, mode 
 			return []byte(`{"ok":true,"result":{}}`), nil
 		}
 		if method == "host.auth.list" {
-			return json.Marshal(map[string]any{"ok": true, "result": map[string]any{"files": []map[string]string{{"id": auth.ID, "provider": "workbuddy", "auth_index": "discovery-current"}}}})
+			return json.Marshal(map[string]any{"ok": true, "result": map[string]any{"credential_state_version": 1, "files": []map[string]string{{"id": auth.ID, "provider": "workbuddy", "auth_index": "discovery-current"}}}})
 		}
 		if method == "host.auth.get" {
 			return json.Marshal(map[string]any{"ok": true, "result": map[string]any{"json": json.RawMessage(auth.StorageJSON)}})
@@ -111,7 +111,7 @@ func TestAccountModelSnapshotRecoveryAndRevocation(t *testing.T) {
 			if !reflect.DeepEqual(fallback.Models, ok.Models) || fields["status"] != "snapshot" || fields["snapshot_at"] == nil || fallback.AuthUpdate.ID != "" {
 				t.Fatal("restart did not restore exact successful snapshot")
 			}
-			for _, mode := range []string{"missing", "malformed", "rejected"} {
+			for _, mode := range []string{"missing", "malformed"} {
 				blocked, fields := discover(t, s, ok.AuthUpdate, mode)
 				if len(blocked.Models) != 0 || blocked.AuthUpdate.ID == "" || fields["status"] != "unavailable" {
 					t.Fatalf("%s retained eligibility", mode)

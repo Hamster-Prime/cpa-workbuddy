@@ -424,6 +424,7 @@ type upstreamError struct {
 	status       int
 	code         int
 	invalidToken bool
+	authReason   string
 }
 
 func (e *upstreamError) Error() string { return "WorkBuddy request failed" }
@@ -482,16 +483,9 @@ func request(ctx context.Context, chosen site, callbackID string, call func(stri
 		Data json.RawMessage `json:"data"`
 	}
 	status := envelope.Result.StatusCode
+	authReason := authenticationReason(status, envelope.Result.Headers, envelope.Result.Body)
 	if status == 401 || status >= 500 {
-		invalidToken := false
-		for key, values := range envelope.Result.Headers {
-			if strings.EqualFold(key, "WWW-Authenticate") {
-				for _, value := range values {
-					invalidToken = invalidToken || strings.Contains(strings.ToLower(value), "invalid_token")
-				}
-			}
-		}
-		return &upstreamError{status: status, invalidToken: invalidToken}
+		return &upstreamError{status: status, invalidToken: authReason == "invalid_token", authReason: authReason}
 	}
 	if status == 408 || status == 429 {
 		return &upstreamError{status: status}
@@ -509,7 +503,7 @@ func request(ctx context.Context, chosen site, callbackID string, call func(stri
 		code = parsed
 	}
 	if status < 200 || status >= 300 || code != 0 {
-		return &upstreamError{status: status, code: code}
+		return &upstreamError{status: status, code: code, authReason: authReason}
 	}
 	if len(data.Data) == 0 || string(data.Data) == "null" {
 		return nil

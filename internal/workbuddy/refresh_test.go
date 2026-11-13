@@ -88,6 +88,8 @@ func (h *rotationHost) replace(id, access, refresh string) error {
 	}
 	fields["access_token"] = access
 	fields["refresh_token"] = refresh
+	fields["credential_state"] = nil
+	fields["credential_generation"] = fmt.Sprint(fields["credential_generation"]) + "-login"
 	fields["expires_at"] = time.Now().Add(time.Hour).UTC().Format(time.RFC3339Nano)
 	raw, err := json.Marshal(fields)
 	if err == nil {
@@ -105,7 +107,7 @@ func (h *rotationHost) call(method string, raw []byte) ([]byte, error) {
 		for id := range h.files {
 			files = append(files, map[string]string{"id": id, "auth_index": id, "provider": "workbuddy"})
 		}
-		return json.Marshal(map[string]any{"ok": true, "result": map[string]any{"files": files}})
+		return json.Marshal(map[string]any{"ok": true, "result": map[string]any{"files": files, "credential_state_version": 1}})
 	case "host.auth.get":
 		var req struct {
 			AuthIndex string `json:"auth_index"`
@@ -116,8 +118,9 @@ func (h *rotationHost) call(method string, raw []byte) ([]byte, error) {
 		return json.Marshal(map[string]any{"ok": true, "result": map[string]any{"json": json.RawMessage(h.raw(req.AuthIndex))}})
 	case "host.auth.save":
 		var req struct {
-			Name string          `json:"name"`
-			JSON json.RawMessage `json:"json"`
+			Name     string          `json:"name"`
+			JSON     json.RawMessage `json:"json"`
+			Expected json.RawMessage `json:"expected_credential_json"`
 		}
 		if err := json.Unmarshal(raw, &req); err != nil {
 			return nil, err
@@ -131,6 +134,31 @@ func (h *rotationHost) call(method string, raw []byte) ([]byte, error) {
 		id := strings.TrimSuffix(req.Name, ".json")
 		if _, exists := h.files[id]; !exists {
 			return nil, errors.New("save changed credential identity")
+		}
+		if len(req.Expected) > 0 {
+			var expected, current map[string]any
+			if err := json.Unmarshal(req.Expected, &expected); err != nil {
+				return nil, err
+			}
+			if err := json.Unmarshal(h.files[id], &current); err != nil {
+				return nil, err
+			}
+			for _, key := range []string{"access_token", "refresh_token", "credential_generation"} {
+				if expected[key] != current[key] {
+					return nil, errors.New("credential generation changed")
+				}
+			}
+			before, err := json.Marshal(expected["credential_state"])
+			if err != nil {
+				return nil, err
+			}
+			after, err := json.Marshal(current["credential_state"])
+			if err != nil {
+				return nil, err
+			}
+			if !bytes.Equal(before, after) {
+				return nil, errors.New("credential state changed")
+			}
 		}
 		h.files[id] = bytes.Clone(req.JSON)
 		return []byte(`{"ok":true,"result":{}}`), nil
@@ -443,7 +471,7 @@ func TestRefreshResultWindowAndIdentityIsolation(t *testing.T) {
 }
 
 func TestRefreshFailuresKeepUnexpiredAccessAndReportReason(t *testing.T) {
-	for _, mode := range []string{"network", "server", "timeout", "rejected", "expired"} {
+	for _, mode := range []string{"network", "server", "timeout", "expired"} {
 		t.Run(mode, func(t *testing.T) {
 			s := workbuddy.New()
 			defer s.Close()

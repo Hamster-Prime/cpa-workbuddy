@@ -34,9 +34,15 @@ Slice 05 的 executor 以 OAuth 作用域接受和输出 `openai`。请求使用
 
 Slice 06 分派 `auth.refresh`，与 Chat 和模型发现共用按稳定账号身份串行的 `renew`。每次消费前读取宿主列表及物理凭证，401 和轮换结果返回后再次确认代次；外部已保存的身份凭证优先，晚到结果不覆盖已观测的新代次。成功结果保留 60 秒；保存失败的结果持续保留到保存恢复，禁止再次消费已用 refresh token。请求恢复只重发一次，沿用已压缩的请求体和会话头；已输出 SSE 后不恢复。
 
-宿主预刷计划为 access 过期前五分钟，请求 stale 窗口为一分钟，上游绝对时间按毫秒、相对时间按秒。`host.auth.save` 原子写入并安装新版身份，禁用/优先级/代理/排除仍由宿主合并。保存失败以 `credential_save_failed` 报告重启风险；后续执行和模型发现可使用内存代次。旧 access 尚有效时刷新暂时失败记录安全原因并继续原请求；明确拒绝和 refresh 到期有独立错误码，永久失效状态由 Slice 07 实现。
+宿主预刷计划为 access 过期前五分钟，请求 stale 窗口为一分钟，上游绝对时间按毫秒、相对时间按秒。`host.auth.save` 原子写入并安装新版身份，禁用/优先级/代理/排除仍由宿主合并。保存失败以 `credential_save_failed` 报告重启风险；后续执行和模型发现可使用内存代次。旧 access 尚有效时暂时刷新失败记录安全原因并继续原请求；明确永久拒绝由 Slice 07 的凭证状态契约处理。
 
 当前 CPA 参考版本的保存、调度缺口通过授权的 `out/verification/cpa-compatible` 独立副本修复并导出补丁。参考目录保持只读；副本使用插件 RefreshEvaluator 绑定计划，Manager 的 pending/backoff 门控与插件成功计划分别处理。
+
+Slice 07 的 `credential_state` 是带版本的凭证状态对象：`version=1`、`status=reauth_required`、规范化 reason 及当前 access/refresh 二元 JSON 数组的 SHA256 摘要。只有字段有效且摘要匹配当前 token 时才生效；未知、格式错误或绑定其他代次的状态不授予永久失效判断。成功登录产生随机 `credential_generation` 并明确写出健康 null，刷新和解析沿用该代次；即使 token 字符串相同，新登录也可清除上一代的拒绝与缓存。失败登录不交付凭证。普通 401、网络、超时、额度、模型权限和配置失败不产生永久标记；明确 invalid_grant/撤销，或一次恢复后仍明确 invalid_token 才进入该状态。
+
+插件先通过 `host.auth.list` 核对 `credential_state_version=1`，再发送带 `expected_credential_json` 的保存请求。独立 CPA 补丁比较稳定 ID/provider、当前 token、credential_generation 和当前 credential_state，在共享凭证文件锁内完成预期代次校验、原子写入及 Manager 安装；安装使用宿主已有的 skip-persist context，避免递归写盘。登录存储共用该文件锁，旧请求/刷新/缓存不能跨越新登录代次写回。已由其他请求保存的同代终态视为幂等成功，返回需要重新登录而非暂时保存失败。
+
+宿主把有效状态映射到 `StatusError`、`Unavailable`、HTTP 401 `reauth_required` 与空刷新计划，并在加载、候选选择、刷新和迟到结果处理时维护该约束；手动 Disabled 保持独立。重新登录替换 token 后只清理认证错误及 401 模型状态，保留宿主管理设置、额度和其他模型限制。失效状态保存失败返回 `credential_state_save_failed` 并保留内存拒绝结果，避免重复消费被拒绝的 token；持久化未成功时重启风险明确可见。
 
 ## 代码布局与版本来源
 

@@ -60,6 +60,9 @@ func (s *Service) models(ctx context.Context, method string, raw []byte, call fu
 	}
 	auth, authRecovered, err := s.freshAuth(ctx, auth, req.HostCallbackID, call)
 	if err != nil {
+		if detail, ok := errors.AsType[*Error](err); ok && detail.Code == "reauth_required" {
+			return s.unavailableModels(auth, req.HostCallbackID, call)
+		}
 		return result, err
 	}
 	stored, metadata, _, err := credentialFromJSON(auth.StorageJSON)
@@ -79,13 +82,17 @@ func (s *Service) models(ctx context.Context, method string, raw []byte, call fu
 	var recoveryError error
 	err = request(ctx, chosen, req.HostCallbackID, call, "GET", "/v3/config", headers, nil, &config)
 	if upstream, ok := errors.AsType[*upstreamError](err); ok && upstream.status == 401 && !authRecovered {
-		next, refreshErr := s.renew(ctx, auth, req.HostCallbackID, call)
+		next, refreshErr := s.recoverAuthentication(ctx, auth, upstream.authReason, req.HostCallbackID, call)
 		if refreshErr != nil {
-			if detail, ok := errors.AsType[*Error](refreshErr); ok && detail.Code == "credential_save_failed" {
+			if detail, ok := errors.AsType[*Error](refreshErr); ok && detail.Code == "reauth_required" {
+				return s.unavailableModels(next, req.HostCallbackID, call)
+			}
+			if detail, ok := errors.AsType[*Error](refreshErr); ok && (detail.Code == "credential_save_failed" || detail.Code == "credential_state_save_failed") {
 				return result, refreshErr
 			}
 			recoveryError = refreshErr
 		} else {
+			authRecovered = true
 			auth = next
 			stored, metadata, _, err = credentialFromJSON(auth.StorageJSON)
 			if err != nil {
@@ -98,6 +105,16 @@ func (s *Service) models(ctx context.Context, method string, raw []byte, call fu
 			}
 			err = request(ctx, chosen, req.HostCallbackID, call, "GET", "/v3/config", headers, nil, &config)
 		}
+	}
+	if upstream, ok := errors.AsType[*upstreamError](err); ok && upstream.authReason != "" && (authRecovered || upstream.authReason != "invalid_token") {
+		next, stateErr := s.invalidate(ctx, auth, upstream.authReason, req.HostCallbackID, call)
+		if stateErr != nil {
+			if detail, ok := errors.AsType[*Error](stateErr); ok && detail.Code == "reauth_required" {
+				return s.unavailableModels(next, req.HostCallbackID, call)
+			}
+			return result, stateErr
+		}
+		return result, failure("credentials_changed", "WorkBuddy credentials changed during model discovery; retry discovery", 409)
 	}
 	if ctx.Err() != nil {
 		return result, failure("model_discovery_cancelled", "model discovery was cancelled", 408)

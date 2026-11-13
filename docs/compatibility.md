@@ -221,3 +221,22 @@ Slice 02 已通过隔离实际 CPA 宿主/管理处理器的 DLL 加载、双站
 - 插件增量 LSP：`gopls check -severity=hint internal/plugin/runtime.go internal/workbuddy/service.go internal/workbuddy/credentials.go internal/workbuddy/chat.go internal/workbuddy/models.go internal/workbuddy/models_test.go internal/workbuddy/refresh.go internal/workbuddy/refresh_test.go` exit 0，无诊断。CPA 全模块 CLI LSP 首次因额外依赖加载超时；改用实际 gopls stdio LSP，两处包工作区设置 `expandWorkspaceToModule=false`，逐文件 `textDocument/diagnostic` 覆盖全部八个宿主改动文件，10 项 warning/info/hint 均已修复，最终 0 项；日志 `out/logs/slice06-host-scoped-diagnostics.log`。宿主包测试与真实 DLL 闭环随后重新通过。
 - `git -C ../.cpa-upstream-src apply --check <out/verification/cpa-refresh-contract.patch 的绝对路径>` exit 0，仅检查适用性，不改参考目录。原生 smoke 需设置 `WORKBUDDY_SMOKE_PLUGIN_DIR=<out/bin 绝对路径>` 与 `WORKBUDDY_SMOKE_TMP=<out/tmp 绝对路径>`；验证不依赖会话临时环境继承。
 - 正确性审查修复：非 2xx 上游关闭失败单独记录诊断，保留原 HTTP 状态及首次 401 的一次恢复；缺少有效过期时间的刷新响应返回 `invalid_refresh_response`，不安装已经到期的预刷计划。`TestChatHTTPStatusAndRecoverySurviveCleanupFailure`、`TestRefreshMissingExpiryIsRejectedBeforeInstallation` 通过；新增绝对毫秒时间、请求预刷窗口及取消等待者回归亦通过。
+
+## Slice 07 永久认证失效与重新登录恢复
+
+宿主基础契约仍为 ABI 1 / schema 6；独立 CPA 补丁扩展现有保存请求的可选 `ExpectedCredentialJSON` 字段，并在 `host.auth.list` 回调声明 `credential_state_version=1`。新状态属于带版本的 credential metadata 契约，不把手动 Disabled 或过期时间用作失效标记。原只读参考宿主未声明该支持，插件在消费 refresh token 或保存状态前返回 `unsupported_host_contract`。
+
+| 固定上游来源 | 本项目适配 | 验证 |
+|---|---|---|
+| `_ref/index.mjs:2086-2093` invalidToken/refreshRefused，`unauthorized.test.mjs:38-44` 实测响应 | `invalidation.go` authenticationReason/recoverAuthentication；`service.go` 保留规范化拒绝原因 | 普通 401、权限、额度、网络及超时不永久失效；结构化 invalid_grant/revoked、HTTP401+12153 和恢复后的 invalid_token 进入终态 |
+| `_ref/index.mjs:2115-2148` reissued，`unauthorized.test.mjs:154-173` 外部更新优先 | `refresh.go` 代次协调，`invalidation.go` invalidate/persistRotation | 旧成功/拒绝在网络边界和保存边界遇到新登录时采用最新代次；CAS 同时保护 token 与状态 |
+| `_ref/index.mjs:2187-2196` signedOut，`signin.test.mjs:23-43` | `credentials.go` 版本化状态和健康 null；CPA `credential_state.go` 投影、恢复 | 当前代次摘要绑定、失效后保留原文件/列表、登录恢复及非认证限制保留 |
+
+- `go test -timeout=90s ./internal/workbuddy ./internal/plugin`、`go test -race -timeout=120s ./internal/workbuddy ./internal/plugin` exit 0。公共 Service 测试覆盖明确/普通拒绝、请求恢复、终态保存失败、重启、非法/旧代次标记、外部登录、在途成功/失败、保存 CAS、取消/过期登录、健康登录 null、手动禁用、宿主契约协商。见 `out/logs/slice07-plugin-tests.log`、`slice07-race.log`。
+- `go -C out/verification/cpa-compatible test -timeout=180s ./internal/pluginhost ./sdk/cliproxy/auth ./sdk/pluginapi` exit 0。宿主测试覆盖文件 CAS、状态 CAS、并发写入、操作员元数据、注册/加载、调度、手动/定时刷新、迟到结果、冷却恢复、配额重置和重新登录。见 `out/logs/slice07-host-tests.log`。
+- 设置 `WORKBUDDY_SMOKE_PLUGIN_DIR=<out/bin 绝对路径>` 和 `WORKBUDDY_SMOKE_TMP=<out/tmp 绝对路径>` 后，`go -C out/verification/cpa-smoke test -timeout=60s -count=1 -run '^TestCPAPermanentAuthAndRelogin$' -v .` exit 0。实际管理登录、FileTokenStore、CPA Manager 和 native DLL 验证国内/国际各个人、企业一、企业二共六条身份；分别通过 Chat、账号模型发现、手动和自动刷新进入永久失效。原文件和列表保留，未伪造 Disabled 或过期时间，模型快照不授予失效资格。见 `out/logs/slice07-native-state.log`。
+- 同一 smoke 创建独立子进程重新加载六条失效凭证，验证全部阻断且上游调用为 0；保存失败和账号确认失败的重登保持旧文件及失效。昵称变化后真实重新登录回到原六个 ID/FileName，重新发现模型并调度，手动禁用身份保持禁用，非认证模型冷却保留。恢复后再次启动独立子进程，六条身份中五条启用身份请求成功，禁用身份未请求上游。此前 `TestCPAChatExecution` 和 `TestCPANativeCredentialRotationAndAutoRefresh` 在累计补丁上亦通过。
+- `go run ./cmd/project quality` exit 0。插件逐文件 `gopls check -severity=hint` 与宿主包工作区实际 LSP `textDocument/diagnostic` 覆盖改动文件；宿主 18 项 warning/info/hint 已修复，16 个改动文件最终 0 项。去掉无效果的 omitempty struct 标签保留既有 JSON 输出。日志 `out/logs/slice07-quality.log`、`slice07-plugin-diagnostics.log`、`slice07-host-diagnostics.log`。
+- 累计补丁仍为 `out/verification/cpa-refresh-contract.patch`，独立副本及补丁没有提交 CPA 仓库，原参考目录未修改。真实账号、完整 CPA server/管理前端、容器和其他平台尚未验证；独立进程证明仅覆盖本机 Windows amd64 的宿主加载与文件恢复。
+- 最终契约审查补齐同 token 重新登录与失效保存确认丢失的边界：成功登录生成独立 `credential_generation`，刷新/解析保持，旋转缓存按 refresh token 和代次共同索引，宿主 CAS 和 CredentialsChanged 同时识别代次。已有终态的幂等保存返回 `reauth_required`。`TestSameTokenLoginClearsCachedRejection`、`TestLostTerminalSaveAcknowledgmentAdoptsPersistedState`、`TestCredentialGenerationRecognizesSameTokenLoginAndLegacyRecords`、`TestHostCredentialCASRejectsSameTokenPreviousLoginGeneration` 均通过；代次为空的旧凭证与其他 provider 行为保持。
+- 最终收敛同时验证“新登录代次已失效”的采用路径：`TestAdoptedRejectedGenerationRemainsBlocked` 证明不发送任何该代次上游请求。插件竞态、宿主三包、完整 quality 与宿主 16 文件 LSP 随后重新通过；正确性与架构审查确认无剩余阻断项。

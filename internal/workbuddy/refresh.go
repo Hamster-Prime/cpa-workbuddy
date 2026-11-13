@@ -28,6 +28,10 @@ type RefreshResponse struct {
 	NextRefreshAfter time.Time
 }
 
+type rotationKey struct {
+	refresh    string
+	generation string
+}
 type tokenRotation struct {
 	sourceAccess string
 	next         credential
@@ -36,8 +40,10 @@ type tokenRotation struct {
 }
 
 type refreshAccount struct {
-	gate    chan struct{}
-	results map[string]*tokenRotation
+	gate             chan struct{}
+	results          map[rotationKey]*tokenRotation
+	failed           *credentialState
+	failedGeneration string
 }
 
 func checkedAuth(id, authProvider string, raw []byte, metadata map[string]any) (AuthData, error) {
@@ -66,6 +72,8 @@ func mergeCredentialTokens(base, next credential) credential {
 	base.TokenType = next.TokenType
 	base.ExpiresAt = next.ExpiresAt
 	base.RefreshExpiresAt = next.RefreshExpiresAt
+	base.State = next.State
+	base.Generation = next.Generation
 	return base
 }
 
@@ -86,9 +94,9 @@ func (s *Service) cachedAuth(auth AuthData) (AuthData, error) {
 	s.mu.Lock()
 	var rotation *tokenRotation
 	if account := s.refreshes[auth.ID]; account != nil {
-		rotation = account.results[stored.RefreshToken]
+		rotation = account.results[rotationKey{stored.RefreshToken, stored.Generation}]
 		if rotation != nil && rotation.saveError == nil && time.Since(rotation.at) >= refreshResultLifetime {
-			delete(account.results, stored.RefreshToken)
+			delete(account.results, rotationKey{stored.RefreshToken, stored.Generation})
 			rotation = nil
 		}
 	}
@@ -104,7 +112,8 @@ func hostCredential(ctx context.Context, auth AuthData, callbackID string, call 
 		return AuthData{}, failure("request_cancelled", "WorkBuddy request was cancelled or expired", 408)
 	}
 	var listed struct {
-		Files []struct {
+		CredentialStateVersion int `json:"credential_state_version"`
+		Files                  []struct {
 			ID        string `json:"id"`
 			AuthIndex string `json:"auth_index"`
 			Provider  string `json:"provider"`
@@ -114,6 +123,9 @@ func hostCredential(ctx context.Context, auth AuthData, callbackID string, call 
 		HostCallbackID string `json:"host_callback_id"`
 	}{callbackID}, &listed); err != nil {
 		return AuthData{}, failure("credential_read_failed", "cannot read current WorkBuddy credentials from the host", 502)
+	}
+	if listed.CredentialStateVersion != 1 {
+		return AuthData{}, failure("unsupported_host_contract", "CPA host does not support generation-safe WorkBuddy credential state", 503)
 	}
 	for _, entry := range listed.Files {
 		if entry.ID != auth.ID || entry.Provider != provider {
@@ -134,16 +146,17 @@ func hostCredential(ctx context.Context, auth AuthData, callbackID string, call 
 	return AuthData{}, failure("credential_unavailable", "WorkBuddy credentials are no longer installed in the host", 409)
 }
 
-func saveRotation(auth AuthData, callbackID string, call func(string, []byte) ([]byte, error)) error {
+func saveRotation(auth, expected AuthData, callbackID string, call func(string, []byte) ([]byte, error)) error {
 	payload, err := json.Marshal(auth.Metadata)
 	if err != nil {
 		return failure("credential_save_failed", "WorkBuddy credentials rotated but could not be saved; restarting may lose the renewed credentials", 502)
 	}
 	err = hostRPC(call, "host.auth.save", struct {
-		HostCallbackID string          `json:"host_callback_id"`
-		Name           string          `json:"name"`
-		JSON           json.RawMessage `json:"json"`
-	}{callbackID, auth.FileName, payload}, nil)
+		HostCallbackID         string          `json:"host_callback_id"`
+		Name                   string          `json:"name"`
+		JSON                   json.RawMessage `json:"json"`
+		ExpectedCredentialJSON json.RawMessage `json:"expected_credential_json"`
+	}{callbackID, auth.FileName, payload, json.RawMessage(expected.StorageJSON)}, nil)
 	if err != nil {
 		return failure("credential_save_failed", "WorkBuddy credentials rotated but could not be saved; restarting may lose the renewed credentials", 502)
 	}
@@ -182,7 +195,7 @@ func (s *Service) renew(ctx context.Context, auth AuthData, callbackID string, c
 	}
 	account := s.refreshes[auth.ID]
 	if account == nil {
-		account = &refreshAccount{gate: make(chan struct{}, 1), results: make(map[string]*tokenRotation)}
+		account = &refreshAccount{gate: make(chan struct{}, 1), results: make(map[rotationKey]*tokenRotation)}
 		s.refreshes[auth.ID] = account
 	}
 	s.mu.Unlock()
@@ -204,13 +217,17 @@ func (s *Service) renew(ctx context.Context, auth AuthData, callbackID string, c
 	if err != nil {
 		return AuthData{}, err
 	}
+	base, err = s.guardAuth(ctx, base, callbackID, call)
+	if err != nil {
+		return base, err
+	}
 	s.mu.Lock()
 	for token, result := range account.results {
 		if result.saveError == nil && time.Since(result.at) >= refreshResultLifetime {
 			delete(account.results, token)
 		}
 	}
-	cached := account.results[stored.RefreshToken]
+	cached := account.results[rotationKey{stored.RefreshToken, stored.Generation}]
 	s.mu.Unlock()
 	if cached != nil && (cached.sourceAccess == stored.AccessToken || cached.next.AccessToken == stored.AccessToken) {
 		if cached.next.AccessToken == stored.AccessToken && cached.next.RefreshToken == stored.RefreshToken {
@@ -220,13 +237,20 @@ func (s *Service) renew(ctx context.Context, auth AuthData, callbackID string, c
 		if err != nil {
 			return AuthData{}, err
 		}
-		saveErr := saveRotation(next, callbackID, call)
+		next, saveErr := s.persistRotation(ctx, next, base, callbackID, call)
+		replacement := *cached
+		replacement.saveError = saveErr
+		value, _, _, decodeErr := credentialFromJSON(next.StorageJSON)
+		if decodeErr != nil {
+			return AuthData{}, decodeErr
+		}
+		replacement.next = value
 		s.mu.Lock()
-		cached.saveError = saveErr
+		account.results[rotationKey{stored.RefreshToken, stored.Generation}] = &replacement
 		s.mu.Unlock()
 		return next, saveErr
 	}
-	if stored.AccessToken != original.AccessToken || stored.RefreshToken != original.RefreshToken {
+	if credentialsDiffer(stored, original) {
 		return base, nil
 	}
 	if stored.RefreshToken == "" {
@@ -259,8 +283,11 @@ func (s *Service) renew(ctx context.Context, auth AuthData, callbackID string, c
 		if decodeErr != nil {
 			return AuthData{}, decodeErr
 		}
-		if current.AccessToken != stored.AccessToken || current.RefreshToken != stored.RefreshToken {
+		if credentialsDiffer(current, stored) {
 			return latest, nil
+		}
+		if upstream, ok := errors.AsType[*upstreamError](err); ok && (upstream.authReason == "invalid_grant" || upstream.authReason == "revoked") {
+			return s.invalidate(ctx, latest, upstream.authReason, callbackID, call)
 		}
 		return AuthData{}, refreshFailure(err)
 	}
@@ -290,7 +317,7 @@ func (s *Service) renew(ctx context.Context, auth AuthData, callbackID string, c
 		current, _, _, decodeErr := credentialFromJSON(latest.StorageJSON)
 		if decodeErr != nil {
 			readErr = decodeErr
-		} else if current.AccessToken != stored.AccessToken || current.RefreshToken != stored.RefreshToken {
+		} else if credentialsDiffer(current, stored) {
 			rotation.next = current
 			base = latest
 		} else {
@@ -305,12 +332,19 @@ func (s *Service) renew(ctx context.Context, auth AuthData, callbackID string, c
 			rotation.saveError = encodeErr
 		} else {
 			if rotation.next.AccessToken == next.AccessToken && rotation.next.RefreshToken == next.RefreshToken {
-				rotation.saveError = saveRotation(nextAuth, callbackID, call)
+				installed, saveErr := s.persistRotation(ctx, nextAuth, base, callbackID, call)
+				rotation.saveError = saveErr
+				value, _, _, decodeErr := credentialFromJSON(installed.StorageJSON)
+				if decodeErr != nil {
+					rotation.saveError = decodeErr
+				} else {
+					rotation.next = value
+				}
 			}
 		}
 	}
 	s.mu.Lock()
-	account.results[stored.RefreshToken] = rotation
+	account.results[rotationKey{stored.RefreshToken, stored.Generation}] = rotation
 	s.mu.Unlock()
 	nextAuth, encodeErr := rotatedAuth(base, rotation.next)
 	if encodeErr != nil {
@@ -320,9 +354,18 @@ func (s *Service) renew(ctx context.Context, auth AuthData, callbackID string, c
 }
 
 func (s *Service) freshAuth(ctx context.Context, auth AuthData, callbackID string, call func(string, []byte) ([]byte, error)) (AuthData, bool, error) {
+	var guardErr error
+	auth, guardErr = s.guardAuth(ctx, auth, callbackID, call)
+	if guardErr != nil {
+		return auth, false, guardErr
+	}
 	current, err := s.cachedAuth(auth)
 	if err != nil {
 		return AuthData{}, false, err
+	}
+	current, err = s.guardAuth(ctx, current, callbackID, call)
+	if err != nil {
+		return current, false, err
 	}
 	stored, _, _, err := credentialFromJSON(current.StorageJSON)
 	if err != nil {
@@ -332,7 +375,7 @@ func (s *Service) freshAuth(ctx context.Context, auth AuthData, callbackID strin
 	if err != nil {
 		return AuthData{}, false, err
 	}
-	changed := stored.AccessToken != original.AccessToken || stored.RefreshToken != original.RefreshToken
+	changed := credentialsDiffer(stored, original)
 	if changed {
 		hostAuth, err := hostCredential(ctx, auth, callbackID, call)
 		if err != nil {
@@ -342,7 +385,7 @@ func (s *Service) freshAuth(ctx context.Context, auth AuthData, callbackID strin
 		if err != nil {
 			return AuthData{}, false, err
 		}
-		if hostStored.AccessToken != original.AccessToken || hostStored.RefreshToken != original.RefreshToken {
+		if credentialsDiffer(hostStored, original) {
 			current = hostAuth
 			stored = hostStored
 		} else {
@@ -360,6 +403,9 @@ func (s *Service) freshAuth(ctx context.Context, auth AuthData, callbackID strin
 		return next, true, nil
 	}
 	detail, ok := errors.AsType[*Error](err)
+	if ok && (detail.Code == "reauth_required" || detail.Code == "credential_state_save_failed") {
+		return next, false, err
+	}
 	if !ok || detail.Code == "credential_save_failed" || detail.Code == "credential_unavailable" || ctx.Err() != nil || !time.Now().Before(stored.ExpiresAt) {
 		return AuthData{}, false, err
 	}
