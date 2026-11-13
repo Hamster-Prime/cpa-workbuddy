@@ -355,12 +355,9 @@ func (s *Service) poll(ctx context.Context, req loginRequest, call func(string, 
 	}
 	headers := map[string][]string{
 		"Authorization":      {"Bearer " + sess.token.AccessToken},
-		"X-Domain":           {sess.token.Domain},
+		"X-Domain":           {requestDomain(sess.site, sess.token.Domain)},
 		"X-No-User-Id":       {"true"},
 		"X-No-Enterprise-Id": {"true"},
-	}
-	if sess.token.Domain == "" {
-		headers["X-Domain"] = []string{strings.TrimPrefix(sess.site.endpoint, "https://")}
 	}
 	var who account
 	if err := request(pollCtx, sess.site, req.HostCallbackID, call, "GET", "/v2/plugin/login/account"+query, headers, nil, &who); err != nil {

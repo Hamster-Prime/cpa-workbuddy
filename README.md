@@ -2,7 +2,7 @@
 
 面向 CLIProxyAPI（CPA）的 WorkBuddy 原生动态库插件，一个 provider `workbuddy` 承载国内 `copilot.tencent.com` 与国际 `www.workbuddy.ai` 的多个账号及个人/企业身份。
 
-**已实现工程基线、Slice 01 原生接入及 Slice 02 双站点浏览器登录与凭证恢复。** 登录使用 CPA 认证接口与宿主 HTTP 回调，凭证路径与持久化由 CPA 管理；账号模型、聊天、刷新、工具、图片、reasoning、国内 Claude Messages 和客户端协议互通按后续切片交付。各项验证状态见 [任务表](docs/tasks/workbuddy-plugin.md) 与 [兼容性记录](docs/compatibility.md)。
+**已实现工程基线、Slice 01 原生接入、Slice 02 双站点浏览器登录与恢复，以及 Slice 03 个人/企业身份管理。** 同身份重新登录更新原记录并保留宿主管理设置；站点、用户和企业作用域决定稳定身份。账号模型、聊天、刷新、工具、图片、reasoning、国内 Claude Messages 和客户端协议互通按后续切片交付。各项验证状态见 [任务表](docs/tasks/workbuddy-plugin.md) 与 [兼容性记录](docs/compatibility.md)。
 
 插件 ID 为 `cpa-workbuddy`，作者 `sheepyu`。产品版本唯一来源是 [VERSION](VERSION)；计划仓库为 `ygq-future/cpa-workbuddy`，远程仓库尚未创建。提交、推送和发布需用户明确授权。
 

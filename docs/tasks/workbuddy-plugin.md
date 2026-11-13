@@ -54,7 +54,7 @@ Acceptance criteria:
 
 ## Slice 03: 个人与企业身份管理
 
-Status: pending
+Status: completed
 
 Blocked by: 02
 
@@ -64,13 +64,13 @@ What to build:
 
 Acceptance criteria:
 
-- [ ] `/login/account` 与必要 `/accounts` 合并只确认登录页实际所选身份；个人账号不误选列表中的企业，缺企业名/ID时按参考可证明规则确定或明确失败。
-- [ ] `site + uid + enterprise/tenant scope` 决定稳定身份和摘要文件名；不同站点、用户、个人/企业、不同企业各自保存，昵称变化不会新增同身份记录。
-- [ ] `AuthData.ID`、`FileName` 与刷新保存指向同一逻辑记录，文件名不含 token 或直接暴露个人信息，Label 能区分站点与企业。
-- [ ] 同身份正常重新登录更新原文件与列表记录，用户无需先删除；管理元数据中的手动禁用、优先级、代理、模型排除设置保持原值。
-- [ ] 企业请求携带与当前凭证作用域绑定的 `X-Enterprise-Id`/`X-Tenant-Id`，个人请求无企业头，客户端或旧凭证数据不能切换目标企业。
-- [ ] 带版本持久化覆盖 provider/site/uid/作用域/展示名/token/过期时间及后续快照；敏感 token、state、完整账号响应不进入日志、样本、发布物，同时记录宿主敏感头处理核验。
-- [ ] 迁移 `enterpriseOf/enterpriseHeaders/accountName/scopeOf`，个人/企业/同 uid 跨站点/重复登录及保存失败场景可由列表与文件数观测。
+- [x] `/login/account` 与必要 `/accounts` 合并只确认登录页实际所选身份；个人账号不误选列表中的企业，缺企业名/ID时按参考可证明规则确定或明确失败。
+- [x] `site + uid + enterprise/tenant scope` 决定稳定身份和摘要文件名；不同站点、用户、个人/企业、不同企业各自保存，昵称变化不会新增同身份记录。
+- [x] `AuthData.ID`、`FileName` 与刷新保存指向同一逻辑记录，文件名不含 token 或直接暴露个人信息，Label 能区分站点与企业。
+- [x] 同身份正常重新登录更新原文件与列表记录，用户无需先删除；管理元数据中的手动禁用、优先级、代理、模型排除设置保持原值。
+- [x] 企业请求携带与当前凭证作用域绑定的 `X-Enterprise-Id`/`X-Tenant-Id`，个人请求无企业头，客户端或旧凭证数据不能切换目标企业。
+- [x] 带版本持久化覆盖 provider/site/uid/作用域/展示名/token/过期时间及后续快照；敏感 token、state、完整账号响应不进入日志、样本、发布物，同时记录宿主敏感头处理核验。
+- [x] 迁移 `enterpriseOf/enterpriseHeaders/accountName/scopeOf`，个人/企业/同 uid 跨站点/重复登录及保存失败场景可由列表与文件数观测。
 
 ## Slice 04: 账号模型列表与站点隔离
 

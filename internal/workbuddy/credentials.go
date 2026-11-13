@@ -51,6 +51,13 @@ func safeValue(value string) bool {
 	return !strings.ContainsAny(value, "\r\n\x00")
 }
 
+func requestDomain(chosen site, domain string) string {
+	if domain != "" {
+		return domain
+	}
+	return strings.TrimPrefix(chosen.endpoint, "https://")
+}
+
 func (t tokenData) valid() bool {
 	return strings.TrimSpace(t.AccessToken) != "" && safeValue(t.AccessToken) && safeValue(t.RefreshToken) && safeValue(t.Domain) && safeValue(t.TokenType) &&
 		(t.ExpiresAt > 0 || (t.ExpiresIn > 0 && t.ExpiresIn <= int64((100*365*24*time.Hour)/time.Second))) &&
@@ -96,13 +103,9 @@ func enterprise(ctx context.Context, chosen site, callbackID string, call func(s
 	var list struct {
 		Accounts []account `json:"accounts"`
 	}
-	domain := token.Domain
-	if domain == "" {
-		domain = strings.TrimPrefix(chosen.endpoint, "https://")
-	}
 	err := request(ctx, chosen, callbackID, call, "GET", "/v2/plugin/accounts", map[string][]string{
 		"Authorization": {"Bearer " + token.AccessToken},
-		"X-Domain":      {domain},
+		"X-Domain":      {requestDomain(chosen, token.Domain)},
 	}, nil, &list)
 	if err != nil {
 		// The login account's explicit enterprise ID is authoritative. A
@@ -155,14 +158,14 @@ type credential struct {
 	Version          int        `json:"version"`
 	Site             string     `json:"site"`
 	UID              string     `json:"uid"`
-	EnterpriseID     string     `json:"enterprise_id,omitempty"`
+	EnterpriseID     string     `json:"enterprise_id"`
 	DisplayName      string     `json:"display_name"`
 	AccessToken      string     `json:"access_token"`
-	RefreshToken     string     `json:"refresh_token,omitempty"`
-	Domain           string     `json:"domain,omitempty"`
-	TokenType        string     `json:"token_type,omitempty"`
+	RefreshToken     string     `json:"refresh_token"`
+	Domain           string     `json:"domain"`
+	TokenType        string     `json:"token_type"`
 	ExpiresAt        time.Time  `json:"expires_at"`
-	RefreshExpiresAt *time.Time `json:"refresh_expires_at,omitempty"`
+	RefreshExpiresAt *time.Time `json:"refresh_expires_at"`
 }
 
 func makeAuth(chosen site, token tokenData, who account, ent enterpriseAccount) (AuthData, error) {
@@ -197,25 +200,40 @@ func makeAuth(chosen site, token tokenData, who account, ent enterpriseAccount) 
 	return authFromCredential(stored, nil)
 }
 
-func authFromCredential(stored credential, metadata map[string]any) (AuthData, error) {
+func credentialSite(stored credential) (site, error) {
 	chosen, ok := selectSite(stored.Site)
 	if !ok || strings.TrimSpace(stored.UID) == "" || stored.UID != strings.TrimSpace(stored.UID) ||
 		strings.TrimSpace(stored.AccessToken) == "" || stored.ExpiresAt.IsZero() || stored.ExpiresAt.UnixMilli() <= 0 ||
 		stored.EnterpriseID != strings.TrimSpace(stored.EnterpriseID) || !safeValue(stored.UID) || !safeValue(stored.EnterpriseID) ||
 		!safeValue(stored.AccessToken) || !safeValue(stored.RefreshToken) || !safeValue(stored.Domain) || !safeValue(stored.TokenType) ||
 		(stored.RefreshExpiresAt != nil && (stored.RefreshExpiresAt.IsZero() || stored.RefreshExpiresAt.UnixMilli() <= 0)) {
-		return AuthData{}, failure("invalid_credentials", "invalid WorkBuddy browser credentials", 400)
+		return site{}, failure("invalid_credentials", "invalid WorkBuddy browser credentials", 400)
 	}
+	return chosen, nil
+}
+
+func credentialIdentity(stored credential) (string, string, error) {
 	scope := "personal"
 	if stored.EnterpriseID != "" {
 		scope = "enterprise:" + stored.EnterpriseID
 	}
 	identity, err := json.Marshal([3]string{stored.Site, stored.UID, scope})
 	if err != nil {
-		return AuthData{}, failure("internal_error", "cannot encode browser account identity", 500)
+		return "", "", failure("internal_error", "cannot encode browser account identity", 500)
 	}
 	digest := sha256.Sum256(identity)
-	id := "workbuddy-" + hex.EncodeToString(digest[:])
+	return "workbuddy-" + hex.EncodeToString(digest[:]), scope, nil
+}
+
+func authFromCredential(stored credential, metadata map[string]any) (AuthData, error) {
+	chosen, err := credentialSite(stored)
+	if err != nil {
+		return AuthData{}, err
+	}
+	id, scope, err := credentialIdentity(stored)
+	if err != nil {
+		return AuthData{}, err
+	}
 	raw, err := json.Marshal(stored)
 	if err != nil {
 		return AuthData{}, failure("invalid_credentials", "invalid WorkBuddy browser credential expiry", 400)
@@ -252,34 +270,78 @@ func parse(raw []byte) (any, error) {
 	if req.Provider != provider {
 		return ParseResponse{}, nil
 	}
-	var marker struct {
-		Provider       string `json:"provider"`
-		Type           string `json:"type"`
-		CredentialType string `json:"credential_type"`
-		Version        int    `json:"version"`
+	stored, metadata, handled, err := credentialFromJSON(req.RawJSON)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(req.RawJSON, &marker); err != nil {
-		return nil, failure("invalid_credentials", "invalid browser credential markers", 400)
-	}
-	if marker.Provider != provider || marker.Type != provider || marker.CredentialType != "browser" || marker.Version != credentialVersion {
+	if !handled {
 		return ParseResponse{}, nil
-	}
-	var stored credential
-	if json.Unmarshal(req.RawJSON, &stored) != nil {
-		return nil, failure("invalid_credentials", "invalid WorkBuddy browser credentials", 400)
-	}
-	var metadata map[string]any
-	if json.Unmarshal(req.RawJSON, &metadata) != nil {
-		return nil, failure("invalid_credentials", "invalid WorkBuddy browser credentials", 400)
-	}
-	for _, field := range []string{"api_key", "apiKey", "endpoint", "base_url", "baseURL", "authID"} {
-		if _, exists := metadata[field]; exists {
-			return nil, failure("invalid_credentials", "unsupported WorkBuddy browser credential fields", 400)
-		}
 	}
 	auth, err := authFromCredential(stored, metadata)
 	if err != nil {
 		return nil, err
 	}
 	return ParseResponse{Handled: true, Auth: auth}, nil
+}
+
+func credentialFromJSON(raw []byte) (credential, map[string]any, bool, error) {
+	var marker struct {
+		Provider       string `json:"provider"`
+		Type           string `json:"type"`
+		CredentialType string `json:"credential_type"`
+		Version        int    `json:"version"`
+	}
+	if err := json.Unmarshal(raw, &marker); err != nil {
+		return credential{}, nil, false, failure("invalid_credentials", "invalid browser credential markers", 400)
+	}
+	if marker.Provider != provider || marker.Type != provider || marker.CredentialType != "browser" || marker.Version != credentialVersion {
+		return credential{}, nil, false, nil
+	}
+	var stored credential
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		return credential{}, nil, true, failure("invalid_credentials", "invalid WorkBuddy browser credentials", 400)
+	}
+	var metadata map[string]any
+	if err := json.Unmarshal(raw, &metadata); err != nil {
+		return credential{}, nil, true, failure("invalid_credentials", "invalid WorkBuddy browser credentials", 400)
+	}
+	for _, field := range []string{"api_key", "apiKey", "endpoint", "base_url", "baseURL", "authID"} {
+		if _, exists := metadata[field]; exists {
+			return credential{}, nil, true, failure("invalid_credentials", "unsupported WorkBuddy browser credential fields", 400)
+		}
+	}
+	return stored, metadata, true, nil
+}
+
+// RequestHeaders binds authenticated requests to this persisted identity. Host
+// metadata and request headers cannot override its selected enterprise scope.
+func (auth AuthData) RequestHeaders() (map[string][]string, error) {
+	stored, _, handled, err := credentialFromJSON(auth.StorageJSON)
+	if err != nil {
+		return nil, err
+	}
+	if auth.Provider != provider || !handled {
+		return nil, failure("invalid_credentials", "unsupported WorkBuddy browser credentials", 400)
+	}
+	chosen, err := credentialSite(stored)
+	if err != nil {
+		return nil, err
+	}
+	id, _, err := credentialIdentity(stored)
+	if err != nil {
+		return nil, err
+	}
+	if auth.ID != id || (auth.FileName != "" && auth.FileName != id+".json") {
+		return nil, failure("identity_mismatch", "credential scope does not match the selected account", 400)
+	}
+	headers := map[string][]string{
+		"Authorization": {"Bearer " + stored.AccessToken},
+		"X-User-Id":     {stored.UID},
+		"X-Domain":      {requestDomain(chosen, stored.Domain)},
+	}
+	if stored.EnterpriseID != "" {
+		headers["X-Enterprise-Id"] = []string{stored.EnterpriseID}
+		headers["X-Tenant-Id"] = []string{stored.EnterpriseID}
+	}
+	return headers, nil
 }

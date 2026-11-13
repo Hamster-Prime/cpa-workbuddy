@@ -14,6 +14,10 @@ Slice 02 在此基础上声明 `auth_provider`，分派 `auth.identifier`、`aut
 
 插件持有的登录 state 与上游 state 分离，按会话串行轮询且不同会话并行，令牌在账号确认等待期间保留。会话最多五分钟、最多 128 个，过期定时清理；成功、终止失败、取消及关闭都会废弃会话，重启不恢复未完成登录。quiesce/shutdown 先关闭新任务入口、取消本地任务并等待在途同步宿主回调返回，再清理认证状态。CPA 的同步 HTTP 回调由其请求 context 控制实际网络取消；插件不会在回调返回前卸载，也不在本地取消后发布登录成功。
 
+Slice 03 的 `credentialIdentity` 统一生成站点/uid/个人或企业作用域的身份摘要，展示名不参与摘要。`AuthData.RequestHeaders` 从受版本校验的 StorageJSON 派生用户、domain 和企业/租户头，并核对 AuthData.ID；仅携带 AuthID 的宿主请求允许不提供 FileName，提供 FileName 时必须与该身份摘要匹配。mutable metadata 不参与头生成。未绑定身份时的登录账号选择与 `/accounts` 发现保持无企业头，避免先选作用域再反推身份。
+
+持久化明确写出 `enterprise_id`、`refresh_token`、`domain`、`token_type` 和 `refresh_expires_at` 的当前值，包括空字符串/null；这些是插件拥有的协议字段。CPA 重新登录时只补回缺失元数据，因此当前空值同样是认证 SSOT，防止旧认证值被补回。禁用、优先级、代理和模型排除等宿主管理字段由 CPA 合并；插件不在登录成功结果中设置这些字段的默认值。
+
 ## 代码布局与版本来源
 
 ```text

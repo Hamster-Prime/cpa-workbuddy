@@ -441,7 +441,7 @@ func TestEnterpriseSelectionPreservesBrowserScope(t *testing.T) {
 				t.Fatal("identified account did not sign in")
 			}
 			if tc.want == "" {
-				if _, ok := got.Auth.Metadata["enterprise_id"]; ok || got.Auth.Attributes["scope"] != "personal" {
+				if got.Auth.Metadata["enterprise_id"] != "" || got.Auth.Attributes["scope"] != "personal" {
 					t.Fatal("personal login switched to an enterprise")
 				}
 			} else if got.Auth.Metadata["enterprise_id"] != tc.want || got.Auth.Attributes["scope"] != "enterprise:"+tc.want || (tc.wantName != "" && !strings.Contains(got.Auth.Label, tc.wantName)) {
