@@ -31,6 +31,12 @@ func discover(t *testing.T, s *workbuddy.Service, auth workbuddy.AuthData, mode 
 			}
 			return []byte(`{"ok":true,"result":{}}`), nil
 		}
+		if method == "host.auth.list" {
+			return json.Marshal(map[string]any{"ok": true, "result": map[string]any{"files": []map[string]string{{"id": auth.ID, "provider": "workbuddy", "auth_index": "discovery-current"}}}})
+		}
+		if method == "host.auth.get" {
+			return json.Marshal(map[string]any{"ok": true, "result": map[string]any{"json": json.RawMessage(auth.StorageJSON)}})
+		}
 		if method != "host.http.do" {
 			t.Fatalf("unexpected callback %s", method)
 		}

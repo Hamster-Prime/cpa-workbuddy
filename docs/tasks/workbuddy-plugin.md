@@ -116,7 +116,7 @@ Acceptance criteria:
 
 ## Slice 06: 刷新轮换与请求恢复
 
-Status: pending
+Status: completed
 
 Blocked by: 02
 
@@ -126,13 +126,13 @@ What to build:
 
 Acceptance criteria:
 
-- [ ] refresh 请求携带正确 `X-Refresh-Token`、`X-Auth-Refresh-Source: plugin`、本站点 domain 与接口所需企业头，新 token/过期时间正确映射宿主字段。
-- [ ] 宿主提前五分钟刷新计划、上游秒/毫秒单位和 `NextRefreshAfter` 可观察；参考请求前 stale 窗口与宿主预刷窗口明确区分。
-- [ ] 定时、手动与请求刷新共用入口，同账号同代 refresh token 并发只消费一次，成功结果保留 60 秒；不同站点/身份互不复用。
-- [ ] 401 先读取已更新凭证，必要时刷新并重发一次；新 token 再被拒绝即终止，与其他兼容纠正组合也不能再次刷新或无限循环。
-- [ ] 新凭证通过 `host.auth.save` 保存并安装，同一代状态供执行与模型发现使用；保存失败明确报告并保留可用内存结果，不再次消费旧 refresh token，记录重启风险。
-- [ ] 短时网络/502/超时、refresh 到期和明确认证拒绝分别报告；旧 access token 尚有效时暂时失败不标永久失效。
-- [ ] 并发刷新、其他请求已保存新 token、轮换后保存失败、重启与旧结果晚到场景有行为证据，并对应 refresh/unauthorized 上游测试。
+- [x] refresh 请求携带正确 `X-Refresh-Token`、`X-Auth-Refresh-Source: plugin`、本站点 domain 与接口所需企业头，新 token/过期时间正确映射宿主字段。
+- [x] 宿主提前五分钟刷新计划、上游秒/毫秒单位和 `NextRefreshAfter` 可观察；参考请求前 stale 窗口与宿主预刷窗口明确区分。
+- [x] 定时、手动与请求刷新共用入口，同账号同代 refresh token 并发只消费一次，成功结果保留 60 秒；不同站点/身份互不复用。
+- [x] 401 先读取已更新凭证，必要时刷新并重发一次；新 token 再被拒绝即终止，与其他兼容纠正组合也不能再次刷新或无限循环。
+- [x] 新凭证通过 `host.auth.save` 保存并安装，同一代状态供执行与模型发现使用；保存失败明确报告并保留可用内存结果，不再次消费旧 refresh token，记录重启风险。
+- [x] 短时网络/502/超时、refresh 到期和明确认证拒绝分别报告；旧 access token 尚有效时暂时失败不标永久失效。
+- [x] 并发刷新、其他请求已保存新 token、轮换后保存失败、重启与旧结果晚到场景有行为证据，并对应 refresh/unauthorized 上游测试。
 
 ## Slice 07: 永久失效与重新登录恢复
 

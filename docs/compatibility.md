@@ -203,4 +203,21 @@ Slice 02 已通过隔离实际 CPA 宿主/管理处理器的 DLL 加载、双站
 
 - `host.auth.save` 的 `auth_callbacks.go:295-304` 调用 `buildAuthFromFileData`，`:332-345` 使用路径派生 ID，`:515-535` 返回相对文件名。探针中一条已禁用的插件凭证保存后，Manager 出现两条记录，其中一条启用；保存路径没有调用插件 parser，未保留插件 ID 与 Disabled。刷新要求同一记录并保留宿主管理状态，需要宿主保存路径按插件认证契约解析、安装及持久化。
 - 当前 `workbuddy` 的 `ProviderRefreshLead` 为 nil。`conductor_refresh.go:122-124` 只把 NextRefreshAfter 当作最早允许时间，`:154-156` 在未知 provider 无 lead 时停止；探针中已到的 NextRefreshAfter 仍得到 `shouldRefresh=false`。成功刷新路径 `:608-609` 还会清空返回的 NextRefreshAfter。提前五分钟刷新需要宿主按插件返回的时间计划调度。
-- 以上修复属于只读 CPA 参考仓库的保存和调度范围。需明确扩展宿主改动范围后再实现；当前保留 Slice 06 pending，继续遵守稳定身份、宿主持久化和用户禁用状态的契约。
+- 用户已授权在 `out/verification/cpa-compatible` 独立 CPA 副本修复两项契约；原参考目录保持只读。补丁 `out/verification/cpa-refresh-contract.patch` 包含原子保存、插件 parser/stable ID、宿主管理状态合并、插件刷新计划 evaluator、实际调度器到期处理及成功计划保留；副本及补丁均未提交 CPA 仓库。
+
+## Slice 06 协议映射与本机证据
+
+| 固定上游 | CPA 插件适配 | 行为证据 |
+|---|---|---|
+| `_ref/index.mjs:232-246` merge/stale | `credentials.go` 秒/毫秒时间；`refresh.go` mergeCredentialTokens/freshAuth | 两站点头、相对过期时间、五分钟计划及一分钟请求窗口 |
+| `_ref/index.mjs:249-334` renew/refreshed | `refresh.go` renew/auth.refresh；`runtime.go` 分派 | `TestRefreshManualRequestAndDiscoveryShareConsumption`、`TestRefreshResultWindowAndIdentityIsolation`，成功缓存 60 秒、站点/企业隔离 |
+| `_ref/refresh.test.mjs:43-123` | `host.auth.save` 与内存旋转结果 | `TestRefreshSaveFailureKeepsMemoryAndCanPersistWithoutConsumption`，保存失败、安全错误、恢复保存与重启读取新代次 |
+| `_ref/unauthorized.test.mjs:80-193` | `chat.go` 首次 401 恢复，`models.go` 同代请求 | `TestChatUnauthorizedRecoveryIsBoundedAndKeepsRequest`、`TestRefreshAdoptsHostGenerationBeforeAndAfterNetwork`，外部更新优先及晚到成功/拒绝 |
+
+- `go test -timeout=90s ./internal/workbuddy ./internal/plugin`、`go test -race -timeout=120s ./internal/workbuddy ./internal/plugin` exit 0；`go run ./cmd/project quality` exit 0。日志 `out/logs/slice06-plugin-tests.log`、`slice06-race.log`、`slice06-quality.log`。
+- `go -C out/verification/cpa-compatible test -timeout=180s ./internal/pluginhost ./sdk/cliproxy/auth` exit 0，覆盖既有宿主测试与新增保存、计划、禁用、失败退避和内置 provider 回归。日志 `out/logs/slice06-host-tests.log`。
+- `go -C out/verification/cpa-smoke test -timeout=30s -count=1 -run '^TestCPANativeCredentialRotationAndAutoRefresh$' -v .` exit 0。实际 CPA Manager、FileTokenStore、native DLL、宿主 HTTP 回调完成禁用身份手动刷新、首次 401 两次请求及真实自动调度；三条稳定记录，无重复身份，新的五分钟计划保留。日志 `out/logs/slice06-native-refresh.log`。`TestCPAChatExecution` 在兼容宿主仍通过。
+- 原只读 CPA 版本仍有上述缺口；兼容结论只适用于独立补丁副本。真实账号、完整 CPA server/管理前端、容器及其他平台未验证。宿主文件保存与 Manager 安装是两个操作，后者失败会报告错误；已轮换的内存结果用于恢复，不保证失败后重启仍能取得未保存 token。
+- 插件增量 LSP：`gopls check -severity=hint internal/plugin/runtime.go internal/workbuddy/service.go internal/workbuddy/credentials.go internal/workbuddy/chat.go internal/workbuddy/models.go internal/workbuddy/models_test.go internal/workbuddy/refresh.go internal/workbuddy/refresh_test.go` exit 0，无诊断。CPA 全模块 CLI LSP 首次因额外依赖加载超时；改用实际 gopls stdio LSP，两处包工作区设置 `expandWorkspaceToModule=false`，逐文件 `textDocument/diagnostic` 覆盖全部八个宿主改动文件，10 项 warning/info/hint 均已修复，最终 0 项；日志 `out/logs/slice06-host-scoped-diagnostics.log`。宿主包测试与真实 DLL 闭环随后重新通过。
+- `git -C ../.cpa-upstream-src apply --check <out/verification/cpa-refresh-contract.patch 的绝对路径>` exit 0，仅检查适用性，不改参考目录。原生 smoke 需设置 `WORKBUDDY_SMOKE_PLUGIN_DIR=<out/bin 绝对路径>` 与 `WORKBUDDY_SMOKE_TMP=<out/tmp 绝对路径>`；验证不依赖会话临时环境继承。
+- 正确性审查修复：非 2xx 上游关闭失败单独记录诊断，保留原 HTTP 状态及首次 401 的一次恢复；缺少有效过期时间的刷新响应返回 `invalid_refresh_response`，不安装已经到期的预刷计划。`TestChatHTTPStatusAndRecoverySurviveCleanupFailure`、`TestRefreshMissingExpiryIsRejectedBeforeInstallation` 通过；新增绝对毫秒时间、请求预刷窗口及取消等待者回归亦通过。

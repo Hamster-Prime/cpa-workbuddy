@@ -97,6 +97,7 @@ type Service struct {
 	execCtx    context.Context
 	cancelExec context.CancelFunc
 	jobs       sync.WaitGroup
+	refreshes  map[string]*refreshAccount
 }
 
 func New() *Service {
@@ -146,8 +147,11 @@ func (s *Service) Handle(ctx context.Context, method string, raw []byte, call fu
 	if method == "auth.parse" {
 		return parse(raw)
 	}
+	if method == "auth.refresh" {
+		return s.refresh(ctx, raw, call)
+	}
 	if method == "model.static" || method == "model.for_auth" {
-		return models(ctx, method, raw, call)
+		return s.models(ctx, method, raw, call)
 	}
 	switch method {
 	case "executor.identifier", "executor.execute", "executor.execute_stream", "executor.count_tokens", "executor.http_request":

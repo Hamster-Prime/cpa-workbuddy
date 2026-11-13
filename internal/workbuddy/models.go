@@ -45,7 +45,7 @@ type authModelRequest struct {
 	HostCallbackID string `json:"host_callback_id"`
 }
 
-func models(ctx context.Context, method string, raw []byte, call func(string, []byte) ([]byte, error)) (ModelResponse, error) {
+func (s *Service) models(ctx context.Context, method string, raw []byte, call func(string, []byte) ([]byte, error)) (ModelResponse, error) {
 	result := ModelResponse{Provider: provider, Models: []ModelInfo{}}
 	var req authModelRequest
 	if err := decode(raw, &req); err != nil {
@@ -54,25 +54,51 @@ func models(ctx context.Context, method string, raw []byte, call func(string, []
 	if method == "model.static" {
 		return result, nil
 	}
-	stored, metadata, handled, err := credentialFromJSON(req.StorageJSON)
+	auth, err := checkedAuth(req.AuthID, req.AuthProvider, req.StorageJSON, req.Metadata)
 	if err != nil {
 		return result, err
 	}
-	if req.AuthProvider != provider || !handled {
-		return result, failure("invalid_credentials", "model discovery requires WorkBuddy browser credentials", 400)
+	auth, authRecovered, err := s.freshAuth(ctx, auth, req.HostCallbackID, call)
+	if err != nil {
+		return result, err
 	}
+	stored, metadata, _, err := credentialFromJSON(auth.StorageJSON)
+	if err != nil {
+		return result, err
+	}
+	maps.Copy(metadata, auth.Metadata)
 	chosen, err := credentialSite(stored)
 	if err != nil {
 		return result, err
 	}
-	auth := AuthData{Provider: provider, ID: req.AuthID, StorageJSON: req.StorageJSON}
 	headers, err := auth.RequestHeaders()
 	if err != nil {
 		return result, err
 	}
-	maps.Copy(metadata, req.Metadata)
 	var config json.RawMessage
+	var recoveryError error
 	err = request(ctx, chosen, req.HostCallbackID, call, "GET", "/v3/config", headers, nil, &config)
+	if upstream, ok := errors.AsType[*upstreamError](err); ok && upstream.status == 401 && !authRecovered {
+		next, refreshErr := s.renew(ctx, auth, req.HostCallbackID, call)
+		if refreshErr != nil {
+			if detail, ok := errors.AsType[*Error](refreshErr); ok && detail.Code == "credential_save_failed" {
+				return result, refreshErr
+			}
+			recoveryError = refreshErr
+		} else {
+			auth = next
+			stored, metadata, _, err = credentialFromJSON(auth.StorageJSON)
+			if err != nil {
+				return result, err
+			}
+			maps.Copy(metadata, auth.Metadata)
+			headers, err = auth.RequestHeaders()
+			if err != nil {
+				return result, err
+			}
+			err = request(ctx, chosen, req.HostCallbackID, call, "GET", "/v3/config", headers, nil, &config)
+		}
+	}
 	if ctx.Err() != nil {
 		return result, failure("model_discovery_cancelled", "model discovery was cancelled", 408)
 	}
@@ -116,6 +142,12 @@ func models(ctx context.Context, method string, raw []byte, call func(string, []
 		}
 	}
 	fields := map[string]any{"site": chosen.id, "auth_id": req.AuthID, "status": status, "reason": reason, "model_count": len(result.Models)}
+	if recoveryError != nil {
+		fields["refresh_error"] = "refresh_failed"
+		if detail, ok := errors.AsType[*Error](recoveryError); ok {
+			fields["refresh_error"] = detail.Code
+		}
+	}
 	if status == "snapshot" {
 		fields["snapshot_at"] = stored.ModelSnapshot.CapturedAt.Format(time.RFC3339Nano)
 	}

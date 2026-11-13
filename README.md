@@ -2,7 +2,7 @@
 
 面向 CLIProxyAPI（CPA）的 WorkBuddy 原生动态库插件，一个 provider `workbuddy` 承载国内 `copilot.tencent.com` 与国际 `www.workbuddy.ai` 的多个账号及个人/企业身份。
 
-**已实现工程基线及 Slice 01–05：原生接入、双站点浏览器登录与恢复、个人/企业身份管理、账号模型发现和 Chat 文本执行。** 同身份重新登录更新原记录并保留宿主管理设置；模型使用 `wb/`、`wb-ai/` 前缀。Chat 支持流式、非流式与多轮文本，国内 Claude 的 Messages 路由、刷新、工具、图片、reasoning 和客户端协议互通按后续切片交付。各项验证状态见 [任务表](docs/tasks/workbuddy-plugin.md) 与 [兼容性记录](docs/compatibility.md)。
+**已实现工程基线及 Slice 01–06：原生接入、双站点浏览器登录与恢复、个人/企业身份管理、账号模型发现、Chat 文本执行和凭证刷新。** 同身份重新登录更新原记录并保留宿主管理设置；模型使用 `wb/`、`wb-ai/` 前缀。Chat 支持流式、非流式与多轮文本；定时、手动和请求刷新共用账号代次协调，首次 401 最多恢复一次。国内 Claude 的 Messages 路由、工具、图片、reasoning 和客户端协议互通按后续切片交付。各项验证状态见 [任务表](docs/tasks/workbuddy-plugin.md) 与 [兼容性记录](docs/compatibility.md)。
 
 插件 ID 为 `cpa-workbuddy`，作者 `sheepyu`。产品版本唯一来源是 [VERSION](VERSION)；计划仓库为 `ygq-future/cpa-workbuddy`，远程仓库尚未创建。提交、推送和发布需用户明确授权。
 
@@ -26,6 +26,8 @@ GET /v0/management/workbuddy-auth-url?site=workbuddy-ai
 ```
 
 用户自行打开返回的 `url`，随后使用返回的 `state` 查询 `GET /v0/management/get-auth-status?state=<state>`；`wait` 表示等待浏览器完成，`ok` 表示 CPA 已成功保存凭证，可从 `GET /v0/management/auth-files` 查看。插件会话有效期最多五分钟，重启、过期、取消或已消费的状态需要重新发起登录；同一状态只交付一次凭证。登录 URL 与 state 属于敏感数据，不应粘贴到日志或问题报告。真实网页登录与企业微信步骤由用户完成，自动化验证使用隔离协议上游。
+
+刷新依赖支持插件稳定身份保存及 `NextRefreshAfter` 调度的 CPA 宿主；当前只读参考版本存在两项缺口。本机已在独立副本验证兼容补丁 `out/verification/cpa-refresh-contract.patch`，安装边界和证据见兼容性记录。保存失败会明确报告重启风险，运行中的插件仍保留已轮换凭证；应恢复宿主保存能力后完成持久化。
 
 ## 工程入口
 

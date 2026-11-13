@@ -257,7 +257,8 @@ func authFromCredential(stored credential, metadata map[string]any) (AuthData, e
 	return AuthData{
 		Provider: provider, ID: id, FileName: id + ".json", Label: label, ProxyURL: proxy, Disabled: disabled,
 		StorageJSON: raw, Metadata: metadata,
-		Attributes: map[string]string{"site": stored.Site, "uid": stored.UID, "scope": scope},
+		Attributes:       map[string]string{"site": stored.Site, "uid": stored.UID, "scope": scope},
+		NextRefreshAfter: stored.ExpiresAt.Add(-refreshLead),
 	}, nil
 }
 

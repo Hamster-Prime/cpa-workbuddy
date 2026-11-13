@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"maps"
 	"sync"
 	"time"
 )
@@ -146,106 +147,145 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 	s.mu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, 1200*time.Second)
 	stopService := context.AfterFunc(serviceCtx, cancel)
-	finish := func() {
-		stopService()
-		cancel()
-		s.jobs.Done()
-	}
-	var opened struct {
-		StatusCode int                 `json:"status_code"`
-		Headers    map[string][]string `json:"headers"`
-		StreamID   string              `json:"stream_id"`
-	}
-	if err := hostRPC(call, "host.http.do_stream", prepared.request, &opened); err != nil {
+	finish := func() { stopService(); cancel(); s.jobs.Done() }
+	auth, err := checkedAuth(req.AuthID, req.AuthProvider, req.StorageJSON, req.AuthMetadata)
+	if err != nil {
 		finish()
 		return nil, err
 	}
-	if opened.StreamID == "" {
+	auth, authRecovered, err := s.freshAuth(ctx, auth, req.HostCallbackID, call)
+	if err != nil {
 		finish()
-		return nil, failure("host_callback_failed", "host returned no upstream stream ID", 502)
+		return nil, err
 	}
-	lease := &chatLease{call: call, upstream: opened.StreamID, callbackID: req.HostCallbackID}
-	if streaming {
-		lease.downstream = req.StreamID
+	applyAuth := func(next AuthData) error {
+		headers, err := next.RequestHeaders()
+		if err != nil {
+			return err
+		}
+		maps.Copy(prepared.request.Headers, headers)
+		return nil
 	}
-	cancelled := make(chan struct{})
-	stopCancel := context.AfterFunc(ctx, func() {
-		defer close(cancelled)
-		cancelErr := failure("request_cancelled", "WorkBuddy request was cancelled or expired", 408)
-		if err := lease.closeUpstream(); err != nil {
-			lease.reportCleanup("upstream", err)
-		}
-		if err := lease.closeDownstream(cancelErr); err != nil {
-			lease.reportCleanup("downstream", err)
-		}
-	})
-	cleanup := func() error {
-		upErr := lease.closeUpstream()
-		if !stopCancel() {
-			<-cancelled
-		}
-		return upErr
-	}
-	if opened.StatusCode < 200 || opened.StatusCode >= 300 {
-		// Read only a bounded error body; never return its private contents.
-		var body []byte
-		for len(body) < 64*1024 {
-			chunk, done, readErr := lease.read(ctx)
-			if readErr != nil {
-				err = readErr
-				break
-			}
-			remaining := 64*1024 - len(body)
-			if len(chunk) > remaining {
-				chunk = chunk[:remaining]
-			}
-			body = append(body, chunk...)
-			if done {
-				break
-			}
-		}
-		if err == nil {
-			err = chatHTTPError(opened.StatusCode, body)
-		}
-		closeErr := cleanup()
+	if err := applyAuth(auth); err != nil {
 		finish()
-		return nil, errors.Join(err, closeErr)
+		return nil, err
 	}
-	if ctx.Err() != nil {
-		closeErr := cleanup()
-		finish()
-		return nil, errors.Join(failure("request_cancelled", "WorkBuddy request was cancelled or expired", 408), closeErr)
-	}
-	read := func() ([]byte, bool, error) { return lease.read(ctx) }
-	if !streaming {
-		payload, parseErr := consumeChatStream(read, prepared.model, nil)
-		closeErr := cleanup()
-		finish()
-		if parseErr != nil || closeErr != nil {
-			return nil, errors.Join(parseErr, closeErr)
+	for {
+		var opened struct {
+			StatusCode int                 `json:"status_code"`
+			Headers    map[string][]string `json:"headers"`
+			StreamID   string              `json:"stream_id"`
 		}
-		return ExecutorResponse{Payload: payload, Headers: map[string][]string{"Content-Type": {"application/json"}}}, nil
-	}
-	go func() {
-		defer finish()
-		_, streamErr := consumeChatStream(read, prepared.model, func(payload []byte) error {
-			if ctx.Err() != nil {
-				return failure("request_cancelled", "WorkBuddy request was cancelled or expired", 408)
+		if err := hostRPC(call, "host.http.do_stream", prepared.request, &opened); err != nil {
+			finish()
+			return nil, err
+		}
+		if opened.StreamID == "" {
+			finish()
+			return nil, failure("host_callback_failed", "host returned no upstream stream ID", 502)
+		}
+		lease := &chatLease{call: call, upstream: opened.StreamID, callbackID: req.HostCallbackID}
+		if streaming {
+			lease.downstream = req.StreamID
+		}
+		cancelled := make(chan struct{})
+		stopCancel := context.AfterFunc(ctx, func() {
+			defer close(cancelled)
+			cancelErr := failure("request_cancelled", "WorkBuddy request was cancelled or expired", 408)
+			if err := lease.closeUpstream(); err != nil {
+				lease.reportCleanup("upstream", err)
 			}
-			return hostRPC(call, "host.stream.emit", struct {
-				StreamID string `json:"stream_id"`
-				Payload  []byte `json:"payload"`
-			}{req.StreamID, payload}, nil)
+			if err := lease.closeDownstream(cancelErr); err != nil {
+				lease.reportCleanup("downstream", err)
+			}
 		})
-		streamErr = errors.Join(streamErr, lease.closeUpstream())
-		if closeErr := lease.closeDownstream(streamErr); closeErr != nil {
-			lease.reportCleanup("downstream", closeErr)
+		cleanup := func() error {
+			upErr := lease.closeUpstream()
+			if !stopCancel() {
+				<-cancelled
+			}
+			return upErr
 		}
-		if closeErr := cleanup(); closeErr != nil {
-			lease.reportCleanup("upstream", closeErr)
+		if opened.StatusCode < 200 || opened.StatusCode >= 300 {
+			// Error contents stay bounded and private, including the first 401.
+			var body []byte
+			var readErr error
+			for len(body) < 64*1024 {
+				chunk, done, err := lease.read(ctx)
+				if err != nil {
+					readErr = err
+					break
+				}
+				remaining := 64*1024 - len(body)
+				if len(chunk) > remaining {
+					chunk = chunk[:remaining]
+				}
+				body = append(body, chunk...)
+				if done {
+					break
+				}
+			}
+			closeErr := cleanup()
+			if readErr != nil {
+				finish()
+				return nil, errors.Join(chatHTTPError(opened.StatusCode, body), readErr, closeErr)
+			}
+			if closeErr != nil {
+				lease.reportCleanup("upstream", closeErr)
+			}
+			if opened.StatusCode == 401 && !authRecovered {
+				authRecovered = true
+				next, err := s.renew(ctx, auth, req.HostCallbackID, call)
+				if err != nil {
+					finish()
+					return nil, errors.Join(err, closeErr)
+				}
+				if err := applyAuth(next); err != nil {
+					finish()
+					return nil, errors.Join(err, closeErr)
+				}
+				auth = next
+				continue
+			}
+			finish()
+			return nil, errors.Join(chatHTTPError(opened.StatusCode, body), closeErr)
 		}
-	}()
-	return executorStreamResponse{Headers: map[string][]string{"Content-Type": {"text/event-stream"}}}, nil
+		if ctx.Err() != nil {
+			closeErr := cleanup()
+			finish()
+			return nil, errors.Join(failure("request_cancelled", "WorkBuddy request was cancelled or expired", 408), closeErr)
+		}
+		read := func() ([]byte, bool, error) { return lease.read(ctx) }
+		if !streaming {
+			payload, parseErr := consumeChatStream(read, prepared.model, nil)
+			closeErr := cleanup()
+			finish()
+			if parseErr != nil || closeErr != nil {
+				return nil, errors.Join(parseErr, closeErr)
+			}
+			return ExecutorResponse{Payload: payload, Headers: map[string][]string{"Content-Type": {"application/json"}}}, nil
+		}
+		go func() {
+			defer finish()
+			_, streamErr := consumeChatStream(read, prepared.model, func(payload []byte) error {
+				if ctx.Err() != nil {
+					return failure("request_cancelled", "WorkBuddy request was cancelled or expired", 408)
+				}
+				return hostRPC(call, "host.stream.emit", struct {
+					StreamID string `json:"stream_id"`
+					Payload  []byte `json:"payload"`
+				}{req.StreamID, payload}, nil)
+			})
+			streamErr = errors.Join(streamErr, lease.closeUpstream())
+			if closeErr := lease.closeDownstream(streamErr); closeErr != nil {
+				lease.reportCleanup("downstream", closeErr)
+			}
+			if closeErr := cleanup(); closeErr != nil {
+				lease.reportCleanup("upstream", closeErr)
+			}
+		}()
+		return executorStreamResponse{Headers: map[string][]string{"Content-Type": {"text/event-stream"}}}, nil
+	}
 }
 
 func chatHTTPError(status int, body []byte) error {

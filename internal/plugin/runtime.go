@@ -114,7 +114,7 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 		return Failure("plugin_shutdown", "plugin has shut down", 503)
 	}
 	switch method {
-	case "auth.identifier", "auth.parse", "auth.login.start", "auth.login.poll", "model.static", "model.for_auth", "executor.identifier", "executor.execute", "executor.execute_stream", "executor.count_tokens", "executor.http_request":
+	case "auth.identifier", "auth.parse", "auth.login.start", "auth.login.poll", "auth.refresh", "model.static", "model.for_auth", "executor.identifier", "executor.execute", "executor.execute_stream", "executor.count_tokens", "executor.http_request":
 		if !r.registered {
 			return Failure("not_registered", "plugin.register must succeed first", 409)
 		}

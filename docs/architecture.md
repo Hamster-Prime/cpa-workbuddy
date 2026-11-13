@@ -32,6 +32,12 @@ Slice 05 的 executor 以 OAuth 作用域接受和输出 `openai`。请求使用
 
 正常流式完成按 emit → close 顺序交付；取消可并发关闭下游，以中断宿主队列中阻塞的 emit。插件在每个后续事件前检查取消，并等待 pump、取消回调和清理诊断全部退出后释放宿主回调。上游启动阶段失败由 RPC error 交回 CPA，CPA 在 `rpc_client_stream.go:24-27` 清理预先分配的下游流。清理失败走带回调上下文的 `host.log`；只有宿主日志通道自身失败时才使用进程 stderr 作为最后诊断出口。
 
+Slice 06 分派 `auth.refresh`，与 Chat 和模型发现共用按稳定账号身份串行的 `renew`。每次消费前读取宿主列表及物理凭证，401 和轮换结果返回后再次确认代次；外部已保存的身份凭证优先，晚到结果不覆盖已观测的新代次。成功结果保留 60 秒；保存失败的结果持续保留到保存恢复，禁止再次消费已用 refresh token。请求恢复只重发一次，沿用已压缩的请求体和会话头；已输出 SSE 后不恢复。
+
+宿主预刷计划为 access 过期前五分钟，请求 stale 窗口为一分钟，上游绝对时间按毫秒、相对时间按秒。`host.auth.save` 原子写入并安装新版身份，禁用/优先级/代理/排除仍由宿主合并。保存失败以 `credential_save_failed` 报告重启风险；后续执行和模型发现可使用内存代次。旧 access 尚有效时刷新暂时失败记录安全原因并继续原请求；明确拒绝和 refresh 到期有独立错误码，永久失效状态由 Slice 07 实现。
+
+当前 CPA 参考版本的保存、调度缺口通过授权的 `out/verification/cpa-compatible` 独立副本修复并导出补丁。参考目录保持只读；副本使用插件 RefreshEvaluator 绑定计划，Manager 的 pending/backoff 门控与插件成功计划分别处理。
+
 ## 代码布局与版本来源
 
 ```text
