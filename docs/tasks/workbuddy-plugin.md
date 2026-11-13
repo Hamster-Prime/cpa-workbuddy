@@ -267,7 +267,7 @@ Implementation decisions:
 
 ## Slice 12: 兼容纠正与故障边界
 
-Status: pending
+Status: completed
 
 Blocked by: 10
 
@@ -277,15 +277,22 @@ What to build:
 
 Acceptance criteria:
 
-- [ ] 11128 按参考顺序逗号纠正、必要时移动 system；11153 只对工具结果后接 user 的适用形状插入空 assistant；11159 签名处理和 401 恢复不相互形成循环。
-- [ ] 兼容成功策略按站点/账号/模型及必要请求形状隔离；DeepSeek Harness 与国际 `extra_vars.growthEvent` 按参考生成并保留调用方兼容字段，不扩展隐藏拒绝文本触发换号重试。
-- [ ] 每条纠正次数和组合总上限有独立断言，同轮会话 ID 保持；已发送回答事件后不重放，流内错误明确终止而非返回伪成功。
-- [ ] 11140 风控、14018 额度、10085 版本、上下文超限、模型无权限与认证失效分开映射，保留上游错误；429/5xx/超时/Retry-After 遵循宿主重试责任，不叠加无界重试。
-- [ ] 内容安全过滤保留明确停止语义；错误体读取有界、可诊断且不泄露 token/state/完整账号数据。
-- [ ] 大于 1 MiB 的真实请求正确 gzip，SSE 单事件、请求/错误体、聚合与队列均有结合宿主配置的明确上限，超限不会无限缓存或崩溃。
-- [ ] 客户端取消、超时、上游断流和异常 EOF 关闭上下游 stream、释放 callback/C buffer；并发模型发现和执行不重复消费 refresh token。
-- [ ] quiesce/shutdown 停止新任务，取消并等待在途任务，释放缓存及回调；卸载后没有宿主调用、悬空 stream 或资源，真实动态卸载 smoke 可证明。
-- [ ] comma/systemasuser/aftertools/hidedsh/deepseek-flash/growth/filtered/native 等上游场景有对应，故障注入从公共协议与生命周期观察结果。
+- [x] 11128 按参考顺序逗号纠正、必要时移动 system；11153 只对工具结果后接 user 的适用形状插入空 assistant；11159 签名处理和 401 恢复不相互形成循环。
+- [x] 兼容成功策略按站点/账号/模型及必要请求形状隔离；DeepSeek Harness 与国际 `extra_vars.growthEvent` 按参考生成并保留调用方兼容字段，不扩展隐藏拒绝文本触发换号重试。
+- [x] 每条纠正次数和组合总上限有独立断言，同轮会话 ID 保持；已发送回答事件后不重放，流内错误明确终止而非返回伪成功。
+- [x] 11140 风控、14018 额度、10085 版本、上下文超限、模型无权限与认证失效分开映射，保留上游错误；429/5xx/超时/Retry-After 遵循宿主重试责任，不叠加无界重试。
+- [x] 内容安全过滤保留明确停止语义；错误体读取有界、可诊断且不泄露 token/state/完整账号数据。
+- [x] 大于 1 MiB 的真实请求正确 gzip，SSE 单事件、请求/错误体、聚合与队列均有结合宿主配置的明确上限，超限不会无限缓存或崩溃。
+- [x] 客户端取消、超时、上游断流和异常 EOF 关闭上下游 stream、释放 callback/C buffer；并发模型发现和执行不重复消费 refresh token。
+- [x] quiesce/shutdown 停止新任务，取消并等待在途任务，释放缓存及回调；卸载后没有宿主调用、悬空 stream 或资源，真实动态卸载 smoke 可证明。
+- [x] comma/systemasuser/aftertools/hidedsh/deepseek-flash/growth/filtered/native 等上游场景有对应，故障注入从公共协议与生命周期观察结果。
+
+Implementation decisions:
+
+- Chat 每次最多五个上游请求，Messages 最多三个；逗号、system、工具后续形状、签名及认证恢复分别限次。2xx 后记忆成功策略，按站点、稳定身份、模型及 system 形状摘要隔离，FIFO 最多 256 条。
+- 固定参考的提示词整形保留内容块及扩展字段；description 的兼容遍历最多 64 层，JSON Schema 深度仍由既有 schema 入口校验，examples/default 等数据不会因描述遍历变成非法 schema。
+- 宿主配置摘要没有请求大小覆盖字段，采用明确固定边界：请求与聚合 32 MiB、SSE 单事件 1 MiB、错误体 64 KiB、原生 RPC/C 消息 64 MiB。原生 HTTP 回调在聚合前施加上限并取消溢出的上游，现有宿主 transport policy 保持统一。
+- 永久认证状态与风控、额度、权限、版本及上下文错误分别映射。安全过滤保留停止原因及正文；错误公开结构化 code/状态，原始响应保持私有。Retry-After 通过可选原生错误字段交给宿主调度，插件不叠加状态码重试。
 
 ## Slice 13: CPA管理与容器验收
 

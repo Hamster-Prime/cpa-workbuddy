@@ -26,9 +26,13 @@ Slice 04 声明 `model_provider`：`model.static` 返回空目录，`model.for_a
 
 executor 以 OAuth 作用域接受和输出原生 `openai` 与 `claude`。请求使用宿主解析的模型与凭证站点：国内 Claude 固定发送到 `/v1/messages`，保留原生 JSON；其他模型固定发送到本站点 `/v2/chat/completions`，JSON gzip。上游始终流式，模型发现通过 `NativeFormat` 声明实际协议，CPA 兼容适配器按已解析模型选择格式，验证请求和对应输出模式的 translator，再翻译到原生格式交给插件。`AuthData.RequestHeaders` 提供认证与应用归属，共用 SDK 头和账号会话派生。会话优先取 CPA canonical/execution/derived session 元数据，再按用户消息派生，账号摘要参与会话和轮次身份。
 
-`host.http.do_stream` 创建宿主持有的上游 HTTP stream，插件读取并在结束、错误或取消时关闭。下游 streaming stream ID 由 CPA 创建；插件异步解析完整 SSE 事件，通过 `host.stream.emit` 推送，最终 `host.stream.close`。Service 记录在途执行，关闭时取消并等待异步 pump 与取消回调退出，原生 Runtime 再完成卸载。非流式调用使用同一个 SSE 解析器聚合；缺少完成事件、未结束 choice、坏事件或读取中断均明确失败。单事件上限 1 MiB，聚合上限 32 MiB，实际 HTTP 取消由宿主请求 context 与 stream close 共同驱动。
+`host.http.do_stream` 创建宿主持有的上游 HTTP stream，插件读取并在结束、错误或取消时关闭。下游 streaming stream ID 由 CPA 创建；插件异步解析完整 SSE 事件，通过 `host.stream.emit` 推送，最终 `host.stream.close`。Service 通过同一准入机制跟踪登录、模型发现、刷新与执行，关闭时取消并等待同步回调、异步 pump 与取消回调退出，然后释放刷新及兼容策略缓存，原生 Runtime 再完成卸载。非流式调用使用同一个 SSE 解析器聚合；缺少完成事件、未结束 choice、坏事件或读取中断均明确失败。单事件上限 1 MiB，聚合上限 32 MiB，实际 HTTP 取消由宿主请求 context 与 stream close 共同驱动。
 
 Messages 保留 system、content blocks、工具名和 input_schema；移除无签名 thinking，合法签名原样传递。HTTP 明确 11159 或签名拒绝时，最多一次移除历史 thinking 后重试；与一次认证恢复独立计数，最多三次请求，不在回答输出后重放。原生 SSE 校验 message/block 生命周期、增量工具 JSON、thinking 签名、usage 和停止原因；非流式按 block index 聚合。`count_tokens` 与 `http_request` 返回明确不支持，不构造远端计数或任意 URL 请求。客户端协议互通的适配与证据由 Slice 11 维护。
+
+Chat 在 HTTP 400 的明确渠道拒绝后按逗号、system 移动顺序纠正；11153 仅对工具结果后接 user 的形状插入空 assistant。三条规则各最多一次，与一次 401 恢复合计最多五次上游请求，沿用同轮 ID，回答事件输出后不重放。2xx 接受后才记忆成功策略，按站点、稳定账号 ID、模型和 system 形状摘要隔离，最多 256 条；工具后续形状规则按模型/账号缓存并在每次请求检查适用性。DeepSeek Harness 文字按固定参考整形，保留路径、命令、工具结果；国际 Chat 根据当前会话生成 growthEvent，并保留调用方兼容字段与事件。
+
+请求及整形结果上限 32 MiB；Chat 始终 gzip。RPC/C 缓冲区在读取或复制前检查 64 MiB 上限，覆盖 base64 后的消息；错误体最多读取 64 KiB，对外提供错误分类、HTTP 状态和结构化上游 code，原始账号响应保持私有。Retry-After 仅接受有效秒数或 HTTP 日期，通过可选 error 字段传递给兼容宿主的重试接口。429、5xx 与超时交由宿主调度。安全过滤保留 content_filter 及原响应文本，不触发额外账号重试。原生宿主 HTTP 回调的请求与非流式聚合上限 32 MiB，超限后取消宿主持有的上游 pump；上游流每次读取 32 KiB，超限时最多额外读取两个分片。下游队列 16 个事件，通过背压约束生产者。
 
 正常流式完成按 emit → close 顺序交付；取消可并发关闭下游，以中断宿主队列中阻塞的 emit。插件在每个后续事件前检查取消，并等待 pump、取消回调和清理诊断全部退出后释放宿主回调。上游启动阶段失败由 RPC error 交回 CPA，CPA 在 `rpc_client_stream.go:24-27` 清理预先分配的下游流。清理失败走带回调上下文的 `host.log`；只有宿主日志通道自身失败时才使用进程 stderr 作为最后诊断出口。
 

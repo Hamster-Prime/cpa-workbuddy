@@ -2,7 +2,7 @@
 
 面向 CLIProxyAPI（CPA）的 WorkBuddy 原生动态库插件，一个 provider `workbuddy` 承载国内 `copilot.tencent.com` 与国际 `www.workbuddy.ai` 的多个账号及个人/企业身份。
 
-**已实现工程基线及 Slice 01–11：原生接入、双站点浏览器登录与恢复、个人/企业身份管理、账号模型发现、Chat 文本/工具/图片/reasoning、国内 Claude Messages、CPA 客户端协议互通、凭证刷新和永久认证失效恢复。** 同身份重新登录更新原记录并保留宿主管理设置；模型使用 `wb/`、`wb-ai/` 前缀。通过兼容 CPA 宿主，OpenAI Chat、Responses、Claude Messages 与 Gemini 客户端按已选站点和模型进入原生路由，并将结果返回客户端格式，支持流式、非流式及客户端工具循环。图片和 effort 依据当前账号成功模型快照核验，国际 GLM 保持文本输入。Messages 保留 system、原生工具名、thinking 与合法签名，并在明确签名拒绝时最多纠正一次。三类刷新共用账号代次协调，首次 401 最多恢复一次。明确的永久认证拒绝保留原记录并停止调度，同身份重新登录恢复认证资格。各项验证状态见 [任务表](docs/tasks/workbuddy-plugin.md) 与 [兼容性记录](docs/compatibility.md)。
+**已实现工程基线及 Slice 01–12：原生接入、双站点浏览器登录与恢复、个人/企业身份管理、账号模型发现、Chat 文本/工具/图片/reasoning、国内 Claude Messages、CPA 客户端协议互通、凭证刷新和永久认证失效恢复、有界兼容纠正及资源生命周期。** 同身份重新登录更新原记录并保留宿主管理设置；模型使用 `wb/`、`wb-ai/` 前缀。通过兼容 CPA 宿主，OpenAI Chat、Responses、Claude Messages 与 Gemini 客户端按已选站点和模型进入原生路由，并将结果返回客户端格式，支持流式、非流式及客户端工具循环。图片和 effort 依据当前账号成功模型快照核验，国际 GLM 保持文本输入。三类刷新共用账号代次协调，首次 401 最多恢复一次；Chat 兼容纠正与认证恢复合计最多五次请求，Messages 签名纠正与认证恢复合计最多三次。成功策略按站点、账号、模型及请求形状隔离，输出后不重放。安全过滤保留停止语义，错误体、请求、事件、聚合及原生缓冲区均有明确上限。停用/卸载取消并等待在途工作。明确的永久认证拒绝保留原记录并停止调度，同身份重新登录恢复认证资格。各项验证状态见 [任务表](docs/tasks/workbuddy-plugin.md) 与 [兼容性记录](docs/compatibility.md)。
 
 插件 ID 为 `cpa-workbuddy`，作者 `sheepyu`。产品版本唯一来源是 [VERSION](VERSION)；计划仓库为 `ygq-future/cpa-workbuddy`，远程仓库尚未创建。提交、推送和发布需用户明确授权。
 

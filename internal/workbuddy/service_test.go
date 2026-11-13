@@ -570,15 +570,26 @@ func TestCancellationExpiryAndCloseDiscardSessions(t *testing.T) {
 				results <- value
 			}()
 			<-entered
+			var closed chan struct{}
 			switch mode {
 			case "cancel":
 				cancel()
 			case "deadline":
 				<-ctx.Done()
 			case "close":
-				s.Close()
+				closed = make(chan struct{})
+				go func() {
+					s.Close()
+					close(closed)
+				}()
+			}
+			if closed != nil {
+				awaitServiceClosed(t, s)
 			}
 			close(release)
+			if closed != nil {
+				<-closed
+			}
 			result := <-results
 			got, ok := result.(workbuddy.PollResponse)
 			if !ok || got.Status != "error" || got.Auth.Provider != "" {

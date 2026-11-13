@@ -133,21 +133,14 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 	if streaming && req.StreamID == "" {
 		return nil, failure("invalid_request", "streaming execution requires a host stream ID", 400)
 	}
-	prepared, err := prepareChat(req)
+	prepared, err := s.prepareChat(req)
 	if err != nil {
 		return nil, err
 	}
-	s.mu.Lock()
-	if s.closed {
-		s.mu.Unlock()
-		return nil, failure("service_closed", "WorkBuddy service is closed", 503)
+	ctx, finish, err := s.begin(ctx, 1200*time.Second)
+	if err != nil {
+		return nil, err
 	}
-	s.jobs.Add(1)
-	serviceCtx := s.execCtx
-	s.mu.Unlock()
-	ctx, cancel := context.WithTimeout(ctx, 1200*time.Second)
-	stopService := context.AfterFunc(serviceCtx, cancel)
-	finish := func() { stopService(); cancel(); s.jobs.Done() }
 	auth, err := checkedAuth(req.AuthID, req.AuthProvider, req.StorageJSON, req.AuthMetadata)
 	if err != nil {
 		finish()
@@ -171,7 +164,8 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 		return nil, err
 	}
 	signatureCorrected := false
-	for {
+	const maxChatAttempts = 5
+	for range maxChatAttempts {
 		var opened struct {
 			StatusCode int                 `json:"status_code"`
 			Headers    map[string][]string `json:"headers"`
@@ -211,13 +205,13 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 			// Error contents stay bounded and private, including the first 401.
 			var body []byte
 			var readErr error
-			for len(body) < 64*1024 {
+			for len(body) < chatErrorLimit {
 				chunk, done, err := lease.read(ctx)
 				if err != nil {
 					readErr = err
 					break
 				}
-				remaining := 64*1024 - len(body)
+				remaining := chatErrorLimit - len(body)
 				if len(chunk) > remaining {
 					chunk = chunk[:remaining]
 				}
@@ -229,7 +223,7 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 			closeErr := cleanup()
 			if readErr != nil {
 				finish()
-				return nil, errors.Join(chatHTTPError(opened.StatusCode, body), readErr, closeErr)
+				return nil, errors.Join(chatHTTPFailure(opened.StatusCode, opened.Headers, body), readErr, closeErr)
 			}
 			if closeErr != nil {
 				lease.reportCleanup("upstream", closeErr)
@@ -268,14 +262,32 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 					continue
 				}
 			}
+			refused, afterTools := chatCorrectionSignals(opened.StatusCode, body)
+			changed, err := prepared.correct(refused, afterTools)
+			if err != nil {
+				finish()
+				return nil, errors.Join(err, closeErr)
+			}
+			if changed {
+				if err := prepared.encodeBody(); err != nil {
+					finish()
+					return nil, errors.Join(err, closeErr)
+				}
+				continue
+			}
 			finish()
-			return nil, errors.Join(chatHTTPError(opened.StatusCode, body), closeErr)
+			return nil, errors.Join(chatHTTPFailure(opened.StatusCode, opened.Headers, body), closeErr)
 		}
 		if ctx.Err() != nil {
 			closeErr := cleanup()
 			finish()
 			return nil, errors.Join(failure("request_cancelled", "WorkBuddy request was cancelled or expired", 408), closeErr)
 		}
+		if !prepared.messages {
+			s.compatibility.remember(prepared.key, prepared.strategy)
+		}
+		prepared.body = nil
+		prepared.request.Body = nil
 		read := func() ([]byte, bool, error) { return lease.read(ctx) }
 		if !streaming {
 			payload, parseErr := prepared.consume(read, nil)
@@ -286,6 +298,7 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 			}
 			return ExecutorResponse{Payload: payload, Headers: map[string][]string{"Content-Type": {"application/json"}}}, nil
 		}
+		downstreamID := req.StreamID
 		go func() {
 			defer finish()
 			_, streamErr := prepared.consume(read, func(payload []byte) error {
@@ -295,7 +308,7 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 				return hostRPC(call, "host.stream.emit", struct {
 					StreamID string `json:"stream_id"`
 					Payload  []byte `json:"payload"`
-				}{req.StreamID, payload}, nil)
+				}{downstreamID, payload}, nil)
 			})
 			streamErr = errors.Join(streamErr, lease.closeUpstream())
 			if closeErr := lease.closeDownstream(streamErr); closeErr != nil {
@@ -307,6 +320,8 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 		}()
 		return executorStreamResponse{Headers: map[string][]string{"Content-Type": {"text/event-stream"}}}, nil
 	}
+	finish()
+	return nil, failure("recovery_limit_exceeded", "WorkBuddy request exhausted its bounded recovery attempts", 502)
 }
 
 func (prepared *preparedChat) consume(read func() ([]byte, bool, error), emit func([]byte) error) ([]byte, error) {
@@ -314,20 +329,4 @@ func (prepared *preparedChat) consume(read func() ([]byte, bool, error), emit fu
 		return consumeMessagesStream(read, prepared.model, emit)
 	}
 	return consumeChatStream(read, prepared.model, prepared.toolNames, emit)
-}
-
-func chatHTTPError(status int, body []byte) error {
-	var response struct {
-		Code  json.RawMessage `json:"code"`
-		Error struct {
-			Code json.RawMessage `json:"code"`
-		} `json:"error"`
-	}
-	if json.Unmarshal(body, &response) == nil && (string(response.Code) == "10085" || string(response.Code) == `"10085"` || string(response.Error.Code) == "10085" || string(response.Error.Code) == `"10085"`) {
-		return failure("client_version_rejected", "WorkBuddy rejected the client version (10085)", 502)
-	}
-	if status < 400 || status > 599 {
-		status = 502
-	}
-	return failure("upstream_http_failed", "WorkBuddy request failed", status)
 }

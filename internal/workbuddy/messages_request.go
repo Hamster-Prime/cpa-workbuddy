@@ -39,6 +39,9 @@ func prepareMessages(req executorRequest, stored credential, chosen site, model 
 	if err != nil {
 		return preparedChat{}, failure("invalid_request", "cannot encode Messages request", 400)
 	}
+	if len(payload) > maxChatPayload {
+		return preparedChat{}, failure("request_too_large", "normalized WorkBuddy payload exceeds the 32 MiB limit", 413)
+	}
 	attendChatRequest(headers, req, messages)
 	setChatHeaders(headers)
 	headers["Accept"] = []string{"text/event-stream"}

@@ -20,6 +20,7 @@ const (
 	SchemaVersion = 6
 	Name          = "cpa-workbuddy"
 	StatusPath    = "/v0/management/plugins/" + Name + "/status"
+	MaxRPCPayload = 64 << 20
 )
 
 type metadata struct {
@@ -62,9 +63,11 @@ type managementResponse struct {
 }
 
 type rpcError struct {
-	Code       string `json:"code"`
-	Message    string `json:"message"`
-	HTTPStatus int    `json:"http_status,omitempty"`
+	Code         string `json:"code"`
+	Message      string `json:"message"`
+	HTTPStatus   int    `json:"http_status,omitempty"`
+	UpstreamCode string `json:"upstream_code,omitempty"`
+	RetryAfter   string `json:"retry_after,omitempty"`
 }
 
 type envelope struct {
@@ -100,6 +103,9 @@ func NewWithHost(call func(string, []byte) ([]byte, error)) *Runtime {
 
 // Handle dispatches CPA RPC methods and always returns a CPA JSON envelope.
 func (r *Runtime) Handle(method string, raw []byte) []byte {
+	if len(raw) > MaxRPCPayload {
+		return Failure("request_too_large", "plugin RPC request exceeds the 64 MiB limit", 413)
+	}
 	if method == "plugin.shutdown" {
 		r.Shutdown()
 		return success(struct{}{})
@@ -223,7 +229,7 @@ func (r *Runtime) handleAuth(ctx context.Context, method string, raw []byte) []b
 	result, err := r.auth.Handle(ctx, method, raw, r.call)
 	if err != nil {
 		if detail, ok := errors.AsType[*protocol.Error](err); ok {
-			return Failure(detail.Code, detail.Message, detail.HTTPStatus)
+			return marshal(envelope{Error: &rpcError{Code: detail.Code, Message: detail.Message, HTTPStatus: detail.HTTPStatus, UpstreamCode: detail.UpstreamCode, RetryAfter: detail.RetryAfter}})
 		}
 		return Failure("request_failed", "WorkBuddy request failed", 502)
 	}

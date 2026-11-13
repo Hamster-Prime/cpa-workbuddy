@@ -2,7 +2,6 @@ package workbuddy
 
 import (
 	"bytes"
-	"compress/gzip"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -38,6 +37,10 @@ type preparedChat struct {
 	model     string
 	toolNames map[string]string
 	messages  bool
+	body      map[string]json.RawMessage
+	key       chatStrategyKey
+	strategy  chatStrategy
+	tried     chatStrategy
 }
 
 const maxChatPayload = 32 << 20
@@ -53,7 +56,7 @@ type chatMessage struct {
 	toolResult bool
 }
 
-func prepareChat(req executorRequest) (preparedChat, error) {
+func (s *Service) prepareChat(req executorRequest) (preparedChat, error) {
 	headers, err := (AuthData{ID: req.AuthID, Provider: req.AuthProvider, StorageJSON: req.StorageJSON}).RequestHeaders()
 	if err != nil {
 		return preparedChat{}, err
@@ -83,6 +86,9 @@ func prepareChat(req executorRequest) (preparedChat, error) {
 	}
 	var body map[string]json.RawMessage
 	if err := decode(req.Payload, &body); err != nil {
+		return preparedChat{}, err
+	}
+	if err := normalizeHarnessBody(body, native); err != nil {
 		return preparedChat{}, err
 	}
 	if native {
@@ -119,7 +125,7 @@ func prepareChat(req executorRequest) (preparedChat, error) {
 		}
 	}
 	if messages[0].role != "system" {
-		messages = append([]chatMessage{{fields: map[string]json.RawMessage{"role": json.RawMessage(`"system"`), "content": json.RawMessage(`"You are a helpful assistant."`)}, role: "system"}}, messages...)
+		messages = append([]chatMessage{{fields: map[string]json.RawMessage{"role": json.RawMessage(`"system"`), "content": json.RawMessage(`"` + compatibilityDefaultSystem + `"`)}, role: "system"}}, messages...)
 	}
 	attendChatRequest(headers, req, messages)
 	wireMessages := make([]map[string]json.RawMessage, 0, len(messages))
@@ -152,22 +158,30 @@ func prepareChat(req executorRequest) (preparedChat, error) {
 	if err != nil {
 		return preparedChat{}, failure("invalid_request", "cannot encode stream options", 400)
 	}
-	var compressed bytes.Buffer
-	writer := gzip.NewWriter(&compressed)
-	if err := json.NewEncoder(writer).Encode(body); err != nil {
-		return preparedChat{}, failure("invalid_request", "cannot encode chat payload", 400)
-	}
-	if err := writer.Close(); err != nil {
-		return preparedChat{}, failure("internal_error", "cannot compress chat payload", 500)
-	}
 	setChatHeaders(headers)
 	headers["Content-Encoding"] = []string{"gzip"}
 	headers["Accept"] = []string{"application/json"}
-	return preparedChat{
-		request:   hostRequest{Method: http.MethodPost, URL: chosen.endpoint + "/v2/chat/completions", Headers: headers, Body: compressed.Bytes(), HostCallbackID: req.HostCallbackID},
-		model:     req.Model,
-		toolNames: toolNames,
-	}, nil
+	if chosen.id == "workbuddy-ai" {
+		name := model
+		if capabilities != nil && capabilities.Name != "" {
+			name = capabilities.Name
+		}
+		if err := addChatGrowth(body, chatHeader(headers, "X-Conversation-ID"), name); err != nil {
+			return preparedChat{}, err
+		}
+	}
+	prepared := preparedChat{
+		request: hostRequest{Method: http.MethodPost, URL: chosen.endpoint + "/v2/chat/completions", Headers: headers, HostCallbackID: req.HostCallbackID},
+		model:   req.Model, toolNames: toolNames, body: body,
+		key: chatStrategyKey{site: chosen.id, account: req.AuthID, model: req.Model, system: chatSystemKey(body)},
+	}
+	if err := prepared.applyStrategy(s.compatibility.strategy(prepared.key)); err != nil {
+		return preparedChat{}, err
+	}
+	if err := prepared.encodeBody(); err != nil {
+		return preparedChat{}, err
+	}
+	return prepared, nil
 }
 
 func nonemptyChatValue(raw json.RawMessage) bool {

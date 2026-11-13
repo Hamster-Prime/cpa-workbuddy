@@ -24,9 +24,11 @@ const (
 
 // Error is safe to return across the plugin RPC boundary.
 type Error struct {
-	Code       string
-	Message    string
-	HTTPStatus int
+	Code         string
+	Message      string
+	HTTPStatus   int
+	UpstreamCode string
+	RetryAfter   string
 }
 
 func (e *Error) Error() string { return e.Message }
@@ -88,16 +90,18 @@ type session struct {
 	token         *tokenData
 }
 
-// Service owns login sessions and in-flight model streams. Network transport
-// and credential persistence belong to the CPA host.
+// Service owns login sessions and admitted authentication, model, and execution
+// work. Network transport and credential persistence belong to the CPA host.
 type Service struct {
-	mu         sync.Mutex
-	closed     bool
-	sessions   map[string]*session
-	execCtx    context.Context
-	cancelExec context.CancelFunc
-	jobs       sync.WaitGroup
-	refreshes  map[string]*refreshAccount
+	mu            sync.Mutex
+	closed        bool
+	closeOnce     sync.Once
+	sessions      map[string]*session
+	execCtx       context.Context
+	cancelExec    context.CancelFunc
+	jobs          sync.WaitGroup
+	refreshes     map[string]*refreshAccount
+	compatibility chatCompatibility
 }
 
 func New() *Service {
@@ -105,19 +109,52 @@ func New() *Service {
 	return &Service{sessions: make(map[string]*session), execCtx: ctx, cancelExec: cancel}
 }
 
-// Close cancels login sessions and joins model streams. The caller must also
-// wait for synchronous Handle calls before releasing the native host callback.
+// Close stops admission, cancels login sessions and active work, and waits until
+// every admitted operation has released its host callbacks and cached state.
+// Concurrent and repeated calls wait for the same shutdown to finish.
 func (s *Service) Close() {
+	s.closeOnce.Do(func() {
+		s.mu.Lock()
+		s.closed = true
+		s.cancelExec()
+		for state, sess := range s.sessions {
+			sess.cancel()
+			sess.timer.Stop()
+			delete(s.sessions, state)
+		}
+		s.mu.Unlock()
+		s.jobs.Wait()
+		s.mu.Lock()
+		s.refreshes = nil
+		s.mu.Unlock()
+		s.compatibility.clear()
+	})
+}
+
+// begin atomically admits work before Close can start waiting. The caller owns
+// finish until its last synchronous callback or asynchronous stream pump exits.
+func (s *Service) begin(ctx context.Context, timeout time.Duration) (context.Context, func(), error) {
 	s.mu.Lock()
-	s.closed = true
-	s.cancelExec()
-	for state, sess := range s.sessions {
-		sess.cancel()
-		sess.timer.Stop()
-		delete(s.sessions, state)
+	if s.closed {
+		s.mu.Unlock()
+		return nil, nil, failure("service_closed", "WorkBuddy service is closed", 503)
 	}
+	s.jobs.Add(1)
+	serviceCtx := s.execCtx
 	s.mu.Unlock()
-	s.jobs.Wait()
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
+	}
+	stop := context.AfterFunc(serviceCtx, cancel)
+	finish := func() {
+		stop()
+		cancel()
+		s.jobs.Done()
+	}
+	return ctx, finish, nil
 }
 
 func decode(raw []byte, target any) error {
@@ -131,12 +168,21 @@ func decode(raw []byte, target any) error {
 // Handle implements the schema-6 authentication methods. Every HTTP request
 // uses the supplied host callback and the current request's host_callback_id.
 func (s *Service) Handle(ctx context.Context, method string, raw []byte, call func(string, []byte) ([]byte, error)) (any, error) {
-	s.mu.Lock()
-	closed := s.closed
-	s.mu.Unlock()
-	if closed {
-		return nil, failure("service_closed", "authentication service is closed", 503)
+	switch method {
+	case "executor.identifier", "executor.execute", "executor.execute_stream", "executor.count_tokens", "executor.http_request":
+		s.mu.Lock()
+		closed := s.closed
+		s.mu.Unlock()
+		if closed {
+			return nil, failure("service_closed", "WorkBuddy service is closed", 503)
+		}
+		return s.execute(ctx, method, raw, call)
 	}
+	ctx, finish, err := s.begin(ctx, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer finish()
 	if method == "auth.identifier" {
 		var req struct{}
 		if err := decode(raw, &req); err != nil {
@@ -152,10 +198,6 @@ func (s *Service) Handle(ctx context.Context, method string, raw []byte, call fu
 	}
 	if method == "model.static" || method == "model.for_auth" {
 		return s.models(ctx, method, raw, call)
-	}
-	switch method {
-	case "executor.identifier", "executor.execute", "executor.execute_stream", "executor.count_tokens", "executor.http_request":
-		return s.execute(ctx, method, raw, call)
 	}
 	var req loginRequest
 	if err := decode(raw, &req); err != nil {

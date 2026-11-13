@@ -66,6 +66,9 @@ func workbuddyPluginCall(method *C.char, request *C.uint8_t, length C.size_t, re
 	if uint64(length) > uint64(1<<31-1) || (request == nil && length != 0) {
 		return writeResponse(response, plugin.Failure("invalid_request", "invalid request pointer or length", 400), 1)
 	}
+	if uint64(length) > uint64(plugin.MaxRPCPayload) {
+		return writeResponse(response, plugin.Failure("request_too_large", "plugin RPC request exceeds the 64 MiB limit", 413), 1)
+	}
 	nativeMu.RLock()
 	runtime := native
 	nativeMu.RUnlock()
@@ -103,6 +106,9 @@ func callHost(host *C.cliproxy_host_api, method string, raw []byte) ([]byte, err
 	if host.call == nil || host.free_buffer == nil {
 		return nil, errors.New("host callbacks unavailable")
 	}
+	if len(raw) > plugin.MaxRPCPayload {
+		return nil, errors.New("host callback request exceeds the 64 MiB limit")
+	}
 	name := C.CString(method)
 	defer C.free(unsafe.Pointer(name))
 	var request *C.uint8_t
@@ -120,10 +126,17 @@ func callHost(host *C.cliproxy_host_api, method string, raw []byte) ([]byte, err
 	if uint64(response.len) > uint64(1<<31-1) || response.ptr == nil && response.len != 0 {
 		return nil, errors.New("invalid host callback response")
 	}
+	if uint64(response.len) > uint64(plugin.MaxRPCPayload) {
+		return nil, errors.New("host callback response exceeds the 64 MiB limit")
+	}
 	return C.GoBytes(response.ptr, C.int(response.len)), nil
 }
 
 func writeResponse(response *C.cliproxy_buffer, raw []byte, code C.int) C.int {
+	if len(raw) > plugin.MaxRPCPayload {
+		raw = plugin.Failure("response_too_large", "plugin RPC response exceeds the 64 MiB limit", 502)
+		code = 1
+	}
 	ptr := C.CBytes(raw)
 	if ptr == nil {
 		return -4
