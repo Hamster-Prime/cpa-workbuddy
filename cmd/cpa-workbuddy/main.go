@@ -7,6 +7,7 @@ package main
 import "C"
 
 import (
+	"errors"
 	"sync"
 	"unsafe"
 
@@ -14,9 +15,10 @@ import (
 )
 
 var (
-	nativeMu    sync.RWMutex
-	native      *plugin.Runtime
-	initialized bool
+	nativeLifecycleMu sync.Mutex
+	nativeMu          sync.RWMutex
+	native            *plugin.Runtime
+	initialized       bool
 )
 
 func main() {}
@@ -30,14 +32,19 @@ func cliproxy_plugin_init(host *C.cliproxy_host_api, api *C.cliproxy_plugin_api)
 	if host == nil || uint32(host.abi_version) != plugin.ABIVersion {
 		return -2
 	}
+	nativeLifecycleMu.Lock()
+	defer nativeLifecycleMu.Unlock()
 	nativeMu.Lock()
 	defer nativeMu.Unlock()
 	if initialized {
 		return -3
 	}
-	// This capability uses no host callbacks, so their pointers may be nil and
-	// the host table need not outlive this handshake.
-	native = plugin.New()
+	// The host owns its table, so retain the callbacks and opaque context by
+	// value rather than retaining the handshake's table address.
+	hostAPI := *host
+	native = plugin.NewWithHost(func(method string, raw []byte) ([]byte, error) {
+		return callHost(&hostAPI, method, raw)
+	})
 	initialized = true
 	api.abi_version = C.uint32_t(plugin.ABIVersion)
 	C.workbuddy_set_api(api)
@@ -60,12 +67,13 @@ func workbuddyPluginCall(method *C.char, request *C.uint8_t, length C.size_t, re
 		return writeResponse(response, plugin.Failure("invalid_request", "invalid request pointer or length", 400), 1)
 	}
 	nativeMu.RLock()
-	defer nativeMu.RUnlock()
-	if native == nil {
+	runtime := native
+	nativeMu.RUnlock()
+	if runtime == nil {
 		return writeResponse(response, plugin.Failure("not_initialized", "native initialization is required", 409), 1)
 	}
 	payload := unsafe.Slice((*byte)(unsafe.Pointer(request)), int(length))
-	return writeResponse(response, native.Handle(C.GoString(method), payload), 0)
+	return writeResponse(response, runtime.Handle(C.GoString(method), payload), 0)
 }
 
 //export workbuddyPluginFree
@@ -78,12 +86,41 @@ func workbuddyPluginFree(ptr unsafe.Pointer, length C.size_t) {
 
 //export workbuddyPluginShutdown
 func workbuddyPluginShutdown() {
-	nativeMu.Lock()
-	defer nativeMu.Unlock()
-	if native != nil {
-		native.Shutdown()
+	nativeLifecycleMu.Lock()
+	defer nativeLifecycleMu.Unlock()
+	nativeMu.RLock()
+	runtime := native
+	nativeMu.RUnlock()
+	if runtime != nil {
+		runtime.Shutdown()
 	}
+	nativeMu.Lock()
 	initialized = false
+	nativeMu.Unlock()
+}
+
+func callHost(host *C.cliproxy_host_api, method string, raw []byte) ([]byte, error) {
+	if host.call == nil || host.free_buffer == nil {
+		return nil, errors.New("host callbacks unavailable")
+	}
+	name := C.CString(method)
+	defer C.free(unsafe.Pointer(name))
+	var request *C.uint8_t
+	if len(raw) != 0 {
+		request = (*C.uint8_t)(unsafe.Pointer(unsafe.SliceData(raw)))
+	}
+	var response C.cliproxy_buffer
+	code := C.workbuddy_host_call(host, name, request, C.size_t(len(raw)), &response)
+	// The callback transfers its buffer even when transport fails. Only the
+	// host's matching release function may release that allocation.
+	defer C.workbuddy_host_free(host, response.ptr, response.len)
+	if code != 0 {
+		return nil, errors.New("host callback transport failed")
+	}
+	if uint64(response.len) > uint64(1<<31-1) || response.ptr == nil && response.len != 0 {
+		return nil, errors.New("invalid host callback response")
+	}
+	return C.GoBytes(response.ptr, C.int(response.len)), nil
 }
 
 func writeResponse(response *C.cliproxy_buffer, raw []byte, code C.int) C.int {

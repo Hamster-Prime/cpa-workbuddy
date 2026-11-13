@@ -391,6 +391,8 @@ func TestNativeSmokeRequiresABITest(t *testing.T) {
 		"cmd/cpa-workbuddy/native.c",
 		"cmd/cpa-workbuddy/native.h",
 		"internal/plugin/runtime.go",
+		"internal/workbuddy/service.go",
+		"internal/workbuddy/credentials.go",
 	} {
 		copyFixtureFile(t, filepath.Join(repositoryRoot, relative), filepath.Join(f.root, relative))
 	}
@@ -404,6 +406,16 @@ func TestNativeHelper(t *testing.T) { t.Log("ordinary helper") }
 	requireFailure(t, result, "native smoke test did not execute")
 	if strings.Contains(result.stdout, "quality passed") {
 		t.Fatalf("missing ABI test reported success: %s", result.stdout)
+	}
+}
+
+func TestGeneratedGoSourcesStayOutsideModule(t *testing.T) {
+	f := newFixture(t)
+	writeFixtureFile(t, filepath.Join(f.root, "sample.go"), "package sample\n")
+	writeFixtureFile(t, filepath.Join(f.root, "out", "cache", "legacy", "generated.go"), "package generated\nvar Value = missingSymbol\n")
+	result := f.execute(t, "quality", "--stage", "vet")
+	if result.code != 0 {
+		t.Fatalf("artifact sources entered the root Go scan: exit %d\n%s\n%s", result.code, result.stdout, result.stderr)
 	}
 }
 

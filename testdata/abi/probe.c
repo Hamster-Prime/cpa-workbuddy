@@ -33,6 +33,7 @@
 #include <windows.h>
 #else
 #include <dlfcn.h>
+#include <pthread.h>
 #endif
 
 typedef struct { void *ptr; size_t len; } buffer;
@@ -59,6 +60,71 @@ static void check(int condition, const char *message) {
         exit(1);
     }
 }
+
+#ifdef _WIN32
+typedef HANDLE event;
+typedef HANDLE thread;
+#define THREAD_RESULT DWORD WINAPI
+#define THREAD_RETURN 0
+typedef DWORD (WINAPI *thread_entry)(void *);
+static void event_init(event *item) {
+    *item = CreateEventW(NULL, TRUE, FALSE, NULL);
+    check(*item != NULL, "creating probe event failed");
+}
+static void event_signal(event *item) { check(SetEvent(*item) != 0, "signaling probe event failed"); }
+static void event_wait(event *item) { check(WaitForSingleObject(*item, INFINITE) == WAIT_OBJECT_0, "waiting for probe event failed"); }
+static int event_ready(event *item) { return WaitForSingleObject(*item, 0) == WAIT_OBJECT_0; }
+static void event_close(event *item) { check(CloseHandle(*item) != 0, "closing probe event failed"); }
+static thread thread_start(thread_entry entry, void *arg) {
+    thread result = CreateThread(NULL, 0, entry, arg, 0, NULL);
+    check(result != NULL, "creating probe thread failed");
+    return result;
+}
+static void thread_join(thread item) {
+    check(WaitForSingleObject(item, INFINITE) == WAIT_OBJECT_0, "joining probe thread failed");
+    check(CloseHandle(item) != 0, "closing probe thread failed");
+}
+#else
+typedef struct { pthread_mutex_t mu; pthread_cond_t changed; int signaled; } event;
+typedef pthread_t thread;
+#define THREAD_RESULT void *
+#define THREAD_RETURN NULL
+typedef void *(*thread_entry)(void *);
+static void event_init(event *item) {
+    check(pthread_mutex_init(&item->mu, NULL) == 0 && pthread_cond_init(&item->changed, NULL) == 0,
+          "creating probe event failed");
+    item->signaled = 0;
+}
+static void event_signal(event *item) {
+    check(pthread_mutex_lock(&item->mu) == 0, "locking probe event failed");
+    item->signaled = 1;
+    check(pthread_cond_broadcast(&item->changed) == 0 && pthread_mutex_unlock(&item->mu) == 0,
+          "signaling probe event failed");
+}
+static void event_wait(event *item) {
+    check(pthread_mutex_lock(&item->mu) == 0, "locking probe event failed");
+    while (!item->signaled) { check(pthread_cond_wait(&item->changed, &item->mu) == 0, "waiting for probe event failed"); }
+    check(pthread_mutex_unlock(&item->mu) == 0, "unlocking probe event failed");
+}
+static int event_ready(event *item) {
+    check(pthread_mutex_lock(&item->mu) == 0, "locking probe event failed");
+    int ready = item->signaled;
+    check(pthread_mutex_unlock(&item->mu) == 0, "unlocking probe event failed");
+    return ready;
+}
+static void event_close(event *item) {
+    check(pthread_cond_destroy(&item->changed) == 0 && pthread_mutex_destroy(&item->mu) == 0,
+          "closing probe event failed");
+}
+static thread thread_start(thread_entry entry, void *arg) {
+    thread result;
+    check(pthread_create(&result, NULL, entry, arg) == 0, "creating probe thread failed");
+    return result;
+}
+static void thread_join(thread item) { check(pthread_join(item, NULL) == 0, "joining probe thread failed"); }
+#endif
+
+static event callback_entered, callback_continue, shutdown_started, shutdown_done;
 
 /* A bounded JSON reader for independent field/type assertions. next indexes
  * skip complete subtrees, so key ordering and whitespace do not affect checks. */
@@ -185,15 +251,97 @@ static void emit(const char *label, buffer response) {
 }
 
 static unsigned callback_calls;
-static int unexpected_host_call(void *ctx, const char *method, const uint8_t *request,
-                                size_t len, buffer *response) {
-    (void)ctx; (void)method; (void)request; (void)len; (void)response;
+static unsigned callback_releases;
+static int host_context;
+static unsigned callback_mode;
+static void *callback_buffer;
+static size_t callback_length;
+static int callback_outstanding;
+
+static int login_host_call(void *ctx, const char *method, const uint8_t *request,
+                           size_t len, buffer *response) {
+    check(ctx == &host_context, "host context was not retained by value");
+    check(strcmp(method, "host.http.do") == 0, "login bypassed host HTTP transport");
+    buffer raw = {(void *)request, len};
+    document doc = parse(raw);
+    check(equals(&doc, field(&doc, 0, "host_callback_id"), "native-callback-id"),
+          "host callback ID was not forwarded");
+    check(equals(&doc, field(&doc, 0, "method"), "POST") &&
+          equals(&doc, field(&doc, 0, "url"),
+                 "https://copilot.tencent.com/v2/plugin/auth/state?platform=workbuddy"),
+          "login state request used an incorrect endpoint");
+    check(equals(&doc, field(&doc, 0, "body"), "e30="), "login state body must encode an empty object");
+    int headers = field(&doc, 0, "headers");
+    check(field(&doc, headers, "Authorization") == -1, "state request must not contain credentials");
+    check(!callback_outstanding, "host buffer was not released before another callback");
     callback_calls++;
-    return -1;
+    if (callback_mode == 8) {
+        event_signal(&callback_entered);
+        event_wait(&callback_continue);
+    }
+    const char *reply = "{\"ok\":true,\"result\":{\"StatusCode\":200,\"Headers\":{},\"Body\":\"eyJjb2RlIjowLCJkYXRhIjp7InN0YXRlIjoibmF0aXZlLXByaXZhdGUtc3RhdGUiLCJhdXRoVXJsIjoiaHR0cHM6Ly93d3cud29ya2J1ZGR5LmNuL2xvZ2luP3BsYXRmb3JtPXdvcmtidWRkeSZzdGF0ZT1uYXRpdmUtcHJpdmF0ZS1zdGF0ZSJ9fQ==\"}}";
+    if (callback_mode == 1) { reply = "transport-owned-buffer"; }
+    if (callback_mode == 2) { reply = "["; }
+    if (callback_mode == 7) { reply = "{\"ok\":true,\"result\":{\"StatusCode\":200,\"Body\":\"!\"}}"; }
+    callback_length = strlen(reply);
+    callback_buffer = malloc(callback_length);
+    check(callback_buffer != NULL, "allocating host response failed");
+    memcpy(callback_buffer, reply, callback_length);
+    if (callback_mode == 3) { callback_length = SIZE_MAX; }
+    if (callback_mode == 4) { callback_length = (size_t)2147483648ULL; }
+    if (callback_mode == 5 || callback_mode == 6) {
+        free(callback_buffer);
+        callback_buffer = NULL;
+        callback_length = callback_mode == 5 ? 1 : 0;
+    }
+    response->ptr = callback_buffer;
+    response->len = callback_length;
+    callback_outstanding = 1;
+    return callback_mode == 1 ? -1 : 0;
 }
-static void unexpected_host_free(void *ptr, size_t len) {
-    (void)ptr; (void)len;
-    callback_calls++;
+
+static void login_host_free(void *ptr, size_t len) {
+    check(callback_outstanding && ptr == callback_buffer && len == callback_length,
+          "host release must receive its exact buffer and length once");
+    callback_releases++;
+    callback_outstanding = 0;
+    free(ptr);
+    callback_buffer = NULL;
+}
+
+static const char *login_request =
+    "{\"Provider\":\"workbuddy\",\"Metadata\":{\"site\":\"workbuddy\"},\"host_callback_id\":\"native-callback-id\"}";
+
+static void expect_failure(buffer response) {
+    document doc = parse(response);
+    check(equals(&doc, field(&doc, 0, "ok"), "false"), "callback failure must fail login");
+    int error = field(&doc, 0, "error");
+    int code = field(&doc, error, "code");
+    int message = field(&doc, error, "message");
+    check(code >= 0 && doc.tokens[code].kind == '"' && doc.tokens[code].len != 0 &&
+          message >= 0 && doc.tokens[message].kind == '"' && doc.tokens[message].len != 0,
+          "callback failure must retain a diagnostic error");
+}
+
+static void failed_login(plugin_api *api) {
+    buffer response = {NULL, 0};
+    check(api->call("auth.login.start", (const uint8_t *)login_request, strlen(login_request), &response) == 0,
+          "login RPC transport failed");
+    expect_failure(response);
+    api->free_buffer(response.ptr, response.len);
+}
+
+static THREAD_RESULT login_during_shutdown(void *raw) {
+    failed_login((plugin_api *)raw);
+    return THREAD_RETURN;
+}
+
+static THREAD_RESULT shutdown_during_login(void *raw) {
+    plugin_api *api = (plugin_api *)raw;
+    event_signal(&shutdown_started);
+    api->shutdown();
+    event_signal(&shutdown_done);
+    return THREAD_RETURN;
 }
 
 static void failed_call(plugin_api *api, const char *label, const char *method,
@@ -241,7 +389,7 @@ int main(int argc, char **argv) {
     memcpy(&init, &symbol, sizeof(init));
 #endif
     check(init != NULL, "cliproxy_plugin_init export missing");
-    host_api host = {1, NULL, unexpected_host_call, unexpected_host_free};
+    host_api host = {1, &host_context, login_host_call, login_host_free};
     plugin_api api = {0, NULL, NULL, NULL};
     check(init(&host, NULL) != 0, "nil output API must fail");
     check(init(NULL, &api) != 0 && api.abi_version == 0 && api.call == NULL &&
@@ -265,6 +413,10 @@ int main(int argc, char **argv) {
     failed_call(&api, "c-int-overflow", "plugin.register", &byte, (size_t)2147483648ULL, 1, "invalid_request");
     failed_call(&api, "nil-request", "plugin.register", NULL, 0, 0, "invalid_request");
     failed_call(&api, "before-registration", "management.handle", NULL, 0, 0, "not_registered");
+    /* A real host may discard this stack table immediately after init. */
+    host.host_ctx = NULL;
+    host.call = NULL;
+    host.free_buffer = NULL;
     const char *malformed = "{not-json}";
     failed_call(&api, "malformed-json", "plugin.register", (const uint8_t *)malformed, strlen(malformed), 0, "invalid_request");
     const uint8_t embedded_nul[] = {'{', '}', 0, '{', '}'};
@@ -274,7 +426,7 @@ int main(int argc, char **argv) {
     const char *empty = "{}";
     failed_call(&api, "unknown-method", "workbuddy.unknown", (const uint8_t *)empty, 2, 0, "unknown_method");
     failed_call(&api, "no-plugin-identifier", "plugin.identifier", (const uint8_t *)empty, 2, 0, "unknown_method");
-    failed_call(&api, "no-auth-identifier", "auth.identifier", (const uint8_t *)empty, 2, 0, "unknown_method");
+    failed_call(&api, "auth-before-registration", "auth.identifier", (const uint8_t *)empty, 2, 0, "not_registered");
     failed_call(&api, "no-executor-identifier", "executor.identifier", (const uint8_t *)empty, 2, 0, "unknown_method");
 
     buffer registration = call(&api, "plugin.register", "{\"config_yaml\":null,\"schema_version\":6}");
@@ -289,9 +441,10 @@ int main(int argc, char **argv) {
     check(author >= 0 && registered.tokens[author].len > 0 && repository >= 0 &&
           registered.tokens[repository].len > 0, "host requires author and source metadata");
     int capabilities = field(&registered, result, "capabilities");
-    check(object_size(&registered, capabilities) == 1 &&
-          equals(&registered, field(&registered, capabilities, "management_api"), "true"),
-          "only real management capability may be advertised");
+    check(object_size(&registered, capabilities) == 2 &&
+          equals(&registered, field(&registered, capabilities, "management_api"), "true") &&
+          equals(&registered, field(&registered, capabilities, "auth_provider"), "true"),
+          "registration must advertise management and auth provider capabilities");
     emit("registration", registration);
     void *registration_snapshot = malloc(registration.len);
     check(registration_snapshot != NULL, "allocating ownership snapshot failed");
@@ -310,6 +463,35 @@ int main(int argc, char **argv) {
           "incorrect status route");
     emit("routes", routes);
     api.free_buffer(routes.ptr, routes.len);
+
+    buffer identifier = call(&api, "auth.identifier", "{}");
+    document identity_doc = parse(identifier);
+    int identity_result = field(&identity_doc, 0, "result");
+    check(equals(&identity_doc, field(&identity_doc, identity_result, "identifier"), "workbuddy"),
+          "incorrect auth provider identity");
+    emit("auth-identifier", identifier);
+    api.free_buffer(identifier.ptr, identifier.len);
+
+    buffer login = call(&api, "auth.login.start", login_request);
+    document login_doc = parse(login);
+    int login_result = field(&login_doc, 0, "result");
+    int login_state = field(&login_doc, login_result, "State");
+    int login_url = field(&login_doc, login_result, "URL");
+    check(equals(&login_doc, field(&login_doc, login_result, "Provider"), "workbuddy") &&
+          login_state >= 0 && login_doc.tokens[login_state].kind == '"' && login_doc.tokens[login_state].len != 0 &&
+          login_url >= 0 && login_doc.tokens[login_url].kind == '"' && login_doc.tokens[login_url].len != 0,
+          "login start must return a provider, browser URL, and opaque state");
+    api.free_buffer(login.ptr, login.len);
+    check(callback_calls == 1 && callback_releases == 1 && !callback_outstanding,
+          "successful login did not release its host result");
+    for (callback_mode = 1; callback_mode <= 7; callback_mode++) {
+        failed_login(&api);
+        check(callback_calls == callback_mode + 1 && callback_releases == callback_calls && !callback_outstanding,
+              "callback error did not release its host result");
+    }
+    /* Only counts are emitted; browser state and credentials stay private. */
+    check(puts("host-roundtrip\t{\"ok\":true,\"result\":{\"callbacks\":8,\"releases\":8}}") >= 0,
+          "writing callback summary failed");
 
     const char *status_request = "{\"Method\":\"GET\",\"Path\":\"/v0/management/plugins/cpa-workbuddy/status\"}";
     buffer status = call(&api, "management.handle", status_request);
@@ -344,17 +526,76 @@ int main(int argc, char **argv) {
     free(registration_snapshot);
     api.free_buffer(registration.ptr, registration.len);
     failed_call(&api, "native-shutdown", "plugin.register", NULL, 0, 0, "plugin_shutdown");
+    failed_login(&api);
+    check(callback_calls == 8 && callback_releases == 8, "callbacks invoked after shutdown");
     /* Also exercise native shutdown without a preceding RPC shutdown and a
      * host with no callbacks: neither management nor identity requires them. */
     host.call = NULL;
     host.free_buffer = NULL;
     check(init(&host, &api) == 0, "reinitializing after shutdown failed");
     registration = call(&api, "plugin.register", "{\"schema_version\":6}");
+    failed_login(&api);
     api.shutdown();
     failed_call(&api, "direct-native-shutdown", "management.handle", NULL, 0, 0, "plugin_shutdown");
     expect_ok(registration);
     api.free_buffer(registration.ptr, registration.len);
-    check(callback_calls == 0, "identity capability unexpectedly used host callbacks");
+    check(callback_calls == 8 && callback_releases == 8 && !callback_outstanding,
+          "read-only registration must work without callbacks");
+    /* A call pointer without its release pair must also remain unavailable. */
+    host.host_ctx = &host_context;
+    host.call = login_host_call;
+    check(init(&host, &api) == 0, "initializing without host release failed");
+    registration = call(&api, "plugin.register", "{\"schema_version\":6}");
+    api.free_buffer(registration.ptr, registration.len);
+    failed_login(&api);
+    api.shutdown();
+    host.call = NULL;
+    host.free_buffer = login_host_free;
+    check(init(&host, &api) == 0, "initializing without host call failed");
+    registration = call(&api, "plugin.register", "{\"schema_version\":6}");
+    api.free_buffer(registration.ptr, registration.len);
+    failed_login(&api);
+    api.shutdown();
+    check(callback_calls == 8 && callback_releases == 8, "incomplete callbacks were invoked");
+
+    host.call = login_host_call;
+    callback_mode = 8;
+    check(init(&host, &api) == 0, "initializing concurrent shutdown probe failed");
+    registration = call(&api, "plugin.register", "{\"schema_version\":6}");
+    api.free_buffer(registration.ptr, registration.len);
+    event_init(&callback_entered);
+    event_init(&callback_continue);
+    event_init(&shutdown_started);
+    event_init(&shutdown_done);
+    thread login_thread = thread_start(login_during_shutdown, &api);
+    event_wait(&callback_entered);
+    thread shutdown_thread = thread_start(shutdown_during_login, &api);
+    event_wait(&shutdown_started);
+    /* Observing closed admission proves native shutdown reached Runtime even
+     * while the earlier call is still blocked inside its C host callback. */
+    for (;;) {
+        buffer response = {NULL, 0};
+        check(api.call("auth.identifier", (const uint8_t *)"{}", 2, &response) == 0,
+              "shutdown observation transport failed");
+        document doc = parse(response);
+        int closed = equals(&doc, field(&doc, 0, "ok"), "false");
+        if (closed) { expect_error(response, "plugin_shutdown"); }
+        api.free_buffer(response.ptr, response.len);
+        if (closed) { break; }
+    }
+    check(!event_ready(&shutdown_done), "shutdown returned while a host callback was still active");
+    event_signal(&callback_continue);
+    thread_join(login_thread);
+    thread_join(shutdown_thread);
+    event_close(&callback_entered);
+    event_close(&callback_continue);
+    event_close(&shutdown_started);
+    event_close(&shutdown_done);
+    failed_login(&api);
+    check(callback_calls == 9 && callback_releases == 9 && !callback_outstanding,
+          "concurrent shutdown leaked or reused callbacks");
+    check(puts("host-shutdown\t{\"ok\":true,\"result\":{\"callbacks\":9,\"releases\":9}}") >= 0,
+          "writing shutdown summary failed");
 #ifdef _WIN32
     check(FreeLibrary(library) != 0, "FreeLibrary failed");
 #else

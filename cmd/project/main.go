@@ -273,6 +273,16 @@ func newController(root string, verbose bool) (*controller, error) {
 	if err := os.MkdirAll(filepath.Join(out, "logs"), 0o755); err != nil {
 		return nil, err
 	}
+	// A module boundary keeps generated Go files and dependency caches out of
+	// root ./... scans, including cached dependencies without their own go.mod.
+	artifactModule := filepath.Join(out, "go.mod")
+	if _, err := os.Stat(artifactModule); errors.Is(err, fs.ErrNotExist) {
+		if err := os.WriteFile(artifactModule, []byte("module cpa-workbuddy/artifacts\n"), 0o644); err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	}
 	maps.Copy(env, map[string]string{
 		"CGO_ENABLED": "1", "GOFLAGS": "-mod=readonly", "GOTOOLCHAIN": "local",
 		"GOWORK": "off", "GOTELEMETRY": "off", "WORKBUDDY_TOOLS_ROOT": tools,

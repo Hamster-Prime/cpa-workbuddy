@@ -15,14 +15,14 @@
 | 作者与仓库 | 用户已批准作者 `sheepyu`、计划仓库 `ygq-future/cpa-workbuddy` | 远程尚未创建；注册所需仓库元数据不表示已创建、提交或发布 |
 | 固定 WorkBuddy 基线 | `_ref/UPSTREAM.json:2-7`：commit `0135b7b0ea979c94033a7712a0c6ca1be8dafb70`、包 `0.2.31`、根 MIT 许可证 | 读取来源记录；本次文档迁移不重新下载或改写参考文件 |
 | 协议常量 | `_ref/index.mjs:68-114`：国内/国际 endpoint、platform、app `5.9.3`、CLI `2.165.0`；国际 `glm-*` 图片限制 | 本次已读源码；是快照记录，不保证在线版本永久有效 |
-| 浏览器协议 | `_ref/index.mjs:1824-1895`：state → token → account、11217/12151、企业身份与 token 字段 | 本次已读源码；真实账号登录未验证 |
+| 浏览器协议 | `_ref/index.mjs:1824-1895`：state → token → account、11217/12151、企业身份与 token 字段 | 已迁移并通过隔离协议测试；2026-11-13 在线 state 返回两站点可信登录域，真实账号登录未验证 |
 | 模型解析 | `_ref/index.mjs:3667-3733`：CLI、`custom:`、原始 ID、同名展示区分 | 本次已读源码；真实账号模型权限未验证 |
 | 全局模型合并 | `internal/registry/model_registry.go:670-675`、`:1183-1204`、`:1347-1364` | 本次已读源码；每凭证支持列表与全局公开 Info 是两层 |
 | 永久失效与恢复 | `sdk/cliproxy/auth/conductor_refresh.go:374-414`、`:552-586` | 本次已读源码；仅刷新返回错误不能保证撤销凭证立即停调度 |
-| 原生测试宿主加载 | Windows amd64；Go1.27.1；MinGW GCC14.2.0；独立 C 进程加载实际 DLL | 通过；注册/status、ABI/schema/参数/JSON/未知方法边界、响应释放与卸载均由 smoke 验证 |
-| 实际 CPA 加载 | CPA 版本/commit、二进制来源、平台架构、配置、加载日志 | 未验证；必须与原生测试宿主 smoke 分开记录 |
-| 管理前端与账号 | 双站点入口、卡片状态、重新登录恢复、真实请求 | 未验证；不得从后端接口或 ABI 声明推断 UI/账号已可用 |
-| 发布平台 | Windows amd64 DLL 构建与原生探针加载通过；Linux amd64/arm64、macOS amd64/arm64 未验证 | 实际 CPA 加载在所有目标平台均未验证；五平台交付由 Slice 14 验收 |
+| 原生测试宿主加载 | Windows amd64；Go1.27.1；MinGW GCC14.2.0；独立 C 进程加载实际 DLL | 通过；另验证 9 次回调与 9 次配对释放、transport/坏响应/取消边界、同步回调在途时 shutdown 等待和卸载 |
+| 实际 CPA 宿主加载 | 只读源码 commit `673131f57484517c3a1eae7e36c4cfa7b9bb4efc`；Windows amd64 隔离 Go 测试进程调用实际 host/management/FileTokenStore，加载真实 DLL | 通过双站点协议模拟登录、管理鉴权、保存/列表和子进程重启恢复；完整 CPA server 可执行程序尚未验收 |
+| 管理前端与账号 | 双站点入口、卡片状态、重新登录恢复、真实请求 | 后端管理处理器已验证；前端、真实网页登录、WeCom 与账号请求未验证 |
+| 发布平台 | Windows amd64 DLL 构建、原生探针和隔离 CPA 宿主加载通过；Linux amd64/arm64、macOS amd64/arm64 未验证 | 完整服务、容器和其他平台的实际加载仍由后续切片独立验收 |
 
 CPA `v7.3.15` 参考版本和 `v7.2.155` schema 起点属于此前调研记录。本次未重新联网核对，不据此设定正式支持下限；正式版本选择须通过 Web Search 并打开官方来源验证，再附实际加载证据。
 
@@ -117,7 +117,7 @@ Slice 01 记录当前可确认的宿主边界；认证恢复行为由 Slice 07 �
 | 切片/行为 | 上游函数与定位 | 对应上游测试/样本 | CPA / Go 适配与本地结果 |
 |---|---|---|---|
 | 01 原生加载/管理状态 | WorkBuddy 参考包不提供 CPA C ABI；以 CPA `sdk/pluginabi/types.go:5-20`、`sdk/pluginapi/types.go:72-100`、`internal/pluginhost/host.go:1025-1060` 及桥接样例为依据 | `native_integration_test.go` + 独立 `testdata/abi/probe.c`；`internal/plugin/runtime_test.go` | `cmd/cpa-workbuddy/`、`internal/plugin/`、根 `version.go`；完整质量门禁及 Windows 原生 smoke 通过，实际 CPA 未验证 |
-| 02 浏览器登录/凭证恢复 | `poll:1824`、`browserSignIn:1837`、`success:1882`、`merge:232` | `enterprise.test.mjs:66`、`:95`、`:116`；`wecom.test.mjs` | `AuthProvider.StartLogin/PollLogin/ParseAuth`；待实现/未验证 |
+| 02 浏览器登录/凭证恢复 | `poll:1824`、`browserSignIn:1837`、`success:1882`、`merge:232` | `enterprise.test.mjs:66`、`:95`、`:116`；`wecom.test.mjs` | `internal/workbuddy/service.go:177`、`:273`、`:423`；`credentials.go:168`、`:200`、`:244`；`cmd/cpa-workbuddy/main.go:102`；`service_test.go`、原生 smoke、实际 CPA 管理处理器与子进程恢复通过；真实账号未验证 |
 | 03 个人/企业身份 | `enterpriseHeaders:440`、`enterpriseOf:457`、`accountName:490`、`scopeOf:823` | `enterprise.test.mjs:20`、`:29`、`:37`、`:77`、`:107` | `AuthData.ID/FileName/Label/StorageJSON` 与宿主元数据合并；待实现/未验证 |
 | 04 模型与快照 | `textOnly:150`、`configModels:3469`、`modelOf:3483`、`priceOf:3560`、`effortsOf:3587`、`defaultEffortOf:3630`、`liveModels:3667` | `custom.test.mjs:73`、`:81`；`efforts.test.mjs`、`declared-images.test.mjs`、`price.test.mjs`；`testdata/config-561.json`、`config-efforts.json` | `ModelProvider.ModelsForAuth/StaticModels`、`RegisterClient` 与账号快照；待实现/未验证 |
 | 05 Chat 文本/会话/SSE | `sign:349`、`cliAgent:376`、`chatHeaders:394`、`signatureParts:553`、`turnParts:612`、`conversationParts:633`、`attendChat:789`、`systemOn:952`、`gzipped:1606`、`prepared:1620`、`makePlugin:3885` | `request.test.mjs`、`sent.test.mjs`、`conversation.test.mjs:51`、`:128`、`:153`、`:229`；`testdata/sent-0.1.43.json`、`sent.mjs` | 宿主 HTTP/stream 回调与 executor；非流式 SSE 聚合为本项目适配；待实现/未验证 |
@@ -135,7 +135,7 @@ Slice 01 记录当前可确认的宿主边界；认证恢复行为由 Slice 07 �
 
 - 站点前缀、稳定 CPA 文件名、账号成功快照和首次失败无路由资格是本项目约定，不能描述成 Magpie 现有策略。参考包保留桌面/API key/用量/签到等功能不等于迁移它们。
 - 参考 `_ref/index.mjs:20-22` 区分执行前 1 分钟 stale、宿主预刷提前 5 分钟和刷新结果缓存 60 秒；需求的提前 5 分钟计划须映射 CPA 调度，不能把参考两个窗口误写为相同逻辑。
-- 参考浏览器 URL 只证明 HTTPS 检查；目标域校验是本项目要求，允许的真实登录域须以双站点来源核验，不能任意猜测或只硬编码 API 域。
+- 参考浏览器 URL 只检查 HTTPS；本项目同时校验登录目标域。2026-11-13 对固定双站点 state 接口的实际 POST 均返回 code 0，登录目标分别为 `https://www.workbuddy.cn/login` 与 `https://www.workbuddy.ai/login`，只记录 scheme/host/path。国内还接受固定 `enterprise.test.mjs:55` 已证明的 `www.codebuddy.cn` 历史登录页；该登录域许可不改变 API 目标或引入 CodeBuddy 服务。
 - 参考 JS 可直接 fetch，CPA 插件必须通过宿主 transport policy。非流式聚合、CPA 多客户端协议、认证失效卡片及调度恢复均需宿主适配和独立验证。
 - 参考中图片支持、Claude Messages、count_tokens 404 等实测注释属于固定快照的历史记录；不能标为本仓库真实账号验证。
 
@@ -164,4 +164,11 @@ Slice 01 记录当前可确认的宿主边界；认证恢复行为由 Slice 07 �
 - 本机交付包位于 `out/dist/`，使用严格白名单并生成 SHA256；原生构建与实际 CPA 兼容声明分别记录。
 - 文档检查通过：14 片精确依赖、五项原问答、文档本地链接及根 Markdown 目录规则；原始快照 45 文件通过大小/Git blob SHA1/SHA256 校验。
 
-实际 CPA 的版本/二进制/配置与进程加载、管理前端、认证状态通道、容器及真实账号均未验证，按 Slice 02–14 的对应 AC 留证。上述原生探针只证明本地 C ABI 闭环，不替代实际宿主兼容声明。XERJ 验证记录见质量契约，最终审查结论在交付回复中提供。
+Slice 02 已通过隔离实际 CPA 宿主/管理处理器的 DLL 加载、双站点协议模拟登录、管理鉴权、凭证文件保存/列表及新子进程重启恢复。完整 CPA server 可执行程序、管理前端、认证失效状态通道、容器与真实账号仍未验证，按 Slice 03–14 的对应 AC 留证。原生探针、隔离实际宿主和真实账号分别记录，不相互替代。XERJ 验证记录见质量契约，最终审查结论在交付回复中提供。
+
+### Slice 02 本地验证（2026-11-13）
+
+- `go run ./cmd/project quality --stage lsp --stage lint --stage test` exit 0；包括浏览器协议、原生回调释放/取消/卸载、CLI 产物隔离与实际测试发现契约。`go test -race ./internal/workbuddy ./internal/plugin` exit 0。
+- 隔离模块命令 `go -C out/verification/cpa-smoke test -count=1 -v .` exit 0，以实际 CPA commit `673131f57484517c3a1eae7e36c4cfa7b9bb4efc` 的 `internal/pluginhost`、management handler、FileTokenStore 加载当前 DLL。HTTP RoundTripper 只替换协议上游；实际原生调用、管理鉴权、metadata 透传、11217/12151、保存/列表和子进程恢复均运行宿主原代码。父子进程各自卸载插件，临时凭证目录退出清理。摘要见 `out/logs/slice02-cpa-smoke.json`。
+- CPA 插件必须同时启用全局 `plugins.enabled` 和 `plugins.configs.cpa-workbuddy.enabled`，实际源码 `internal/pluginhost/config.go:13`、`:54-78` 默认禁用实例。浏览器凭证使用 `provider=workbuddy`、`type=workbuddy`、`credential_type=browser`、独立 `version=1`；宿主 `auth_provider.go:483-500` 的 type 归一化不会破坏解析。
+- 完整 server 进程、容器、实际浏览器账号与 WeCom 未验证；人工登录须用户自行完成。插件同步 HTTP 回调实际网络取消受宿主请求 context 控制；本地关闭会拒绝新任务、丢弃迟到结果并等待同步回调结束，之后才允许卸载。

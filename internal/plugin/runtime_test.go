@@ -30,6 +30,7 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 		}
 	}
 	assertError("management.handle", `{}`, "not_registered")
+	assertError("auth.identifier", `{}`, "not_registered")
 	for _, request := range []string{"", "null", "[]", "{", `{"schema_version":6} trailing`, `{"schema_version":6,"config_yaml":"bad%base64"}`} {
 		assertError("plugin.register", request, "invalid_request")
 	}
@@ -51,11 +52,14 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	if result.Metadata.Author == "" || result.Metadata.GitHubRepository == "" {
 		t.Fatalf("metadata must meet CPA validPlugin: %+v", result.Metadata)
 	}
-	if len(result.Capabilities) != 1 || !result.Capabilities["management_api"] {
+	if len(result.Capabilities) != 2 || !result.Capabilities["management_api"] || !result.Capabilities["auth_provider"] {
 		t.Fatalf("unexpected capabilities: %v", result.Capabilities)
 	}
 	assertError("plugin.identifier", `{}`, "unknown_method")
-	assertError("auth.identifier", `{}`, "unknown_method")
+	identifier := call("auth.identifier", `{}`)
+	if string(identifier["ok"]) != "true" || string(identifier["result"]) != `{"identifier":"workbuddy"}` {
+		t.Fatalf("unexpected auth identifier: %s", identifier)
+	}
 	assertError("executor.identifier", `{}`, "unknown_method")
 	assertError("model.static", `{}`, "unknown_method")
 	assertError("management.register", `{}`, "invalid_request")

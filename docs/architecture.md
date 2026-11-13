@@ -10,6 +10,10 @@ Slice 01 建立工程初始化、产品版本、真实 C ABI 身份与注册、�
 
 原生 ABI 版本与 JSON schema 是两个独立协商维度：当前只读 CPA 源码分别为 ABI 1、schema 6。C ABI 的符号、结构体布局、长度与所有权以目标 CPA 源码为准；参考插件只提供桥接模式。原生测试宿主必须真正动态加载库并调用导出符号，不能把 Go 单元测试或直接调用业务函数等同于加载验证。测试宿主验证成功与实际 CPA 进程加载成功分开记录。
 
+Slice 02 在此基础上声明 `auth_provider`，分派 `auth.identifier`、`auth.parse`、`auth.login.start` 与 `auth.login.poll`。`internal/workbuddy/` 实现双站点浏览器协议与带版本凭证；`cmd/cpa-workbuddy/` 按值保留宿主回调表，原生请求借用 Go 输入缓冲区，宿主响应复制后始终由宿主的 `free_buffer` 释放，包括 transport 错误。网络只使用 `host.http.do` 并透传当前 `host_callback_id`；CPA 保存成功后才对管理客户端显示登录完成。刷新实现由 Slice 06 承接。
+
+插件持有的登录 state 与上游 state 分离，按会话串行轮询且不同会话并行，令牌在账号确认等待期间保留。会话最多五分钟、最多 128 个，过期定时清理；成功、终止失败、取消及关闭都会废弃会话，重启不恢复未完成登录。quiesce/shutdown 先关闭新任务入口、取消本地任务并等待在途同步宿主回调返回，再清理认证状态。CPA 的同步 HTTP 回调由其请求 context 控制实际网络取消；插件不会在回调返回前卸载，也不在本地取消后发布登录成功。
+
 ## 代码布局与版本来源
 
 ```text
@@ -18,8 +22,7 @@ cpa-workbuddy/
   version.go                 # 根 Go 包读取并暴露 VERSION
   cmd/cpa-workbuddy/          # CGO main、C ABI 导出与最小库入口
   internal/plugin/           # JSON wire、注册、分派、错误与生命周期
-  internal/host/             # 后续：HTTP、流、凭证保存、日志回调
-  internal/workbuddy/        # 后续：站点、认证、刷新、模型、协议和执行
+  internal/workbuddy/        # 双站点浏览器认证、凭证；后续模型与执行协议
   cmd/project/              # Go 标准库工程命令与 CLI 行为测试
   testdata/                  # 按需加入脱敏协议样本
   docs/                      # 需求、架构、兼容证据、任务、ADR

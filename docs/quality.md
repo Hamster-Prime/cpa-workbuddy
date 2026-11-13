@@ -20,6 +20,8 @@ go run ./cmd/project --help
 
 编排器启动后的全部子进程使用项目局部 GOCACHE、GOMODCACHE、GOPATH、GOBIN、GOTMPDIR、GOENV、GOLANGCI_LINT_CACHE、GOPLSCACHE、XDG 与临时目录，统一位于 `out/`。关闭 Go telemetry、自动工具链下载和工作区自动发现，原生门禁清除继承的 GOOS/GOARCH。`WORKBUDDY_TOOLS_ROOT` 允许 index 隔离副本复用已安装的工具。
 
+工程入口在 `out/go.mod` 建立产物模块边界，使根 `./...` 扫描排除依赖缓存及其他生成的 Go 源码；该文件属于忽略的本地产物，不是产品依赖模块。隔离测试同样通过工程入口创建此边界。
+
 首次 `go run` 的编译发生在工程命令启动前。需将该次编译缓存也放到项目目录时，在当前终端先设置以下环境；CI 已在共享 toolchain action 中设置：
 
 ```powershell

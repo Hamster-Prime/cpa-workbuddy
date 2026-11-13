@@ -77,6 +77,9 @@ func TestNativeABI(t *testing.T) {
 	if runtime.GOOS == "linux" || runtime.GOOS == "freebsd" {
 		arguments = append(arguments, "-ldl")
 	}
+	if runtime.GOOS != "windows" {
+		arguments = append(arguments, "-pthread")
+	}
 	runNativeCommand(t, root, environment, gcc, arguments...)
 	rawVersion, err := os.ReadFile(filepath.Join(root, "VERSION"))
 	if err != nil {
@@ -113,7 +116,7 @@ func TestNativeABI(t *testing.T) {
 			if err := json.Unmarshal(envelope.Result, &result); err != nil {
 				t.Fatal(err)
 			}
-			if !envelope.OK || envelope.Error != nil || result.SchemaVersion != 6 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != expectedVersion || result.Metadata.Author != "sheepyu" || result.Metadata.GitHubRepository != "ygq-future/cpa-workbuddy" || len(result.Capabilities) != 1 || !result.Capabilities["management_api"] {
+			if !envelope.OK || envelope.Error != nil || result.SchemaVersion != 6 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != expectedVersion || result.Metadata.Author != "sheepyu" || result.Metadata.GitHubRepository != "ygq-future/cpa-workbuddy" || len(result.Capabilities) != 2 || !result.Capabilities["management_api"] || !result.Capabilities["auth_provider"] {
 				t.Fatalf("registration violates CPA contract: %s", raw)
 			}
 		case "routes":
@@ -146,6 +149,26 @@ func TestNativeABI(t *testing.T) {
 			if !envelope.OK || result.StatusCode != 200 || len(result.Headers["Content-Type"]) != 1 || result.Headers["Content-Type"][0] != "application/json; charset=utf-8" || status.Name != "cpa-workbuddy" || status.Version != expectedVersion || status.ABIVersion != 1 || status.SchemaVersion != 6 {
 				t.Fatalf("unexpected native status response: %s", raw)
 			}
+		case "auth-identifier":
+			var result struct{ Identifier string }
+			if err := json.Unmarshal(envelope.Result, &result); err != nil {
+				t.Fatal(err)
+			}
+			if !envelope.OK || envelope.Error != nil || result.Identifier != "workbuddy" {
+				t.Fatalf("unexpected native auth identity: %s", raw)
+			}
+		case "host-roundtrip", "host-shutdown":
+			var result struct{ Callbacks, Releases int }
+			if err := json.Unmarshal(envelope.Result, &result); err != nil {
+				t.Fatal(err)
+			}
+			want := 8
+			if label == "host-shutdown" {
+				want = 9
+			}
+			if !envelope.OK || envelope.Error != nil || result.Callbacks != want || result.Releases != want {
+				t.Fatalf("unexpected native host ownership summary: %s", raw)
+			}
 		default:
 			want, expected := nativeErrorScenarios[label]
 			if !expected || envelope.OK || envelope.Error == nil || envelope.Error.Code != want || envelope.Error.Message == "" {
@@ -156,8 +179,8 @@ func TestNativeABI(t *testing.T) {
 	if err := scanner.Err(); err != nil {
 		t.Fatal(err)
 	}
-	if len(seen) != len(nativeErrorScenarios)+3 {
-		t.Fatalf("native probe omitted scenarios: got %d, want %d; output:\n%s", len(seen), len(nativeErrorScenarios)+3, output)
+	if len(seen) != len(nativeErrorScenarios)+6 {
+		t.Fatalf("native probe omitted scenarios: got %d, want %d; output:\n%s", len(seen), len(nativeErrorScenarios)+6, output)
 	}
 	for label := range nativeErrorScenarios {
 		if !seen[label] {
@@ -167,25 +190,25 @@ func TestNativeABI(t *testing.T) {
 }
 
 var nativeErrorScenarios = map[string]string{
-	"nil-method":             "invalid_method",
-	"nil-positive-length":    "invalid_request",
-	"oversize":               "invalid_request",
-	"c-int-overflow":         "invalid_request",
-	"nil-request":            "invalid_request",
-	"before-registration":    "not_registered",
-	"malformed-json":         "invalid_request",
-	"embedded-nul":           "invalid_request",
-	"schema-mismatch":        "incompatible_schema",
-	"unknown-method":         "unknown_method",
-	"no-plugin-identifier":   "unknown_method",
-	"no-auth-identifier":     "unknown_method",
-	"no-executor-identifier": "unknown_method",
-	"wrong-path":             "route_not_found",
-	"wrong-http-method":      "method_not_allowed",
-	"quiesced":               "plugin_quiesced",
-	"rpc-shutdown":           "plugin_shutdown",
-	"native-shutdown":        "plugin_shutdown",
-	"direct-native-shutdown": "plugin_shutdown",
+	"nil-method":               "invalid_method",
+	"nil-positive-length":      "invalid_request",
+	"oversize":                 "invalid_request",
+	"c-int-overflow":           "invalid_request",
+	"nil-request":              "invalid_request",
+	"before-registration":      "not_registered",
+	"malformed-json":           "invalid_request",
+	"embedded-nul":             "invalid_request",
+	"schema-mismatch":          "incompatible_schema",
+	"unknown-method":           "unknown_method",
+	"no-plugin-identifier":     "unknown_method",
+	"auth-before-registration": "not_registered",
+	"no-executor-identifier":   "unknown_method",
+	"wrong-path":               "route_not_found",
+	"wrong-http-method":        "method_not_allowed",
+	"quiesced":                 "plugin_quiesced",
+	"rpc-shutdown":             "plugin_shutdown",
+	"native-shutdown":          "plugin_shutdown",
+	"direct-native-shutdown":   "plugin_shutdown",
 }
 
 func nativeEnvironment(out string) []string {

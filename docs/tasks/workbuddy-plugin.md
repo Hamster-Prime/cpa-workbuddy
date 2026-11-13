@@ -34,7 +34,7 @@ Acceptance criteria:
 
 ## Slice 02: 双站点浏览器登录与凭证恢复
 
-Status: pending
+Status: completed
 
 Blocked by: 01
 
@@ -44,13 +44,13 @@ What to build:
 
 Acceptance criteria:
 
-- [ ] CPA `workbuddy-auth-url` 的 metadata 明确选择 `workbuddy` / `workbuddy-ai`；不猜站点、不接收 API key、不读取桌面凭证，目标站点只能来自常量。
-- [ ] 协议上游完成 state → token → account → `AuthData` → CPA 保存链路；URL 使用 HTTPS、经核实的登录目标域、正确 version 与随机 `loginSessionId`，不将 state/token 写入日志。
-- [ ] `11217`、`12151` 表现为等待；取消、终止错误、参考五分钟窗口/实际宿主期限及超时清理可观察，不将任意失败当作继续等待。
-- [ ] 并发双站点登录各自完成；未知 state、过期、重复轮询和插件重启返回明确状态，不串用登录结果，不在重启后伪造登录成功。
-- [ ] 仅解析自身 provider、类型及版本可识别的浏览器凭证；其他 provider 的 `access_token` 文件不被接管；必要字段、过期时间与站点恢复后可由宿主识别。
-- [ ] 宿主负责保存路径与原子持久化；保存成功后凭证列表可查询，宿主/容器重启能恢复记录；不直接写用户 auth 目录或持久化本机绝对路径依赖。
-- [ ] 参考 `browserSignIn/poll/success/merge` 与企业登录/WeCom 样本有迁移对应及隔离协议测试；真实网页步骤交用户，未登录账号如实标未验证。
+- [x] CPA `workbuddy-auth-url` 的 metadata 明确选择 `workbuddy` / `workbuddy-ai`；不猜站点、不接收 API key、不读取桌面凭证，目标站点只能来自常量。
+- [x] 协议上游完成 state → token → account → `AuthData` → CPA 保存链路；URL 使用 HTTPS、经核实的登录目标域、正确 version 与随机 `loginSessionId`，不将 state/token 写入日志。
+- [x] `11217`、`12151` 表现为等待；取消、终止错误、参考五分钟窗口/实际宿主期限及超时清理可观察，不将任意失败当作继续等待。
+- [x] 并发双站点登录各自完成；未知 state、过期、重复轮询和插件重启返回明确状态，不串用登录结果，不在重启后伪造登录成功。
+- [x] 仅解析自身 provider、类型及版本可识别的浏览器凭证；其他 provider 的 `access_token` 文件不被接管；必要字段、过期时间与站点恢复后可由宿主识别。
+- [x] 宿主负责保存路径与原子持久化；保存成功后凭证列表可查询，宿主/容器重启能恢复记录；不直接写用户 auth 目录或持久化本机绝对路径依赖。
+- [x] 参考 `browserSignIn/poll/success/merge` 与企业登录/WeCom 样本有迁移对应及隔离协议测试；真实网页步骤交用户，未登录账号如实标未验证。
 
 ## Slice 03: 个人与企业身份管理
 

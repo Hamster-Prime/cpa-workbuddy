@@ -53,4 +53,7 @@ typedef struct {
 } cliproxy_plugin_api;
 
 void workbuddy_set_api(cliproxy_plugin_api *api);
+int workbuddy_host_call(const cliproxy_host_api *host, const char *method,
+                       const uint8_t *request, size_t request_len, cliproxy_buffer *response);
+void workbuddy_host_free(const cliproxy_host_api *host, void *ptr, size_t len);
 #endif

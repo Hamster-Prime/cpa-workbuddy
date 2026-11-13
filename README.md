@@ -2,7 +2,7 @@
 
 面向 CLIProxyAPI（CPA）的 WorkBuddy 原生动态库插件，一个 provider `workbuddy` 承载国内 `copilot.tencent.com` 与国际 `www.workbuddy.ai` 的多个账号及个人/企业身份。
 
-**已完成工程基线和 Slice 01 原生接入，正式 WorkBuddy 业务功能待实施。** 工程基线包括 Go/CGO 项目结构、统一工程命令和质量门禁；Slice 01 包括真实原生身份/注册/释放/卸载和只读管理状态能力，验证与验收见 [任务表](docs/tasks/workbuddy-plugin.md)。双站点浏览器登录、凭证管理与恢复、账号模型、聊天、工具、图片、reasoning、国内 Claude Messages 和客户端协议互通由后续切片交付。
+**已实现工程基线、Slice 01 原生接入及 Slice 02 双站点浏览器登录与凭证恢复。** 登录使用 CPA 认证接口与宿主 HTTP 回调，凭证路径与持久化由 CPA 管理；账号模型、聊天、刷新、工具、图片、reasoning、国内 Claude Messages 和客户端协议互通按后续切片交付。各项验证状态见 [任务表](docs/tasks/workbuddy-plugin.md) 与 [兼容性记录](docs/compatibility.md)。
 
 插件 ID 为 `cpa-workbuddy`，作者 `sheepyu`。产品版本唯一来源是 [VERSION](VERSION)；计划仓库为 `ygq-future/cpa-workbuddy`，远程仓库尚未创建。提交、推送和发布需用户明确授权。
 
@@ -14,9 +14,18 @@ CPA 宿主要求注册包含有效身份与至少一项真实能力。Slice 01 �
 GET /v0/management/plugins/cpa-workbuddy/status
 ```
 
-接口返回插件身份、产品版本、ABI 和 schema；不创建独立管理页。此阶段不声明尚未实现的认证、模型、执行或客户端格式能力。真实原生测试宿主加载与实际 CPA 进程加载分别留证，后者尚未验证时不会标为已兼容，详见 [兼容性记录](docs/compatibility.md)。
+接口返回插件身份、产品版本、ABI 和 schema；不创建独立管理页。插件另声明已实现的 `auth_provider`，提供浏览器登录、轮询和自身带版本凭证解析；模型、执行和格式能力按后续切片声明。真实原生测试宿主、实际 CPA 宿主与真实账号的证据分别记录。
 
 交付物为 CPA 加载的 CGO 动态库：Windows `.dll`、Linux `.so`、macOS `.dylib`。库没有独立 `start` / `stop`；加载、停用和卸载由 CPA 管理。首个验证平台为 Windows amd64，其他平台的构建和实际加载将在后续单独记录。
+
+浏览器登录通过 CPA 现有管理鉴权访问以下入口，必须显式选择站点：
+
+```text
+GET /v0/management/workbuddy-auth-url?site=workbuddy
+GET /v0/management/workbuddy-auth-url?site=workbuddy-ai
+```
+
+用户自行打开返回的 `url`，随后使用返回的 `state` 查询 `GET /v0/management/get-auth-status?state=<state>`；`wait` 表示等待浏览器完成，`ok` 表示 CPA 已成功保存凭证，可从 `GET /v0/management/auth-files` 查看。插件会话有效期最多五分钟，重启、过期、取消或已消费的状态需要重新发起登录；同一状态只交付一次凭证。登录 URL 与 state 属于敏感数据，不应粘贴到日志或问题报告。真实网页登录与企业微信步骤由用户完成，自动化验证使用隔离协议上游。
 
 ## 工程入口
 
