@@ -6,22 +6,32 @@ import (
 	"errors"
 	"maps"
 	"reflect"
+	"slices"
 	"time"
 )
 
 // ModelInfo contains only the account metadata expressible by CPA. Execution
 // capability fields are populated by the slices that implement those paths.
 type ModelInfo struct {
-	ID                  string
-	Object              string
-	OwnedBy             string
-	Type                string
-	DisplayName         string
-	Name                string
-	ContextLength       int64
-	InputTokenLimit     int64
-	OutputTokenLimit    int64
-	MaxCompletionTokens int64
+	ID                        string
+	Object                    string
+	OwnedBy                   string
+	Type                      string
+	DisplayName               string
+	Name                      string
+	ContextLength             int64
+	InputTokenLimit           int64
+	OutputTokenLimit          int64
+	MaxCompletionTokens       int64
+	SupportedInputModalities  []string
+	SupportedOutputModalities []string
+	Thinking                  *ThinkingSupport
+}
+
+// ThinkingSupport mirrors CPA's named-level and disable controls.
+type ThinkingSupport struct {
+	ZeroAllowed bool
+	Levels      []string
 }
 
 type ModelResponse struct {
@@ -146,11 +156,22 @@ func (s *Service) models(ctx context.Context, method string, raw []byte, call fu
 		}
 	}
 	for _, model := range models {
-		result.Models = append(result.Models, ModelInfo{
+		info := ModelInfo{
 			ID: chosen.modelPrefix + model.ID, Object: "model", OwnedBy: provider, Type: provider,
 			DisplayName: model.Name, Name: model.ID, ContextLength: model.ContextLength,
 			InputTokenLimit: model.ContextLength, OutputTokenLimit: model.MaxOutputTokens, MaxCompletionTokens: model.MaxOutputTokens,
-		})
+		}
+		if !messagesModel(chosen.id, model.ID) {
+			info.SupportedInputModalities = []string{"text"}
+			info.SupportedOutputModalities = []string{"text"}
+			if catalogImages(chosen.id, model.ID, model.Images) {
+				info.SupportedInputModalities = append(info.SupportedInputModalities, "image")
+			}
+			if len(model.Efforts) > 0 {
+				info.Thinking = &ThinkingSupport{ZeroAllowed: slices.Contains(model.Efforts, "none"), Levels: model.Efforts}
+			}
+		}
+		result.Models = append(result.Models, info)
 	}
 	if changed {
 		result.AuthUpdate, err = authFromCredential(stored, metadata)

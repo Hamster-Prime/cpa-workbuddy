@@ -15,12 +15,13 @@ const (
 )
 
 type chatChoice struct {
-	fields   map[string]json.RawMessage
-	content  strings.Builder
-	refusal  strings.Builder
-	role     string
-	finished bool
-	tools    map[int]*chatToolCall
+	fields    map[string]json.RawMessage
+	content   strings.Builder
+	refusal   strings.Builder
+	role      string
+	finished  bool
+	tools     map[int]*chatToolCall
+	reasoning *chatReasoningResponse
 }
 
 // consumeChatStream translates the upstream SSE stream without retaining its
@@ -133,6 +134,12 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, toolName
 						return err
 					}
 					delta[key] = fitted
+					continue
+				}
+				if key == "reasoning_content" || key == "reasoning" || key == "reasoning_details" {
+					if err := choice.addReasoningDelta(key, raw, emit == nil, &aggregateSize); err != nil {
+						return err
+					}
 					continue
 				}
 				if key != "role" && key != "content" && key != "refusal" {
@@ -329,6 +336,9 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, toolName
 		message := map[string]any{"role": role, "content": choice.content.String()}
 		if choice.refusal.Len() > 0 {
 			message["refusal"] = choice.refusal.String()
+		}
+		if choice.reasoning != nil {
+			choice.reasoning.addMessageFields(message)
 		}
 		if len(choice.tools) > 0 {
 			message["tool_calls"] = choice.aggregatedTools(toolNames)

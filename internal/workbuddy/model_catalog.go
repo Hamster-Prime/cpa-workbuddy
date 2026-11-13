@@ -170,7 +170,7 @@ func ParseModelConfig(siteID string, rawData []byte, now time.Time) ([]CatalogMo
 			if detail.MaxOutputTokens != nil {
 				model.MaxOutputTokens = *detail.MaxOutputTokens
 			}
-			model.Images = detail.SupportsImages && (siteID != "workbuddy-ai" || !strings.HasPrefix(id, "glm-"))
+			model.Images = catalogImages(siteID, id, detail.SupportsImages)
 			model.Efforts, model.DefaultEffort = catalogEfforts(siteID, id, detail)
 			model.CreditRate, model.CreditRateWas, model.Free = catalogPrice(detail, cfg.ModelPromotions, now)
 		}
@@ -223,6 +223,10 @@ func catalogID(id string) bool {
 		}
 	}
 	return true
+}
+
+func catalogImages(siteID, id string, declared bool) bool {
+	return declared && (siteID != "workbuddy-ai" || !strings.HasPrefix(id, "glm-"))
 }
 
 // messagesModel is the reference source route classifier, independent of the

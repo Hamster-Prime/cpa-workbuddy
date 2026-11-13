@@ -47,6 +47,7 @@ type chatMessage struct {
 	fields map[string]json.RawMessage
 	role   string
 	text   []string
+	images []string
 }
 
 func prepareChat(req executorRequest) (preparedChat, error) {
@@ -79,9 +80,9 @@ func prepareChat(req executorRequest) (preparedChat, error) {
 	if err := decode(req.Payload, &body); err != nil {
 		return preparedChat{}, err
 	}
-	for _, field := range []string{"reasoning_effort", "reasoning", "thinking", "generate", "image", "image_generation", "audio"} {
+	for _, field := range []string{"thinking", "generate", "image", "image_generation", "audio"} {
 		if nonemptyChatValue(body[field]) {
-			return preparedChat{}, failure("unsupported_feature", "Chat execution does not support image generation, audio, or reasoning controls", 400)
+			return preparedChat{}, failure("unsupported_feature", "Chat execution does not support image generation, audio, or thinking budgets", 400)
 		}
 	}
 	if nonemptyChatValue(body["modalities"]) {
@@ -90,7 +91,12 @@ func prepareChat(req executorRequest) (preparedChat, error) {
 			return preparedChat{}, failure("unsupported_feature", "chat execution currently supports text output only", 400)
 		}
 	}
-	messages, err := readChatMessages(body["messages"])
+	capabilities := accountChatModel(stored, req.AuthID, model)
+	if err := applyChatEffort(body, capabilities); err != nil {
+		return preparedChat{}, err
+	}
+	allowImages := capabilities != nil && catalogImages(chosen.id, model, capabilities.Images)
+	messages, err := readChatMessages(body["messages"], allowImages)
 	if err != nil {
 		return preparedChat{}, err
 	}
@@ -117,7 +123,7 @@ func prepareChat(req executorRequest) (preparedChat, error) {
 		return preparedChat{}, failure("invalid_request", "cannot encode chat messages", 400)
 	}
 	if limit, exists := body["max_completion_tokens"]; exists {
-		if _, present := body["max_tokens"]; !present {
+		if existing, present := body["max_tokens"]; !present || !chatHasJSONValue(existing) {
 			body["max_tokens"] = limit
 		}
 		delete(body, "max_completion_tokens")
@@ -162,7 +168,7 @@ func nonemptyChatValue(raw json.RawMessage) bool {
 	return len(raw) != 0 && !bytes.Equal(raw, []byte("null")) && !bytes.Equal(raw, []byte("false")) && !bytes.Equal(raw, []byte(`""`))
 }
 
-func readChatMessages(raw json.RawMessage) ([]chatMessage, error) {
+func readChatMessages(raw json.RawMessage, allowImages bool) ([]chatMessage, error) {
 	var rows []map[string]json.RawMessage
 	if json.Unmarshal(raw, &rows) != nil || len(rows) == 0 {
 		return nil, failure("invalid_request", "chat messages must be a nonempty array of objects", 400)
@@ -181,6 +187,7 @@ func readChatMessages(raw json.RawMessage) ([]chatMessage, error) {
 		}
 		content := bytes.TrimSpace(fields["content"])
 		var text []string
+		var images []string
 		if len(content) > 0 && content[0] == '"' {
 			var value string
 			if json.Unmarshal(content, &value) != nil {
@@ -199,8 +206,21 @@ func readChatMessages(raw json.RawMessage) ([]chatMessage, error) {
 				if rawType, exists := part["type"]; exists && json.Unmarshal(rawType, &kind) != nil {
 					return nil, failure("invalid_request", "invalid chat content type", 400)
 				}
+				if kind == "image_url" {
+					if !allowImages {
+						return nil, failure("unsupported_feature", "the selected account model does not advertise image input", 400)
+					}
+					if err := validateChatImagePart(part); err != nil {
+						return nil, err
+					}
+					if role == "user" {
+						digest := sha256.Sum256(part["image_url"])
+						images = append(images, hex.EncodeToString(digest[:]))
+					}
+					continue
+				}
 				if kind != "" && kind != "text" {
-					return nil, failure("unsupported_feature", "chat execution supports text content parts only", 400)
+					return nil, failure("unsupported_feature", "Chat execution supports text and advertised image_url content parts", 400)
 				}
 				if json.Unmarshal(part["text"], &value) != nil || bytes.Equal(bytes.TrimSpace(part["text"]), []byte("null")) {
 					return nil, failure("invalid_request", "chat content parts require text strings", 400)
@@ -209,17 +229,17 @@ func readChatMessages(raw json.RawMessage) ([]chatMessage, error) {
 					text = append(text, value)
 				}
 			}
-		} else if role == "assistant" && hasChatToolCalls(fields) && (len(content) == 0 || bytes.Equal(content, []byte("null"))) {
-			// OpenAI tool-call history has nullable content and is forwarded unchanged.
+		} else if role == "assistant" && (hasChatToolCalls(fields) || nonemptyChatValue(fields["reasoning"]) || nonemptyChatValue(fields["reasoning_content"]) || nonemptyChatValue(fields["reasoning_details"])) && (len(content) == 0 || bytes.Equal(content, []byte("null"))) {
+			// Assistant tool calls and thinking history can have no visible text.
 		} else {
-			return nil, failure("invalid_request", "chat message content must be a string or text array", 400)
+			return nil, failure("invalid_request", "chat message content must be a string or content array", 400)
 		}
 		if role == "assistant" {
 			if err := normalizeChatReasoningHistory(fields); err != nil {
 				return nil, err
 			}
 		}
-		messages = append(messages, chatMessage{fields: fields, role: role, text: text})
+		messages = append(messages, chatMessage{fields: fields, role: role, text: text, images: images})
 	}
 	return messages, nil
 }
@@ -377,14 +397,23 @@ func chatID(kind, account string, pieces ...string) string {
 	return hex.EncodeToString(digest.Sum(sum[:0])[:16])
 }
 
+func (message chatMessage) identityParts(prefix ...string) []string {
+	prefix = append(prefix, message.text...)
+	if len(message.images) > 0 {
+		prefix = append(prefix, "|images:")
+		prefix = append(prefix, message.images...)
+	}
+	return prefix
+}
+
 func attendChatRequest(headers map[string][]string, req executorRequest, messages []chatMessage) {
 	var conversation []string
 	if session := chatSession(req); session != "" {
 		conversation = []string{"session:", session}
 	} else {
 		for _, message := range messages {
-			if message.role == "user" && len(message.text) != 0 {
-				conversation = append([]string{"first:"}, message.text...)
+			if message.role == "user" && len(message.text)+len(message.images) > 0 {
+				conversation = message.identityParts("first:")
 				break
 			}
 		}
@@ -406,8 +435,8 @@ func attendChatRequest(headers map[string][]string, req executorRequest, message
 			if message.role != "user" || answeredChatBefore(messages, i) {
 				continue
 			}
-			if len(messages[i].text) != 0 {
-				pieces := append([]string{conversationID, "|u", strconv.Itoa(i), ":"}, messages[i].text...)
+			if len(message.text)+len(message.images) > 0 {
+				pieces := message.identityParts(conversationID, "|u", strconv.Itoa(i), ":")
 				turn = chatID("turn", req.AuthID, pieces...)
 			}
 			break

@@ -185,7 +185,7 @@ Implementation decisions:
 
 ## Slice 09: Chat 图片与reasoning能力
 
-Status: pending
+Status: completed
 
 Blocked by: 05
 
@@ -195,12 +195,22 @@ What to build:
 
 Acceptance criteria:
 
-- [ ] 上游支持的图片输入按 Chat 协议传递；国际 GLM 遵循固定参考的图片限制，不宣称上游会丢弃的输入可用，不把本范围扩成图片生成/视频/语音/embeddings。
-- [ ] 模型能力取自账号配置与经过核实的站点限制，输入上下文与最大输出不混淆；同站点不同账号能力差异不因全局 Info 合并而获得额外权限。
-- [ ] 历史 reasoning_content/reasoning_details 按参考整形，流式与非流式 reasoning 输出、content、usage 同时保留可表达语义。
-- [ ] 调用方显式 effort 优先；模型默认 effort 只在适用条件填充，低 token budget 的标题/分类请求不被默认 reasoning 耗尽预算。
-- [ ] none/canDisableThinking/onlyReasoning 与参考 OFF_TAKEN 例外逐项核验；国内 Claude max 留给 Messages 能力，Chat 不伪造支持。
-- [ ] images/reasoning/default-effort/efforts 样本与边界测试对应，实际账号图片识别和 reasoning smoke 缺证据时明确未验证。
+- [x] 上游支持的图片输入按 Chat 协议传递；国际 GLM 遵循固定参考的图片限制，不宣称上游会丢弃的输入可用，不把本范围扩成图片生成/视频/语音/embeddings。
+- [x] 模型能力取自账号配置与经过核实的站点限制，输入上下文与最大输出不混淆；同站点不同账号能力差异不因全局 Info 合并而获得额外权限。
+- [x] 历史 reasoning_content/reasoning_details 按参考整形，流式与非流式 reasoning 输出、content、usage 同时保留可表达语义。
+- [x] 调用方显式 effort 优先；模型默认 effort 只在适用条件填充，低 token budget 的标题/分类请求不被默认 reasoning 耗尽预算。
+- [x] none/canDisableThinking/onlyReasoning 与参考 OFF_TAKEN 例外逐项核验；国内 Claude max 留给 Messages 能力，Chat 不伪造支持。
+- [x] images/reasoning/default-effort/efforts 样本与边界测试对应，实际账号图片识别和 reasoning smoke 缺证据时明确未验证。
+
+Implementation decisions:
+
+- 请求能力只读取当前凭证中身份、站点和采集时间均有效的成功模型快照；不从全局模型 Info 或其他账号补齐。无有效快照时仍可执行文本，但不能据此开启图片或显式 reasoning。
+- 图片仅接受 Chat 的 image_url 内容块，原样传递 URL/data URL 与 detail；不由插件下载，不提供图片生成。国际 glm-* 的固定图片限制同时约束模型声明与请求。
+- reasoning_effort 与 reasoning.effort 的显式值保留，按当前账号支持级别核验；两个位置明确冲突时返回客户端错误。默认 effort 只在没有显式值时填充，正数输出预算不超过 1024 时跳过。
+- CPA 只声明其 ModelInfo 可表达的输入/输出模态、命名 reasoning 级别及禁用能力；国内 Claude 的对应声明随 Slice 10 原生 Messages 能力交付。
+- reasoning_content 与 reasoning 独立聚合，不互造别名或混入可见文本。结构化 details 按 index/id 合并并保留首次出现顺序；无身份的条目独立保留，无法兼容的元数据冲突明确报错。
+- effort 空值按参考 presence 语义保留：顶层键或嵌套 effort 键存在时不自动填默认；空 reasoning 容器不构成命名 effort。仅非空的实际级别参与账号能力及冲突核验。
+- 图片身份材料独立于文本，以按顺序采集的 image_url 摘要参与会话与轮次派生；纯图片重试/工具续轮稳定，换图或新用户轮次改变轮次，账号作用域继续由既有 ID 算法提供。
 
 ## Slice 10: 国内Claude Messages闭环
 

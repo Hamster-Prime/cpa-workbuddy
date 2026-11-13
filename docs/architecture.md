@@ -48,6 +48,12 @@ Slice 08 在 Chat 请求整形边界处理工具 Schema 与名称。Schema 只�
 
 同一 choice 的工具流按 tool index 独立记录 ID、类型和原名；参数碎片按到达顺序连接，完成时校验调用身份完整且不重用 ID。流式路径转发完整事件而不累计参数正文，非流式路径把参数计入既有聚合上限。客户端执行工具并提交结果，插件只适配后续历史，不执行客户端工具；工具循环沿用原用户轮次，新用户消息开启新轮次。
 
+Slice 09 的请求能力来自当前 StorageJSON 中通过身份、站点、成功采集时间校验的模型快照。执行不查询全局模型 Info，不在每个请求中重新发现模型；未知能力只允许既有文本路径。`catalogImages` 统一模型发现、声明和请求的国际 GLM 图片限制，image_url 内容块经 gzip 交给本站点上游，插件不下载图片。
+
+显式 reasoning_effort 或 reasoning.effort 保持原位置和取值，并用当前账号的级别核验；相互冲突明确拒绝。默认 effort 仅在未显式选择且输出预算不属于正数 1024 以下窗口时填充。CPA ThinkingSupport 只声明命名级别与可关闭标记，输入/输出模态只描述已经接通的 Chat 路由；国内 Claude 等待 Messages 实现。
+
+SSE 分别处理 reasoning_content、reasoning 及 reasoning_details，既不互造别名，也不拼进可见 content。结构化 details 按 index/id 归属保留首次出现顺序及不透明元数据；流式只保留有界身份/元数据，正文直接转发，非流式将 thinking、文本和工具合计纳入 32 MiB 聚合限制。
+
 ## 代码布局与版本来源
 
 ```text
