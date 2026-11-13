@@ -41,7 +41,7 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	var result struct {
 		SchemaVersion int `json:"schema_version"`
 		Metadata      struct{ Name, Version, Author, GitHubRepository string }
-		Capabilities  map[string]bool
+		Capabilities  map[string]json.RawMessage
 	}
 	if err := json.Unmarshal(response["result"], &result); err != nil {
 		t.Fatal(err)
@@ -52,7 +52,7 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	if result.Metadata.Author == "" || result.Metadata.GitHubRepository == "" {
 		t.Fatalf("metadata must meet CPA validPlugin: %+v", result.Metadata)
 	}
-	if len(result.Capabilities) != 3 || !result.Capabilities["management_api"] || !result.Capabilities["auth_provider"] || !result.Capabilities["model_provider"] {
+	if len(result.Capabilities) != 7 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai"]` || string(result.Capabilities["executor_output_formats"]) != `["openai"]` {
 		t.Fatalf("unexpected capabilities: %v", result.Capabilities)
 	}
 	assertError("plugin.identifier", `{}`, "unknown_method")
@@ -60,7 +60,9 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	if string(identifier["ok"]) != "true" || string(identifier["result"]) != `{"identifier":"workbuddy"}` {
 		t.Fatalf("unexpected auth identifier: %s", identifier)
 	}
-	assertError("executor.identifier", `{}`, "unknown_method")
+	if string(call("executor.identifier", `{}`)["result"]) != `{"identifier":"workbuddy"}` {
+		t.Fatal("executor identifier is invalid")
+	}
 	static := call("model.static", `{}`)
 	var catalog struct{ Models []json.RawMessage }
 	if err := json.Unmarshal(static["result"], &catalog); err != nil || string(static["ok"]) != "true" || catalog.Models == nil || len(catalog.Models) != 0 {

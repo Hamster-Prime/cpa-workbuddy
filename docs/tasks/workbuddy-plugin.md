@@ -95,7 +95,7 @@ Acceptance criteria:
 
 ## Slice 05: 双站点 Chat 文本闭环
 
-Status: pending
+Status: completed
 
 Blocked by: 04
 
@@ -105,14 +105,14 @@ What to build:
 
 Acceptance criteria:
 
-- [ ] 两站点 Chat 模型通过本站点 `/v2/chat/completions` 完成文本流式、非流式与多轮；上游 `stream:true`、JSON gzip，经宿主 transport policy，代理/取消/日志链路可见。
-- [ ] Authorization、用户、domain、企业/租户与 WorkBuddy UA/IDE/Agent/Requested-With/Stainless 头按参考来源集中维护；10085 可诊断，不读取任意 endpoint。
-- [ ] 执行使用 CPA 已解析模型，检查站点并只剥离一层前缀；合法别名不因原始 payload 字面不同被拒绝，响应 model 写回站点 ID。
-- [ ] 默认 system、developer、max_completion_tokens 和文本历史整形遵循参考，国内 Claude 不被冒充 Chat 已支持，工具/图片/reasoning 尚未完成时不虚报能力。
-- [ ] 会话/轮次 ID 包含站点账号作用域；同轮工具循环与有界重试沿用 request ID，下一用户轮次变化；优先宿主 session，消息派生按参考行为。
-- [ ] SSE 不依赖网络 chunk，拆分 UTF-8、多行事件、空 delta、usage、结束事件、异常 EOF 均保持语义与顺序；非流式聚合 content/finish_reason/usage，上游中断不返回完整伪成功。
-- [ ] 请求取消/超时关闭上游读取与回调资源；缓冲区与上下游 stream ID 所有权明确，测试观察到流关闭及资源释放。
-- [ ] 记录 request/sent/conversation 样本与适配位置，使用真实原生边界及协议上游完成闭环，真实账号 smoke 缺证据时单列未验证。
+- [x] 两站点 Chat 模型通过本站点 `/v2/chat/completions` 完成文本流式、非流式与多轮；上游 `stream:true`、JSON gzip，经宿主 transport policy，代理/取消/日志链路可见。
+- [x] Authorization、用户、domain、企业/租户与 WorkBuddy UA/IDE/Agent/Requested-With/Stainless 头按参考来源集中维护；10085 可诊断，不读取任意 endpoint。
+- [x] 执行使用 CPA 已解析模型，检查站点并只剥离一层前缀；合法别名不因原始 payload 字面不同被拒绝，响应 model 写回站点 ID。
+- [x] 默认 system、developer、max_completion_tokens 和文本历史整形遵循参考，国内 Claude 不被冒充 Chat 已支持，工具/图片/reasoning 尚未完成时不虚报能力。
+- [x] 会话/轮次 ID 包含站点账号作用域；同轮工具循环与有界重试沿用 request ID，下一用户轮次变化；优先宿主 session，消息派生按参考行为。
+- [x] SSE 不依赖网络 chunk，拆分 UTF-8、多行事件、空 delta、usage、结束事件、异常 EOF 均保持语义与顺序；非流式聚合 content/finish_reason/usage，上游中断不返回完整伪成功。
+- [x] 请求取消/超时关闭上游读取与回调资源；缓冲区与上下游 stream ID 所有权明确，测试观察到流关闭及资源释放。
+- [x] 记录 request/sent/conversation 样本与适配位置，使用真实原生边界及协议上游完成闭环，真实账号 smoke 缺证据时单列未验证。
 
 ## Slice 06: 刷新轮换与请求恢复
 

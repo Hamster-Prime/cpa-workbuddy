@@ -30,9 +30,19 @@ type metadata struct {
 }
 
 type registration struct {
-	SchemaVersion uint32          `json:"schema_version"`
-	Metadata      metadata        `json:"metadata"`
-	Capabilities  map[string]bool `json:"capabilities"`
+	SchemaVersion uint32       `json:"schema_version"`
+	Metadata      metadata     `json:"metadata"`
+	Capabilities  capabilities `json:"capabilities"`
+}
+
+type capabilities struct {
+	ManagementAPI         bool     `json:"management_api"`
+	AuthProvider          bool     `json:"auth_provider"`
+	ModelProvider         bool     `json:"model_provider"`
+	Executor              bool     `json:"executor"`
+	ExecutorModelScope    string   `json:"executor_model_scope"`
+	ExecutorInputFormats  []string `json:"executor_input_formats"`
+	ExecutorOutputFormats []string `json:"executor_output_formats"`
 }
 
 type lifecycleRequest struct {
@@ -104,7 +114,7 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 		return Failure("plugin_shutdown", "plugin has shut down", 503)
 	}
 	switch method {
-	case "auth.identifier", "auth.parse", "auth.login.start", "auth.login.poll", "model.static", "model.for_auth":
+	case "auth.identifier", "auth.parse", "auth.login.start", "auth.login.poll", "model.static", "model.for_auth", "executor.identifier", "executor.execute", "executor.execute_stream", "executor.count_tokens", "executor.http_request":
 		if !r.registered {
 			return Failure("not_registered", "plugin.register must succeed first", 409)
 		}
@@ -139,7 +149,7 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 				Author:           "sheepyu",
 				GitHubRepository: "ygq-future/cpa-workbuddy",
 			},
-			Capabilities: map[string]bool{"management_api": true, "auth_provider": true, "model_provider": true},
+			Capabilities: capabilities{ManagementAPI: true, AuthProvider: true, ModelProvider: true, Executor: true, ExecutorModelScope: "oauth", ExecutorInputFormats: []string{"openai"}, ExecutorOutputFormats: []string{"openai"}},
 		})
 	case "plugin.quiesce":
 		r.quiesced = true
@@ -215,7 +225,7 @@ func (r *Runtime) handleAuth(ctx context.Context, method string, raw []byte) []b
 		if detail, ok := errors.AsType[*protocol.Error](err); ok {
 			return Failure(detail.Code, detail.Message, detail.HTTPStatus)
 		}
-		return Failure("auth_failed", "authentication request failed", 502)
+		return Failure("request_failed", "WorkBuddy request failed", 502)
 	}
 	return success(result)
 }

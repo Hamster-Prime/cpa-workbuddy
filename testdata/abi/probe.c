@@ -427,7 +427,7 @@ int main(int argc, char **argv) {
     failed_call(&api, "unknown-method", "workbuddy.unknown", (const uint8_t *)empty, 2, 0, "unknown_method");
     failed_call(&api, "no-plugin-identifier", "plugin.identifier", (const uint8_t *)empty, 2, 0, "unknown_method");
     failed_call(&api, "auth-before-registration", "auth.identifier", (const uint8_t *)empty, 2, 0, "not_registered");
-    failed_call(&api, "no-executor-identifier", "executor.identifier", (const uint8_t *)empty, 2, 0, "unknown_method");
+    failed_call(&api, "executor-before-registration", "executor.identifier", (const uint8_t *)empty, 2, 0, "not_registered");
 
     buffer registration = call(&api, "plugin.register", "{\"config_yaml\":null,\"schema_version\":6}");
     document registered = parse(registration);
@@ -441,11 +441,13 @@ int main(int argc, char **argv) {
     check(author >= 0 && registered.tokens[author].len > 0 && repository >= 0 &&
           registered.tokens[repository].len > 0, "host requires author and source metadata");
     int capabilities = field(&registered, result, "capabilities");
-    check(object_size(&registered, capabilities) == 3 &&
+    check(object_size(&registered, capabilities) == 7 &&
           equals(&registered, field(&registered, capabilities, "management_api"), "true") &&
           equals(&registered, field(&registered, capabilities, "auth_provider"), "true") &&
-          equals(&registered, field(&registered, capabilities, "model_provider"), "true"),
-          "registration must advertise management, authentication and account model discovery");
+          equals(&registered, field(&registered, capabilities, "model_provider"), "true") &&
+          equals(&registered, field(&registered, capabilities, "executor"), "true") &&
+          equals(&registered, field(&registered, capabilities, "executor_model_scope"), "oauth"),
+          "registration must advertise account model execution and formats");
     emit("registration", registration);
     void *registration_snapshot = malloc(registration.len);
     check(registration_snapshot != NULL, "allocating ownership snapshot failed");

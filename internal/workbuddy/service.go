@@ -88,27 +88,35 @@ type session struct {
 	token         *tokenData
 }
 
-// Service owns ephemeral login sessions. It never opens a network connection or
-// persists files; the callback and returned AuthData belong to the CPA host.
+// Service owns login sessions and in-flight model streams. Network transport
+// and credential persistence belong to the CPA host.
 type Service struct {
-	mu       sync.Mutex
-	closed   bool
-	sessions map[string]*session
+	mu         sync.Mutex
+	closed     bool
+	sessions   map[string]*session
+	execCtx    context.Context
+	cancelExec context.CancelFunc
+	jobs       sync.WaitGroup
 }
 
-func New() *Service { return &Service{sessions: make(map[string]*session)} }
+func New() *Service {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Service{sessions: make(map[string]*session), execCtx: ctx, cancelExec: cancel}
+}
 
-// Close cancels all sessions, including sessions currently polling. The caller
-// must wait for active Handle calls before releasing the native host callback.
+// Close cancels login sessions and joins model streams. The caller must also
+// wait for synchronous Handle calls before releasing the native host callback.
 func (s *Service) Close() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.closed = true
+	s.cancelExec()
 	for state, sess := range s.sessions {
 		sess.cancel()
 		sess.timer.Stop()
 		delete(s.sessions, state)
 	}
+	s.mu.Unlock()
+	s.jobs.Wait()
 }
 
 func decode(raw []byte, target any) error {
@@ -140,6 +148,10 @@ func (s *Service) Handle(ctx context.Context, method string, raw []byte, call fu
 	}
 	if method == "model.static" || method == "model.for_auth" {
 		return models(ctx, method, raw, call)
+	}
+	switch method {
+	case "executor.identifier", "executor.execute", "executor.execute_stream", "executor.count_tokens", "executor.http_request":
+		return s.execute(ctx, method, raw, call)
 	}
 	var req loginRequest
 	if err := decode(raw, &req); err != nil {

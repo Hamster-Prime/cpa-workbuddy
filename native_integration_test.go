@@ -111,12 +111,12 @@ func TestNativeABI(t *testing.T) {
 			var result struct {
 				SchemaVersion int `json:"schema_version"`
 				Metadata      struct{ Name, Version, Author, GitHubRepository string }
-				Capabilities  map[string]bool
+				Capabilities  map[string]json.RawMessage
 			}
 			if err := json.Unmarshal(envelope.Result, &result); err != nil {
 				t.Fatal(err)
 			}
-			if !envelope.OK || envelope.Error != nil || result.SchemaVersion != 6 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != expectedVersion || result.Metadata.Author != "sheepyu" || result.Metadata.GitHubRepository != "ygq-future/cpa-workbuddy" || len(result.Capabilities) != 3 || !result.Capabilities["management_api"] || !result.Capabilities["auth_provider"] || !result.Capabilities["model_provider"] {
+			if !envelope.OK || envelope.Error != nil || result.SchemaVersion != 6 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != expectedVersion || result.Metadata.Author != "sheepyu" || result.Metadata.GitHubRepository != "ygq-future/cpa-workbuddy" || len(result.Capabilities) != 7 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai"]` || string(result.Capabilities["executor_output_formats"]) != `["openai"]` {
 				t.Fatalf("registration violates CPA contract: %s", raw)
 			}
 		case "routes":
@@ -190,25 +190,25 @@ func TestNativeABI(t *testing.T) {
 }
 
 var nativeErrorScenarios = map[string]string{
-	"nil-method":               "invalid_method",
-	"nil-positive-length":      "invalid_request",
-	"oversize":                 "invalid_request",
-	"c-int-overflow":           "invalid_request",
-	"nil-request":              "invalid_request",
-	"before-registration":      "not_registered",
-	"malformed-json":           "invalid_request",
-	"embedded-nul":             "invalid_request",
-	"schema-mismatch":          "incompatible_schema",
-	"unknown-method":           "unknown_method",
-	"no-plugin-identifier":     "unknown_method",
-	"auth-before-registration": "not_registered",
-	"no-executor-identifier":   "unknown_method",
-	"wrong-path":               "route_not_found",
-	"wrong-http-method":        "method_not_allowed",
-	"quiesced":                 "plugin_quiesced",
-	"rpc-shutdown":             "plugin_shutdown",
-	"native-shutdown":          "plugin_shutdown",
-	"direct-native-shutdown":   "plugin_shutdown",
+	"nil-method":                   "invalid_method",
+	"nil-positive-length":          "invalid_request",
+	"oversize":                     "invalid_request",
+	"c-int-overflow":               "invalid_request",
+	"nil-request":                  "invalid_request",
+	"before-registration":          "not_registered",
+	"malformed-json":               "invalid_request",
+	"embedded-nul":                 "invalid_request",
+	"schema-mismatch":              "incompatible_schema",
+	"unknown-method":               "unknown_method",
+	"no-plugin-identifier":         "unknown_method",
+	"auth-before-registration":     "not_registered",
+	"executor-before-registration": "not_registered",
+	"wrong-path":                   "route_not_found",
+	"wrong-http-method":            "method_not_allowed",
+	"quiesced":                     "plugin_quiesced",
+	"rpc-shutdown":                 "plugin_shutdown",
+	"native-shutdown":              "plugin_shutdown",
+	"direct-native-shutdown":       "plugin_shutdown",
 }
 
 func nativeEnvironment(out string) []string {

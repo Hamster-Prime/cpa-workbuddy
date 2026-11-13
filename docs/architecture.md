@@ -24,6 +24,14 @@ Slice 04 声明 `model_provider`：`model.static` 返回空目录，`model.for_a
 
 相同成功模型内容沿用快照采集时间，不产生 AuthUpdate；内容、作用域或失败状态变化时才更新成功快照。CPA watcher 会比较完整凭证元数据，此规则使发现与凭证文件更新收敛。认证请求头由 `AuthData.RequestHeaders` 统一维护，站点应用名和模型前缀由 `selectSite` 提供。
 
+Slice 05 的 executor 以 OAuth 作用域接受和输出 `openai`。请求使用宿主解析的模型与凭证站点，固定发送到该站点 `/v2/chat/completions`；JSON gzip 且上游始终流式。`AuthData.RequestHeaders` 提供认证与应用归属，Chat 层补全上游 SDK 头。会话优先取 CPA canonical/execution/derived session 元数据，再按用户消息派生，账号摘要参与会话和轮次身份。
+
+`host.http.do_stream` 创建宿主持有的上游 HTTP stream，插件读取并在结束、错误或取消时关闭。下游 streaming stream ID 由 CPA 创建；插件异步解析完整 SSE 事件，通过 `host.stream.emit` 推送，最终 `host.stream.close`。Service 记录在途执行，关闭时取消并等待异步 pump 与取消回调退出，原生 Runtime 再完成卸载。非流式调用使用同一个 SSE 解析器聚合；缺少完成事件、未结束 choice、坏事件或读取中断均明确失败。单事件上限 1 MiB，聚合上限 32 MiB，实际 HTTP 取消由宿主请求 context 与 stream close 共同驱动。
+
+当前文本切片显式拒绝尚未实现的生成能力；国内 Claude 的 Messages 路由由 Slice 10 接入。`count_tokens` 与 `http_request` 返回明确不支持，不构造远端计数或任意 URL 请求。客户端协议互通的适配与证据由 Slice 11 维护。
+
+正常流式完成按 emit → close 顺序交付；取消可并发关闭下游，以中断宿主队列中阻塞的 emit。插件在每个后续事件前检查取消，并等待 pump、取消回调和清理诊断全部退出后释放宿主回调。上游启动阶段失败由 RPC error 交回 CPA，CPA 在 `rpc_client_stream.go:24-27` 清理预先分配的下游流。清理失败走带回调上下文的 `host.log`；只有宿主日志通道自身失败时才使用进程 stderr 作为最后诊断出口。
+
 ## 代码布局与版本来源
 
 ```text
