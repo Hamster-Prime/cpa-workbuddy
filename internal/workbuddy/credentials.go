@@ -152,20 +152,22 @@ func enterprise(ctx context.Context, chosen site, callbackID string, call func(s
 // credential_type marker distinguishes our versioned browser credentials from
 // API keys and desktop files, including files that happen to contain a token.
 type credential struct {
-	Provider         string     `json:"provider"`
-	Type             string     `json:"type"`
-	CredentialType   string     `json:"credential_type"`
-	Version          int        `json:"version"`
-	Site             string     `json:"site"`
-	UID              string     `json:"uid"`
-	EnterpriseID     string     `json:"enterprise_id"`
-	DisplayName      string     `json:"display_name"`
-	AccessToken      string     `json:"access_token"`
-	RefreshToken     string     `json:"refresh_token"`
-	Domain           string     `json:"domain"`
-	TokenType        string     `json:"token_type"`
-	ExpiresAt        time.Time  `json:"expires_at"`
-	RefreshExpiresAt *time.Time `json:"refresh_expires_at"`
+	Provider              string         `json:"provider"`
+	Type                  string         `json:"type"`
+	CredentialType        string         `json:"credential_type"`
+	Version               int            `json:"version"`
+	Site                  string         `json:"site"`
+	UID                   string         `json:"uid"`
+	EnterpriseID          string         `json:"enterprise_id"`
+	DisplayName           string         `json:"display_name"`
+	AccessToken           string         `json:"access_token"`
+	RefreshToken          string         `json:"refresh_token"`
+	Domain                string         `json:"domain"`
+	TokenType             string         `json:"token_type"`
+	ExpiresAt             time.Time      `json:"expires_at"`
+	RefreshExpiresAt      *time.Time     `json:"refresh_expires_at"`
+	ModelSnapshot         *modelSnapshot `json:"model_snapshot"`
+	ModelDiscoveryFailure string         `json:"model_discovery_failure"`
 }
 
 func makeAuth(chosen site, token tokenData, who account, ent enterpriseAccount) (AuthData, error) {
@@ -335,9 +337,17 @@ func (auth AuthData) RequestHeaders() (map[string][]string, error) {
 		return nil, failure("identity_mismatch", "credential scope does not match the selected account", 400)
 	}
 	headers := map[string][]string{
-		"Authorization": {"Bearer " + stored.AccessToken},
-		"X-User-Id":     {stored.UID},
-		"X-Domain":      {requestDomain(chosen, stored.Domain)},
+		"Authorization":    {"Bearer " + stored.AccessToken},
+		"X-User-Id":        {stored.UID},
+		"X-Domain":         {requestDomain(chosen, stored.Domain)},
+		"User-Agent":       {"WorkBuddy/" + appVersion + " " + chosen.appName + "/" + appVersion + " CLI/" + cliVersion},
+		"X-Requested-With": {"XMLHttpRequest"},
+		"X-Product":        {"SaaS"},
+		"X-IDE-Type":       {"WorkBuddy"},
+		"X-Agent-Intent":   {"craft"},
+		"X-Agent-Purpose":  {"conversation"},
+		"X-IDE-Name":       {"WorkBuddy"},
+		"X-IDE-Version":    {appVersion},
 	}
 	if stored.EnterpriseID != "" {
 		headers["X-Enterprise-Id"] = []string{stored.EnterpriseID}

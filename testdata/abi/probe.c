@@ -441,10 +441,11 @@ int main(int argc, char **argv) {
     check(author >= 0 && registered.tokens[author].len > 0 && repository >= 0 &&
           registered.tokens[repository].len > 0, "host requires author and source metadata");
     int capabilities = field(&registered, result, "capabilities");
-    check(object_size(&registered, capabilities) == 2 &&
+    check(object_size(&registered, capabilities) == 3 &&
           equals(&registered, field(&registered, capabilities, "management_api"), "true") &&
-          equals(&registered, field(&registered, capabilities, "auth_provider"), "true"),
-          "registration must advertise management and auth provider capabilities");
+          equals(&registered, field(&registered, capabilities, "auth_provider"), "true") &&
+          equals(&registered, field(&registered, capabilities, "model_provider"), "true"),
+          "registration must advertise management, authentication and account model discovery");
     emit("registration", registration);
     void *registration_snapshot = malloc(registration.len);
     check(registration_snapshot != NULL, "allocating ownership snapshot failed");

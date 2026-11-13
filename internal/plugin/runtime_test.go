@@ -52,7 +52,7 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	if result.Metadata.Author == "" || result.Metadata.GitHubRepository == "" {
 		t.Fatalf("metadata must meet CPA validPlugin: %+v", result.Metadata)
 	}
-	if len(result.Capabilities) != 2 || !result.Capabilities["management_api"] || !result.Capabilities["auth_provider"] {
+	if len(result.Capabilities) != 3 || !result.Capabilities["management_api"] || !result.Capabilities["auth_provider"] || !result.Capabilities["model_provider"] {
 		t.Fatalf("unexpected capabilities: %v", result.Capabilities)
 	}
 	assertError("plugin.identifier", `{}`, "unknown_method")
@@ -61,7 +61,11 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 		t.Fatalf("unexpected auth identifier: %s", identifier)
 	}
 	assertError("executor.identifier", `{}`, "unknown_method")
-	assertError("model.static", `{}`, "unknown_method")
+	static := call("model.static", `{}`)
+	var catalog struct{ Models []json.RawMessage }
+	if err := json.Unmarshal(static["result"], &catalog); err != nil || string(static["ok"]) != "true" || catalog.Models == nil || len(catalog.Models) != 0 {
+		t.Fatalf("static models granted routing permissions: %s", static)
+	}
 	assertError("management.register", `{}`, "invalid_request")
 	assertError("management.handle", `{"Method":"GET","Path":"/missing"}`, "route_not_found")
 	assertError("management.handle", `{"Method":"POST","Path":"/v0/management/plugins/cpa-workbuddy/status"}`, "method_not_allowed")

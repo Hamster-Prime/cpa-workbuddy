@@ -104,7 +104,7 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 		return Failure("plugin_shutdown", "plugin has shut down", 503)
 	}
 	switch method {
-	case "auth.identifier", "auth.parse", "auth.login.start", "auth.login.poll":
+	case "auth.identifier", "auth.parse", "auth.login.start", "auth.login.poll", "model.static", "model.for_auth":
 		if !r.registered {
 			return Failure("not_registered", "plugin.register must succeed first", 409)
 		}
@@ -139,7 +139,7 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 				Author:           "sheepyu",
 				GitHubRepository: "ygq-future/cpa-workbuddy",
 			},
-			Capabilities: map[string]bool{"management_api": true, "auth_provider": true},
+			Capabilities: map[string]bool{"management_api": true, "auth_provider": true, "model_provider": true},
 		})
 	case "plugin.quiesce":
 		r.quiesced = true

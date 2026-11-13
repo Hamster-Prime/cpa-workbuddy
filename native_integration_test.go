@@ -116,7 +116,7 @@ func TestNativeABI(t *testing.T) {
 			if err := json.Unmarshal(envelope.Result, &result); err != nil {
 				t.Fatal(err)
 			}
-			if !envelope.OK || envelope.Error != nil || result.SchemaVersion != 6 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != expectedVersion || result.Metadata.Author != "sheepyu" || result.Metadata.GitHubRepository != "ygq-future/cpa-workbuddy" || len(result.Capabilities) != 2 || !result.Capabilities["management_api"] || !result.Capabilities["auth_provider"] {
+			if !envelope.OK || envelope.Error != nil || result.SchemaVersion != 6 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != expectedVersion || result.Metadata.Author != "sheepyu" || result.Metadata.GitHubRepository != "ygq-future/cpa-workbuddy" || len(result.Capabilities) != 3 || !result.Capabilities["management_api"] || !result.Capabilities["auth_provider"] || !result.Capabilities["model_provider"] {
 				t.Fatalf("registration violates CPA contract: %s", raw)
 			}
 		case "routes":

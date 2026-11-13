@@ -17,6 +17,7 @@ import (
 const (
 	provider    = "workbuddy"
 	appVersion  = "5.9.3"
+	cliVersion  = "2.165.0"
 	loginWindow = 5 * time.Minute
 	maxSessions = 128
 )
@@ -35,17 +36,19 @@ func failure(code, message string, status int) *Error {
 }
 
 type site struct {
-	id       string
-	name     string
-	endpoint string
+	id          string
+	name        string
+	endpoint    string
+	appName     string
+	modelPrefix string
 }
 
 func selectSite(id string) (site, bool) {
 	switch id {
 	case "workbuddy":
-		return site{id: id, name: "WorkBuddy", endpoint: "https://copilot.tencent.com"}, true
+		return site{id: id, name: "WorkBuddy", endpoint: "https://copilot.tencent.com", appName: "WorkBuddy", modelPrefix: "wb/"}, true
 	case "workbuddy-ai":
-		return site{id: id, name: "WorkBuddy AI", endpoint: "https://www.workbuddy.ai"}, true
+		return site{id: id, name: "WorkBuddy AI", endpoint: "https://www.workbuddy.ai", appName: "workbuddy-ai", modelPrefix: "wb-ai/"}, true
 	default:
 		return site{}, false
 	}
@@ -134,6 +137,9 @@ func (s *Service) Handle(ctx context.Context, method string, raw []byte, call fu
 	}
 	if method == "auth.parse" {
 		return parse(raw)
+	}
+	if method == "model.static" || method == "model.for_auth" {
+		return models(ctx, method, raw, call)
 	}
 	var req loginRequest
 	if err := decode(raw, &req); err != nil {
@@ -399,8 +405,9 @@ type hostRequest struct {
 }
 
 type upstreamError struct {
-	status int
-	code   int
+	status       int
+	code         int
+	invalidToken bool
 }
 
 func (e *upstreamError) Error() string { return "WorkBuddy request failed" }
@@ -429,7 +436,9 @@ func request(ctx context.Context, chosen site, callbackID string, call func(stri
 	}
 	headers["Content-Type"] = []string{"application/json"}
 	headers["Accept"] = []string{"application/json"}
-	headers["User-Agent"] = []string{"WorkBuddy/" + appVersion}
+	if len(headers["User-Agent"]) == 0 {
+		headers["User-Agent"] = []string{"WorkBuddy/" + appVersion}
+	}
 	raw, err := json.Marshal(hostRequest{Method: method, URL: chosen.endpoint + path, Headers: headers, Body: body, HostCallbackID: callbackID})
 	if err != nil {
 		return failure("internal_error", "cannot encode host HTTP request", 500)
@@ -457,6 +466,17 @@ func request(ctx context.Context, chosen site, callbackID string, call func(stri
 		Data json.RawMessage `json:"data"`
 	}
 	status := envelope.Result.StatusCode
+	if status == 401 || status >= 500 {
+		invalidToken := false
+		for key, values := range envelope.Result.Headers {
+			if strings.EqualFold(key, "WWW-Authenticate") {
+				for _, value := range values {
+					invalidToken = invalidToken || strings.Contains(strings.ToLower(value), "invalid_token")
+				}
+			}
+		}
+		return &upstreamError{status: status, invalidToken: invalidToken}
+	}
 	if status == 408 || status == 429 {
 		return &upstreamError{status: status}
 	}

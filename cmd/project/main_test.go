@@ -390,11 +390,25 @@ func TestNativeSmokeRequiresABITest(t *testing.T) {
 		"cmd/cpa-workbuddy/main.go",
 		"cmd/cpa-workbuddy/native.c",
 		"cmd/cpa-workbuddy/native.h",
-		"internal/plugin/runtime.go",
-		"internal/workbuddy/service.go",
-		"internal/workbuddy/credentials.go",
 	} {
 		copyFixtureFile(t, filepath.Join(repositoryRoot, relative), filepath.Join(f.root, relative))
+	}
+	err := filepath.WalkDir(filepath.Join(repositoryRoot, "internal"), func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+			return nil
+		}
+		relative, err := filepath.Rel(repositoryRoot, path)
+		if err != nil {
+			return err
+		}
+		copyFixtureFile(t, path, filepath.Join(f.root, relative))
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 	writeFixtureFile(t, filepath.Join(f.root, "ordinary_test.go"), `package workbuddy_test
 
