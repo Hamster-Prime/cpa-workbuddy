@@ -200,8 +200,6 @@ func TestChatRequestRejectsUnsupportedAndInvalidInputBeforeHTTP(t *testing.T) {
 		{"null-text-part", "wb/glm-5.3", `{"messages":[{"role":"user","content":[{"type":"text","text":null}]}]}`, "invalid_request"},
 		{"unknown-role", "wb/glm-5.3", `{"messages":[{"role":"other","content":"hi"}]}`, "invalid_request"},
 		{"bad-stream-options", "wb/glm-5.3", `{"messages":[{"role":"user","content":"hi"}],"stream_options":[]}`, "invalid_request"},
-		{"tools", "wb/glm-5.3", `{"messages":[{"role":"user","content":"hi"}],"tools":[{"type":"function","function":{"name":"f"}}]}`, "unsupported_feature"},
-		{"tool-choice", "wb/glm-5.3", `{"messages":[{"role":"user","content":"hi"}],"tool_choice":"auto"}`, "unsupported_feature"},
 		{"legacy-function-history", "wb/glm-5.3", `{"messages":[{"role":"function","content":"result"}]}`, "unsupported_feature"},
 		{"image-input", "wb/glm-5.3", `{"messages":[{"role":"user","content":[{"type":"image_url","image_url":{"url":"https://example.invalid/image"}}]}]}`, "unsupported_feature"},
 		{"reasoning-effort", "wb/glm-5.3", `{"messages":[{"role":"user","content":"hi"}],"reasoning_effort":"high"}`, "unsupported_feature"},

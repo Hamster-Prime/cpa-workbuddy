@@ -235,7 +235,6 @@ func TestExecutorResponseRejectsIncompleteMalformedAndUnsupportedStreams(t *test
 		{"error-event", "event: error\n" + responseFrame(`{"message":"private-stream-secret"}`), "upstream_stream_error", ""},
 		{"version-error", responseFrame(`{"code":10085,"message":"private-stream-secret"}`), "upstream_client_version_rejected", "WorkBuddy client version rejected"},
 		{"nested-version-error", "event: error\n" + responseFrame(`{"error":{"code":"10085","message":"private-stream-secret"}}`), "upstream_client_version_rejected", "WorkBuddy client version rejected"},
-		{"tool-response", responseFrame(`{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call","function":{"name":"search"}}]},"finish_reason":null}]}`), "unsupported_upstream_response", ""},
 		{"reasoning-response", responseFrame(`{"choices":[{"index":0,"delta":{"reasoning_content":"private-stream-secret"},"finish_reason":null}]}`), "unsupported_upstream_response", ""},
 		{"nontext-content", responseFrame(`{"choices":[{"index":0,"delta":{"content":[{"type":"image_url"}]},"finish_reason":null}]}`), "upstream_stream_malformed", ""},
 	}

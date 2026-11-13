@@ -158,7 +158,7 @@ Acceptance criteria:
 
 ## Slice 08: Chat 工具调用闭环
 
-Status: pending
+Status: completed
 
 Blocked by: 05
 
@@ -168,12 +168,20 @@ What to build:
 
 Acceptance criteria:
 
-- [ ] 工具 JSON Schema 根对象、组合、$ref、enum/type、tuple、布尔 schema、空/非法字段及参考转义按上游样本迁移，有界递归且不破坏合法 schema。
-- [ ] 不合法工具名安全化后碰撞可区分，tools、tool_choice、历史调用同步映射，客户端流式与非流式响应恢复各自原名，不将不同工具合并。
-- [ ] tool_choice 的 none/字符串/对象形式遵循参考可表达语义，不静默改变调用方明确选择。
-- [ ] SSE 工具参数跨 UTF-8/网络碎片、多个 tool index/id、空 delta 和完成事件可重组，聚合包含 tool_calls、finish_reason、usage。
-- [ ] 完整工具调用 → 客户端结果 → 后续轮请求可成功，保持同用户轮次归属；下一用户消息生成新轮次，多账号不会共享会话 ID。
-- [ ] tools 上游测试与公共协议边界场景有对应，既验证碰撞和历史可逆，也验证干净工具请求不被无端改写。
+- [x] 工具 JSON Schema 根对象、组合、$ref、enum/type、tuple、布尔 schema、空/非法字段及参考转义按上游样本迁移，有界递归且不破坏合法 schema。
+- [x] 不合法工具名安全化后碰撞可区分，tools、tool_choice、历史调用同步映射，客户端流式与非流式响应恢复各自原名，不将不同工具合并。
+- [x] tool_choice 的 none/字符串/对象形式遵循参考可表达语义，不静默改变调用方明确选择。
+- [x] SSE 工具参数跨 UTF-8/网络碎片、多个 tool index/id、空 delta 和完成事件可重组，聚合包含 tool_calls、finish_reason、usage。
+- [x] 完整工具调用 → 客户端结果 → 后续轮请求可成功，保持同用户轮次归属；下一用户消息生成新轮次，多账号不会共享会话 ID。
+- [x] tools 上游测试与公共协议边界场景有对应，既验证碰撞和历史可逆，也验证干净工具请求不被无端改写。
+
+Implementation decisions:
+
+- 合法工具名预先保留；非法原名排序后按参考下划线与编号分配安全名称，使声明顺序变化不影响碰撞映射。映射仅保存在当前请求，并用于工具声明、历史、明确选择及响应。
+- `none` 按参考移除生成工具；字符串与对象选择转换为 WorkBuddy 可表达形式。格式错误、缺少名称、未知选择、重复工具声明及与 none/auto/required 关键字冲突的强制函数名返回明确客户端错误，避免把明确选择静默降级为 auto。
+- 工具 Schema 递归上限为 64；超限明确拒绝，不跳过未适配的深层内容。流式调用不保存参数历史，非流式参数计入既有 32 MiB 聚合上限；保留单事件 1 MiB 上限。
+- 接受参考允许的 `{function:{…}}` 工具形状并补全 function 类型；缺省 parameters 统一为根对象。工具流的空/null 可选元数据视为未提供，完成时仍要求完整且唯一的调用 ID 和名称。
+- 工具名也允许分片；存在可逆映射时先按 index 收集名称，并在完成事件交付完整客户端原名，参数碎片继续即时转发，不累计流式参数正文。
 
 ## Slice 09: Chat 图片与reasoning能力
 

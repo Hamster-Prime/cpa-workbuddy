@@ -2,7 +2,7 @@
 
 面向 CLIProxyAPI（CPA）的 WorkBuddy 原生动态库插件，一个 provider `workbuddy` 承载国内 `copilot.tencent.com` 与国际 `www.workbuddy.ai` 的多个账号及个人/企业身份。
 
-**已实现工程基线及 Slice 01–07：原生接入、双站点浏览器登录与恢复、个人/企业身份管理、账号模型发现、Chat 文本执行、凭证刷新和永久认证失效恢复。** 同身份重新登录更新原记录并保留宿主管理设置；模型使用 `wb/`、`wb-ai/` 前缀。Chat 支持流式、非流式与多轮文本；三类刷新共用账号代次协调，首次 401 最多恢复一次。明确的永久认证拒绝保留原记录并停止调度，同身份重新登录恢复认证资格。国内 Claude 的 Messages 路由、工具、图片、reasoning 和客户端协议互通按后续切片交付。各项验证状态见 [任务表](docs/tasks/workbuddy-plugin.md) 与 [兼容性记录](docs/compatibility.md)。
+**已实现工程基线及 Slice 01–08：原生接入、双站点浏览器登录与恢复、个人/企业身份管理、账号模型发现、Chat 文本与工具调用、凭证刷新和永久认证失效恢复。** 同身份重新登录更新原记录并保留宿主管理设置；模型使用 `wb/`、`wb-ai/` 前缀。Chat 支持流式、非流式、多轮及客户端工具循环，碰撞工具名可逆映射，工具参数按调用独立聚合；三类刷新共用账号代次协调，首次 401 最多恢复一次。明确的永久认证拒绝保留原记录并停止调度，同身份重新登录恢复认证资格。国内 Claude 的 Messages 路由、图片、reasoning 和客户端协议互通按后续切片交付。各项验证状态见 [任务表](docs/tasks/workbuddy-plugin.md) 与 [兼容性记录](docs/compatibility.md)。
 
 插件 ID 为 `cpa-workbuddy`，作者 `sheepyu`。产品版本唯一来源是 [VERSION](VERSION)；计划仓库为 `ygq-future/cpa-workbuddy`，远程仓库尚未创建。提交、推送和发布需用户明确授权。
 

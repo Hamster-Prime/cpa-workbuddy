@@ -28,7 +28,7 @@ Slice 05 的 executor 以 OAuth 作用域接受和输出 `openai`。请求使用
 
 `host.http.do_stream` 创建宿主持有的上游 HTTP stream，插件读取并在结束、错误或取消时关闭。下游 streaming stream ID 由 CPA 创建；插件异步解析完整 SSE 事件，通过 `host.stream.emit` 推送，最终 `host.stream.close`。Service 记录在途执行，关闭时取消并等待异步 pump 与取消回调退出，原生 Runtime 再完成卸载。非流式调用使用同一个 SSE 解析器聚合；缺少完成事件、未结束 choice、坏事件或读取中断均明确失败。单事件上限 1 MiB，聚合上限 32 MiB，实际 HTTP 取消由宿主请求 context 与 stream close 共同驱动。
 
-当前文本切片显式拒绝尚未实现的生成能力；国内 Claude 的 Messages 路由由 Slice 10 接入。`count_tokens` 与 `http_request` 返回明确不支持，不构造远端计数或任意 URL 请求。客户端协议互通的适配与证据由 Slice 11 维护。
+Chat 显式拒绝尚未实现的生成能力；国内 Claude 的 Messages 路由由 Slice 10 接入。`count_tokens` 与 `http_request` 返回明确不支持，不构造远端计数或任意 URL 请求。客户端协议互通的适配与证据由 Slice 11 维护。
 
 正常流式完成按 emit → close 顺序交付；取消可并发关闭下游，以中断宿主队列中阻塞的 emit。插件在每个后续事件前检查取消，并等待 pump、取消回调和清理诊断全部退出后释放宿主回调。上游启动阶段失败由 RPC error 交回 CPA，CPA 在 `rpc_client_stream.go:24-27` 清理预先分配的下游流。清理失败走带回调上下文的 `host.log`；只有宿主日志通道自身失败时才使用进程 stderr 作为最后诊断出口。
 
@@ -43,6 +43,10 @@ Slice 07 的 `credential_state` 是带版本的凭证状态对象：`version=1`�
 插件先通过 `host.auth.list` 核对 `credential_state_version=1`，再发送带 `expected_credential_json` 的保存请求。独立 CPA 补丁比较稳定 ID/provider、当前 token、credential_generation 和当前 credential_state，在共享凭证文件锁内完成预期代次校验、原子写入及 Manager 安装；安装使用宿主已有的 skip-persist context，避免递归写盘。登录存储共用该文件锁，旧请求/刷新/缓存不能跨越新登录代次写回。已由其他请求保存的同代终态视为幂等成功，返回需要重新登录而非暂时保存失败。
 
 宿主把有效状态映射到 `StatusError`、`Unavailable`、HTTP 401 `reauth_required` 与空刷新计划，并在加载、候选选择、刷新和迟到结果处理时维护该约束；手动 Disabled 保持独立。重新登录替换 token 后只清理认证错误及 401 模型状态，保留宿主管理设置、额度和其他模型限制。失效状态保存失败返回 `credential_state_save_failed` 并保留内存拒绝结果，避免重复消费被拒绝的 token；持久化未成功时重启风险明确可见。
+
+Slice 08 在 Chat 请求整形边界处理工具 Schema 与名称。Schema 只遍历协议定义的子 Schema 位置，保留 examples、属性名称和合法约束；根对象、组合、引用、enum/type、tuple 与布尔 Schema 按固定参考适配，递归有界。合法工具名预先占位，非法原名排序后分配唯一安全名称；声明、明确选择与历史调用使用同一映射，SSE 与聚合结果恢复客户端原名。映射不跨请求或账号持久化。
+
+同一 choice 的工具流按 tool index 独立记录 ID、类型和原名；参数碎片按到达顺序连接，完成时校验调用身份完整且不重用 ID。流式路径转发完整事件而不累计参数正文，非流式路径把参数计入既有聚合上限。客户端执行工具并提交结果，插件只适配后续历史，不执行客户端工具；工具循环沿用原用户轮次，新用户消息开启新轮次。
 
 ## 代码布局与版本来源
 

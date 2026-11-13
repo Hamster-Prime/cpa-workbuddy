@@ -20,11 +20,12 @@ type chatChoice struct {
 	refusal  strings.Builder
 	role     string
 	finished bool
+	tools    map[int]*chatToolCall
 }
 
 // consumeChatStream translates the upstream SSE stream without retaining its
 // transport chunks. A terminal read may still contain the final event bytes.
-func consumeChatStream(read func() ([]byte, bool, error), model string, emit func([]byte) error) ([]byte, error) {
+func consumeChatStream(read func() ([]byte, bool, error), model string, toolNames map[string]string, emit func([]byte) error) ([]byte, error) {
 	choices := make(map[int]*chatChoice)
 	top := make(map[string]json.RawMessage)
 	modelJSON, err := json.Marshal(model)
@@ -91,7 +92,7 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, emit fun
 			return malformed()
 		}
 		seen := make(map[int]bool, len(rawChoices))
-		for _, rawChoice := range rawChoices {
+		for choiceIndex, rawChoice := range rawChoices {
 			var wire map[string]json.RawMessage
 			if json.Unmarshal(rawChoice, &wire) != nil || wire == nil {
 				return malformed()
@@ -123,6 +124,17 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, emit fun
 				}
 			}
 			for key, raw := range delta {
+				if key == "tool_calls" {
+					if !chatHasJSONValue(raw) {
+						continue
+					}
+					fitted, err := choice.addToolDeltas(raw, toolNames, emit == nil, &aggregateSize)
+					if err != nil {
+						return err
+					}
+					delta[key] = fitted
+					continue
+				}
 				if key != "role" && key != "content" && key != "refusal" {
 					if chatHasJSONValue(raw) && !bytes.Equal(raw, []byte(`""`)) && !bytes.Equal(raw, []byte("[]")) {
 						return failure("unsupported_upstream_response", "WorkBuddy returned an unsupported chat response", 502)
@@ -156,8 +168,19 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, emit fun
 				if json.Unmarshal(raw, &reason) != nil || reason == "" || choice.finished {
 					return malformed()
 				}
-				if reason == "tool_calls" || reason == "function_call" {
-					return failure("unsupported_upstream_response", "WorkBuddy returned an unsupported chat response", 502)
+				if reason == "function_call" {
+					return failure("unsupported_upstream_response", "WorkBuddy returned legacy function calls", 502)
+				}
+				if !choice.completeTools() || reason == "tool_calls" && len(choice.tools) == 0 {
+					return malformed()
+				}
+				if emit != nil && len(toolNames) > 0 && len(choice.tools) > 0 {
+					if delta == nil {
+						delta = make(map[string]json.RawMessage)
+					}
+					if err := choice.finishToolNames(delta, toolNames); err != nil {
+						return err
+					}
 				}
 				choice.finished = true
 			}
@@ -172,8 +195,27 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, emit fun
 					}
 				}
 			}
+			if emit != nil && len(toolNames) > 0 && delta != nil {
+				encoded, err := json.Marshal(delta)
+				if err != nil {
+					return malformed()
+				}
+				wire["delta"] = encoded
+				encoded, err = json.Marshal(wire)
+				if err != nil {
+					return malformed()
+				}
+				rawChoices[choiceIndex] = encoded
+			}
 		}
 		if emit != nil {
+			if len(toolNames) > 0 {
+				encoded, err := json.Marshal(rawChoices)
+				if err != nil {
+					return malformed()
+				}
+				chunk["choices"] = encoded
+			}
 			chunk["model"] = modelJSON
 			raw, err := json.Marshal(chunk)
 			if err != nil {
@@ -287,6 +329,12 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, emit fun
 		message := map[string]any{"role": role, "content": choice.content.String()}
 		if choice.refusal.Len() > 0 {
 			message["refusal"] = choice.refusal.String()
+		}
+		if len(choice.tools) > 0 {
+			message["tool_calls"] = choice.aggregatedTools(toolNames)
+			if choice.content.Len() == 0 {
+				message["content"] = nil
+			}
 		}
 		messageJSON, err := json.Marshal(message)
 		if err != nil {

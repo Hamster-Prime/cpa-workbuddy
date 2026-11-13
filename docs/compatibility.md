@@ -240,3 +240,18 @@ Slice 02 已通过隔离实际 CPA 宿主/管理处理器的 DLL 加载、双站
 - 累计补丁仍为 `out/verification/cpa-refresh-contract.patch`，独立副本及补丁没有提交 CPA 仓库，原参考目录未修改。真实账号、完整 CPA server/管理前端、容器和其他平台尚未验证；独立进程证明仅覆盖本机 Windows amd64 的宿主加载与文件恢复。
 - 最终契约审查补齐同 token 重新登录与失效保存确认丢失的边界：成功登录生成独立 `credential_generation`，刷新/解析保持，旋转缓存按 refresh token 和代次共同索引，宿主 CAS 和 CredentialsChanged 同时识别代次。已有终态的幂等保存返回 `reauth_required`。`TestSameTokenLoginClearsCachedRejection`、`TestLostTerminalSaveAcknowledgmentAdoptsPersistedState`、`TestCredentialGenerationRecognizesSameTokenLoginAndLegacyRecords`、`TestHostCredentialCASRejectsSameTokenPreviousLoginGeneration` 均通过；代次为空的旧凭证与其他 provider 行为保持。
 - 最终收敛同时验证“新登录代次已失效”的采用路径：`TestAdoptedRejectedGenerationRemainsBlocked` 证明不发送任何该代次上游请求。插件竞态、宿主三包、完整 quality 与宿主 16 文件 LSP 随后重新通过；正确性与架构审查确认无剩余阻断项。
+
+## Slice 08 Chat 工具调用映射
+
+| 固定上游来源 | 本项目适配 | 公共边界证据 |
+|---|---|---|
+| `_ref/index.mjs` fitSchema/fitShape/objectRoot/typeUnions；`tools.test.mjs:13-62,128-211` | `tool_schema.go` normalizeToolSchema；`chat_tools.go` 请求接入 | `tool_schema_test.go` 根对象、组合/引用、enum/type、tuple、布尔 Schema、转义、数据字段保护、精确数字及递归上限 |
+| `_ref/index.mjs:1169-1176,1448-1490` fitTools；`tools.test.mjs:73-91` | `chat_tools.go` 请求级双向映射、声明/选择/历史同步 | `TestChatToolsNamesChoicesAndHistoryStayReversible`、`TestChatToolsDefinitionOrderKeepsHistoricalNames`，合法名称占位、碰撞区分与声明顺序稳定 |
+| `_ref/index.mjs:1126-1156` toolChoiceOn | `chat_tools.go` none/auto/required/具体函数转换 | `TestChatRequestToolDisableFormsProduceTextRequests`、`TestChatToolsCleanDefinitionsAndExplicitSelection`、`TestChatToolsRejectAmbiguousDefinitionsAndReservedForcedNames` |
+| `_ref/index.mjs:1649-1663` namedBack；`tools.test.mjs:94-118` | `chat_response.go` SSE 事件；`chat_tools_response.go` 每 choice/tool index 聚合及原名回写 | `TestChatToolsInterleavedFragmentsRestoreNamesAndAggregate`、`TestChatToolsMalformedOrIncompleteCallsFail`、`TestChatToolsArgumentsRespectAggregateLimit` |
+
+- `go test -timeout=120s ./internal/workbuddy ./internal/plugin` 和 `go test -race -timeout=120s ./internal/workbuddy ./internal/plugin` exit 0，日志 `out/logs/slice08-plugin-tests.log`、`slice08-race.log`。Schema 深度超过 64 明确报错，examples 等数据位置不参与 Schema 修复；数字使用 `json.Number`，不通过浮点转换破坏大整数。单事件仍为 1 MiB，非流式工具参数计入 32 MiB 聚合上限。
+- `go run ./cmd/project quality` 十阶段 exit 0，日志 `out/logs/slice08-quality.log`；逐文件 LSP hint 与 lint 均通过。Schema 引用遍历采用 SplitSeq、切片查找及 map 复制使用标准库；工具名字符规则由同一函数维护。
+- 设置既有 `WORKBUDDY_SMOKE_PLUGIN_DIR` 与 `WORKBUDDY_SMOKE_TMP` 后，`go -C out/verification/cpa-smoke test -timeout=60s -count=1 -run '^TestCPAChatTools$' -v .` exit 0。真实 CPA Manager、native DLL 和宿主 HTTP 回调完成双站点各两种输出模式的三工具调用、客户端结果回传及下一用户轮次。验证碰撞原名恢复、工具 ID/参数、usage/停止原因、17 字节网络读取、同轮请求 ID 稳定、新轮次变化与跨站点隔离。日志 `out/logs/slice08-native-tools.log`。
+- 本片无需扩展宿主契约；真实工具执行由客户端负责，协议模拟上游不代替 CPA/插件逻辑。真实账号工具 smoke、完整 server/管理前端、容器和其他平台仍未验证。
+- 契约审查补齐参考允许的缺省 function 类型、强制 `NONE` 名称冲突，以及名称分片和空/null 流元数据。`TestChatToolsAcceptFunctionShapeAndRejectForcedNoneCase`、`TestChatToolsSplitNamesAndEmptyMetadata` 从公开执行边界验证；完成时仍拒绝缺失或重复调用 ID。映射名称在完成事件发布，参数保持流式顺序。

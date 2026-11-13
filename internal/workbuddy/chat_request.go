@@ -34,8 +34,9 @@ type executorRequest struct {
 }
 
 type preparedChat struct {
-	request hostRequest
-	model   string
+	request   hostRequest
+	model     string
+	toolNames map[string]string
 }
 
 const maxChatPayload = 32 << 20
@@ -78,36 +79,9 @@ func prepareChat(req executorRequest) (preparedChat, error) {
 	if err := decode(req.Payload, &body); err != nil {
 		return preparedChat{}, err
 	}
-	for _, selector := range []string{"tool_choice", "function_call"} {
-		value := bytes.TrimSpace(body[selector])
-		if !nonemptyChatValue(value) {
-			continue
-		}
-		var choice string
-		if len(value) > 0 && value[0] == '"' {
-			if err := json.Unmarshal(value, &choice); err != nil {
-				return preparedChat{}, failure("invalid_request", "invalid tool selection", 400)
-			}
-		} else if selector == "tool_choice" {
-			var object struct {
-				Type string `json:"type"`
-			}
-			if err := json.Unmarshal(value, &object); err != nil {
-				return preparedChat{}, failure("invalid_request", "invalid tool selection", 400)
-			}
-			choice = object.Type
-		}
-		if !strings.EqualFold(strings.TrimSpace(choice), "none") {
-			return preparedChat{}, failure("unsupported_feature", "tool generation is not supported by text chat execution", 400)
-		}
-		delete(body, selector)
-		delete(body, "tools")
-		delete(body, "functions")
-		delete(body, "parallel_tool_calls")
-	}
-	for _, field := range []string{"tools", "parallel_tool_calls", "functions", "function_call", "reasoning_effort", "reasoning", "thinking", "generate", "image", "image_generation", "audio"} {
+	for _, field := range []string{"reasoning_effort", "reasoning", "thinking", "generate", "image", "image_generation", "audio"} {
 		if nonemptyChatValue(body[field]) {
-			return preparedChat{}, failure("unsupported_feature", "chat execution currently supports text without tools, images, or reasoning controls", 400)
+			return preparedChat{}, failure("unsupported_feature", "Chat execution does not support image generation, audio, or reasoning controls", 400)
 		}
 	}
 	if nonemptyChatValue(body["modalities"]) {
@@ -117,6 +91,10 @@ func prepareChat(req executorRequest) (preparedChat, error) {
 		}
 	}
 	messages, err := readChatMessages(body["messages"])
+	if err != nil {
+		return preparedChat{}, err
+	}
+	toolNames, err := fitChatTools(body, messages)
 	if err != nil {
 		return preparedChat{}, err
 	}
@@ -170,8 +148,9 @@ func prepareChat(req executorRequest) (preparedChat, error) {
 	}
 	setChatHeaders(headers)
 	return preparedChat{
-		request: hostRequest{Method: http.MethodPost, URL: chosen.endpoint + "/v2/chat/completions", Headers: headers, Body: compressed.Bytes(), HostCallbackID: req.HostCallbackID},
-		model:   req.Model,
+		request:   hostRequest{Method: http.MethodPost, URL: chosen.endpoint + "/v2/chat/completions", Headers: headers, Body: compressed.Bytes(), HostCallbackID: req.HostCallbackID},
+		model:     req.Model,
+		toolNames: toolNames,
 	}, nil
 }
 

@@ -265,7 +265,7 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 		}
 		read := func() ([]byte, bool, error) { return lease.read(ctx) }
 		if !streaming {
-			payload, parseErr := consumeChatStream(read, prepared.model, nil)
+			payload, parseErr := consumeChatStream(read, prepared.model, prepared.toolNames, nil)
 			closeErr := cleanup()
 			finish()
 			if parseErr != nil || closeErr != nil {
@@ -275,7 +275,7 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 		}
 		go func() {
 			defer finish()
-			_, streamErr := consumeChatStream(read, prepared.model, func(payload []byte) error {
+			_, streamErr := consumeChatStream(read, prepared.model, prepared.toolNames, func(payload []byte) error {
 				if ctx.Err() != nil {
 					return failure("request_cancelled", "WorkBuddy request was cancelled or expired", 408)
 				}
