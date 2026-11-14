@@ -153,24 +153,23 @@ func enterprise(ctx context.Context, chosen site, callbackID string, call func(s
 // credential_type marker distinguishes our versioned browser credentials from
 // API keys and desktop files, including files that happen to contain a token.
 type credential struct {
-	Provider              string           `json:"provider"`
-	Type                  string           `json:"type"`
-	CredentialType        string           `json:"credential_type"`
-	Version               int              `json:"version"`
-	Site                  string           `json:"site"`
-	UID                   string           `json:"uid"`
-	EnterpriseID          string           `json:"enterprise_id"`
-	DisplayName           string           `json:"display_name"`
-	AccessToken           string           `json:"access_token"`
-	RefreshToken          string           `json:"refresh_token"`
-	Domain                string           `json:"domain"`
-	TokenType             string           `json:"token_type"`
-	ExpiresAt             time.Time        `json:"expires_at"`
-	RefreshExpiresAt      *time.Time       `json:"refresh_expires_at"`
-	ModelSnapshot         *modelSnapshot   `json:"model_snapshot"`
-	ModelDiscoveryFailure string           `json:"model_discovery_failure"`
-	State                 *credentialState `json:"credential_state"`
-	Generation            string           `json:"credential_generation"`
+	Provider              string         `json:"provider"`
+	Type                  string         `json:"type"`
+	CredentialType        string         `json:"credential_type"`
+	Version               int            `json:"version"`
+	Site                  string         `json:"site"`
+	UID                   string         `json:"uid"`
+	EnterpriseID          string         `json:"enterprise_id"`
+	DisplayName           string         `json:"display_name"`
+	AccessToken           string         `json:"access_token"`
+	RefreshToken          string         `json:"refresh_token"`
+	Domain                string         `json:"domain"`
+	TokenType             string         `json:"token_type"`
+	ExpiresAt             time.Time      `json:"expires_at"`
+	RefreshExpiresAt      *time.Time     `json:"refresh_expires_at"`
+	ModelSnapshot         *modelSnapshot `json:"model_snapshot"`
+	ModelDiscoveryFailure string         `json:"model_discovery_failure"`
+	Generation            string         `json:"credential_generation"`
 }
 
 func makeAuth(chosen site, token tokenData, who account, ent enterpriseAccount) (AuthData, error) {
@@ -212,7 +211,7 @@ func credentialSite(stored credential) (site, error) {
 		strings.TrimSpace(stored.AccessToken) == "" || stored.ExpiresAt.IsZero() || stored.ExpiresAt.UnixMilli() <= 0 ||
 		stored.EnterpriseID != strings.TrimSpace(stored.EnterpriseID) || !safeValue(stored.UID) || !safeValue(stored.EnterpriseID) ||
 		!safeValue(stored.AccessToken) || !safeValue(stored.RefreshToken) || !safeValue(stored.Domain) || !safeValue(stored.TokenType) ||
-		(stored.RefreshExpiresAt != nil && (stored.RefreshExpiresAt.IsZero() || stored.RefreshExpiresAt.UnixMilli() <= 0)) || !validCredentialState(stored) {
+		(stored.RefreshExpiresAt != nil && (stored.RefreshExpiresAt.IsZero() || stored.RefreshExpiresAt.UnixMilli() <= 0)) {
 		return site{}, failure("invalid_credentials", "invalid WorkBuddy browser credentials", 400)
 	}
 	return chosen, nil
@@ -247,11 +246,13 @@ func authFromCredential(stored credential, metadata map[string]any) (AuthData, e
 	if metadata == nil {
 		metadata = make(map[string]any)
 	}
+	delete(metadata, "credential_state")
 	var own map[string]any
 	if err := json.Unmarshal(raw, &own); err != nil {
 		return AuthData{}, failure("internal_error", "cannot encode browser credentials", 500)
 	}
 	maps.Copy(metadata, own)
+	metadata["refresh_interval_seconds"] = int64(refreshLead / time.Second)
 	label := chosen.name + " · " + stored.DisplayName
 	if stored.DisplayName == "" {
 		label = chosen.name
@@ -261,8 +262,7 @@ func authFromCredential(stored credential, metadata map[string]any) (AuthData, e
 	return AuthData{
 		Provider: provider, ID: id, FileName: id + ".json", Label: label, ProxyURL: proxy, Disabled: disabled,
 		StorageJSON: raw, Metadata: metadata,
-		Attributes:       map[string]string{"site": stored.Site, "uid": stored.UID, "scope": scope},
-		NextRefreshAfter: authStatePlan(stored),
+		Attributes: map[string]string{"site": stored.Site, "uid": stored.UID, "scope": scope},
 	}, nil
 }
 
@@ -305,23 +305,8 @@ func credentialFromJSON(raw []byte) (credential, map[string]any, bool, error) {
 		return credential{}, nil, false, nil
 	}
 	var stored credential
-	var wire struct {
-		*credential
-		State json.RawMessage `json:"credential_state"`
-	}
-	wire.credential = &stored
-	if err := json.Unmarshal(raw, &wire); err != nil {
+	if err := json.Unmarshal(raw, &stored); err != nil {
 		return credential{}, nil, true, failure("invalid_credentials", "invalid WorkBuddy browser credentials", 400)
-	}
-	if len(wire.State) > 0 && string(wire.State) != "null" {
-		var state credentialState
-		if err := json.Unmarshal(wire.State, &state); err == nil {
-			candidate := stored
-			candidate.State = &state
-			if validCredentialState(candidate) {
-				stored.State = &state
-			}
-		}
 	}
 	var metadata map[string]any
 	if err := json.Unmarshal(raw, &metadata); err != nil {

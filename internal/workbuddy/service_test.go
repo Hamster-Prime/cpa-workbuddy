@@ -39,6 +39,9 @@ func success(data any) ([]byte, error) {
 func host(t *testing.T, handle func(httpRequest) ([]byte, error)) hostCall {
 	t.Helper()
 	return func(method string, raw []byte) ([]byte, error) {
+		if method == "host.log" {
+			return []byte(`{"ok":true,"result":{}}`), nil
+		}
 		if method != "host.http.do" {
 			t.Errorf("callback method = %s", method)
 			return nil, errors.New("unexpected callback")
@@ -47,6 +50,9 @@ func host(t *testing.T, handle func(httpRequest) ([]byte, error)) hostCall {
 		if err := json.Unmarshal(raw, &req); err != nil {
 			t.Error("invalid host request JSON")
 			return nil, err
+		}
+		if strings.HasSuffix(req.URL, "/v3/config") {
+			return success(json.RawMessage(`{"agents":[{"name":"cli","models":[]}]}`))
 		}
 		return handle(req)
 	}
@@ -63,7 +69,7 @@ func invoke(s *workbuddy.Service, ctx context.Context, method string, req any, c
 func begin(t *testing.T, s *workbuddy.Service, id string, call hostCall) workbuddy.StartResponse {
 	t.Helper()
 	got, err := invoke(s, context.Background(), "auth.login.start", map[string]any{
-		"Provider": "workbuddy", "BaseURL": "http://127.0.0.1:8317/v0/management/oauth-callback", "Metadata": map[string]any{"site": id, "is_webui": "true"}, "host_callback_id": "start-callback",
+		"Provider": id, "BaseURL": "http://127.0.0.1:8317/v0/management/oauth-callback", "Metadata": map[string]any{"site": id, "is_webui": "true"}, "host_callback_id": "start-callback",
 	}, call)
 	if err != nil {
 		t.Fatal(err)
@@ -97,13 +103,15 @@ func tokenReply() map[string]any {
 	}
 }
 
-func TestLoginRequiresExplicitSiteAndBrowserOnlyInputs(t *testing.T) {
+func TestLoginRequiresKnownEntryAndBrowserOnlyInputs(t *testing.T) {
 	s := workbuddy.New()
 	defer s.Close()
 	for _, req := range []map[string]any{
-		{"Provider": "workbuddy"},
+		{"Provider": ""},
 		{"Provider": "workbuddy", "Metadata": map[string]any{"site": "other"}},
 		{"Provider": "workbuddy", "Metadata": map[string]any{"site": true}},
+		{"Provider": "workbuddy", "Metadata": map[string]any{"site": "workbuddy-ai"}},
+		{"Provider": "workbuddy-ai", "Metadata": map[string]any{"site": "workbuddy"}},
 		{"Provider": "workbuddy", "Metadata": map[string]any{"site": "workbuddy", "endpoint": "https://other.invalid"}},
 		{"Provider": "workbuddy", "Metadata": map[string]any{"site": "workbuddy", "api_key": "key"}},
 		{"Provider": "workbuddy", "Metadata": map[string]any{"site": "workbuddy", "desktop": true}},
@@ -118,8 +126,30 @@ func TestLoginRequiresExplicitSiteAndBrowserOnlyInputs(t *testing.T) {
 		}
 	}
 	got, err := s.Handle(context.Background(), "auth.identifier", []byte("{}"), nil)
-	if err != nil || got.(map[string]string)["identifier"] != "workbuddy" {
-		t.Fatal("wrong authentication identifier")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wire struct {
+		Identifier          string   `json:"identifier"`
+		Identifiers         []string `json:"identifiers"`
+		CredentialProviders []string `json:"credential_providers"`
+		Entries             []struct {
+			Identifier string `json:"identifier"`
+			Name       string `json:"name"`
+		} `json:"entries"`
+	}
+	if err := json.Unmarshal(raw, &wire); err != nil {
+		t.Fatal(err)
+	}
+	if wire.Identifier != "workbuddy" || len(wire.Identifiers) != 2 || wire.Identifiers[0] != "workbuddy" || wire.Identifiers[1] != "workbuddy-ai" || len(wire.CredentialProviders) != 1 || wire.CredentialProviders[0] != "workbuddy" {
+		t.Fatal("schema-10 login entries or credential provider routing changed")
+	}
+	if len(wire.Entries) != 2 || wire.Entries[0].Identifier != "workbuddy" || wire.Entries[0].Name != "WorkBuddy国内" || wire.Entries[1].Identifier != "workbuddy-ai" || wire.Entries[1].Name != "WorkBuddy国际" {
+		t.Fatal("schema-10 login entry display names changed")
 	}
 }
 
@@ -165,7 +195,7 @@ func TestLoginURLTrustAndOpaqueSessionState(t *testing.T) {
 				return success(map[string]any{"state": "upstream", "authUrl": tc.page})
 			})
 			before := time.Now()
-			got, err := invoke(s, context.Background(), "auth.login.start", map[string]any{"Provider": "workbuddy", "BaseURL": "http://127.0.0.1:8317/v0/management/oauth-callback", "Metadata": map[string]any{"site": tc.site, "is_webui": "true"}, "host_callback_id": "start-callback"}, call)
+			got, err := invoke(s, context.Background(), "auth.login.start", map[string]any{"Provider": tc.site, "BaseURL": "http://127.0.0.1:8317/v0/management/oauth-callback", "Metadata": map[string]any{"site": tc.site, "is_webui": "true"}, "host_callback_id": "start-callback"}, call)
 			if !tc.valid {
 				if err == nil {
 					t.Fatal("untrusted browser URL was accepted")
@@ -227,10 +257,10 @@ func TestConcurrentSitesRestoreCredentialsAndConsumeSuccess(t *testing.T) {
 	}
 	results := make(chan result, 2)
 	for _, flow := range []workbuddy.StartResponse{cn, ai} {
-		go func(state string) {
-			value, err := invoke(s, context.Background(), "auth.login.poll", map[string]any{"Provider": "workbuddy", "State": state, "host_callback_id": "poll-callback"}, call)
+		go func(flow workbuddy.StartResponse) {
+			value, err := invoke(s, context.Background(), "auth.login.poll", map[string]any{"Provider": flow.Provider, "State": flow.State, "host_callback_id": "poll-callback"}, call)
 			results <- result{value: value, err: err}
-		}(flow.State)
+		}(flow)
 	}
 	ids := make(map[string]bool)
 	restarted := workbuddy.New()
@@ -712,5 +742,70 @@ func TestSessionAdmissionLimitRecoversAfterCancellation(t *testing.T) {
 	}
 	if flow := begin(t, s, "workbuddy", call); flow.State == "" || calls != 129 {
 		t.Fatal("released session capacity did not admit a new login")
+	}
+}
+
+func TestLoginEntriesSelectSiteAndRejectCrossSitePolling(t *testing.T) {
+	for _, entry := range []string{"workbuddy", "workbuddy-ai"} {
+		t.Run(entry, func(t *testing.T) {
+			s := workbuddy.New()
+			defer s.Close()
+			calls := 0
+			endpoint := "copilot.tencent.com"
+			other := "workbuddy-ai"
+			if entry == "workbuddy-ai" {
+				endpoint = "www.workbuddy.ai"
+				other = "workbuddy"
+			}
+			call := host(t, func(req httpRequest) ([]byte, error) {
+				calls++
+				u, err := url.Parse(req.URL)
+				if err != nil || u.Host != endpoint {
+					t.Fatal("login entry crossed site endpoints")
+				}
+				switch u.Path {
+				case "/v2/plugin/auth/state":
+					if u.Query().Get("platform") != entry {
+						t.Fatal("login entry did not select the upstream platform")
+					}
+					return success(stateReply(entry))
+				case "/v2/plugin/auth/token":
+					return success(tokenReply())
+				case "/v2/plugin/login/account":
+					return success(map[string]any{"uid": "person", "nickname": "Person", "type": "personal"})
+				default:
+					return nil, errors.New("unexpected login endpoint")
+				}
+			})
+			value, err := invoke(s, context.Background(), "auth.login.start", map[string]any{"Provider": entry, "Metadata": map[string]any{"is_webui": "true"}}, call)
+			if err != nil {
+				t.Fatal(err)
+			}
+			flow := value.(workbuddy.StartResponse)
+			if flow.Provider != entry || flow.Metadata["site"] != entry {
+				t.Fatal("login entry was not bound to the returned session")
+			}
+			for _, req := range []map[string]any{
+				{"Provider": other, "State": flow.State},
+				{"Provider": entry, "State": flow.State, "Metadata": map[string]any{"site": other}},
+				{"Provider": other, "State": flow.State, "Metadata": map[string]any{"site": entry}},
+			} {
+				_, err := invoke(s, context.Background(), "auth.login.poll", req, call)
+				if detail, ok := errors.AsType[*workbuddy.Error](err); !ok || detail.Code != "invalid_site" || detail.HTTPStatus != 400 {
+					t.Fatalf("cross-site poll = %v", err)
+				}
+			}
+			if calls != 1 {
+				t.Fatal("cross-site poll reached upstream")
+			}
+			value, err = invoke(s, context.Background(), "auth.login.poll", map[string]any{"Provider": entry, "State": flow.State}, call)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := value.(workbuddy.PollResponse)
+			if got.Status != "success" || got.Auth.Provider != "workbuddy" || got.Auth.Metadata["site"] != entry || calls != 3 {
+				t.Fatal("valid poll lost its site or persistent provider after rejected cross-site attempts")
+			}
+		})
 	}
 }

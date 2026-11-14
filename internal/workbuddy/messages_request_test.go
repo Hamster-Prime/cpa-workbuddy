@@ -163,8 +163,8 @@ func TestMessagesRequestEffortAndNestedImageEligibility(t *testing.T) {
 	}
 }
 
-func TestMessagesSignatureAndAuthenticationRecoveryAreJointlyBounded(t *testing.T) {
-	for _, statuses := range [][]int{{400, 401, 200}, {401, 400, 200}, {400, 401, 400}} {
+func TestMessagesSignatureCorrectionHandsAuthenticationToManager(t *testing.T) {
+	for _, statuses := range [][]int{{400, 401}, {401}, {400, 400}, {400, 200}} {
 		t.Run(fmt.Sprint(statuses), func(t *testing.T) {
 			s := workbuddy.New()
 			defer s.Close()
@@ -208,16 +208,16 @@ func TestMessagesSignatureAndAuthenticationRecoveryAreJointlyBounded(t *testing.
 			}
 			payload := []byte(`{"max_tokens":64,"messages":[{"role":"user","content":"first"},{"role":"assistant","content":[{"type":"thinking","thinking":"old","signature":"CAQSforeign"},{"type":"text","text":"answer"}]},{"role":"user","content":"continue"}]}`)
 			_, err := invoke(s, context.Background(), "executor.execute", messagesRequestInput(auth, payload), call)
-			if (statuses[2] == 200) != (err == nil) || len(opens) != 3 || len(h.refreshes) != 1 || closes != 3 {
-				t.Fatalf("combined retries error=%v attempts=%d refresh=%d closes=%d", err, len(opens), len(h.refreshes), closes)
+			if (statuses[len(statuses)-1] == 200) != (err == nil) || len(opens) != len(statuses) || len(h.refreshes) != 0 || h.saves != 0 || closes != len(statuses) {
+				t.Fatalf("signature correction error=%v attempts=%d refresh=%d closes=%d", err, len(opens), len(h.refreshes), closes)
 			}
 			for _, request := range opens {
 				if request.URL != "https://copilot.tencent.com/v1/messages" || request.Headers["X-Conversation-Request-ID"][0] != opens[0].Headers["X-Conversation-Request-ID"][0] {
 					t.Fatal("combined retries changed route or user round")
 				}
 			}
-			if strings.Contains(string(opens[2].Body), "CAQSforeign") || opens[2].Headers["Authorization"][0] != "Bearer access-next" {
-				t.Fatal("combined recovery did not use corrected history and refreshed credential")
+			if len(opens) == 2 && (strings.Contains(string(opens[1].Body), "CAQSforeign") || opens[1].Headers["Authorization"][0] != "Bearer access-start") {
+				t.Fatal("signature correction changed credentials or retained rejected history")
 			}
 		})
 	}

@@ -165,7 +165,7 @@ func decode(raw []byte, target any) error {
 	return nil
 }
 
-// Handle implements the schema-6 authentication methods. Every HTTP request
+// Handle implements the schema-10 authentication methods. Every HTTP request
 // uses the supplied host callback and the current request's host_callback_id.
 func (s *Service) Handle(ctx context.Context, method string, raw []byte, call func(string, []byte) ([]byte, error)) (any, error) {
 	switch method {
@@ -188,7 +188,15 @@ func (s *Service) Handle(ctx context.Context, method string, raw []byte, call fu
 		if err := decode(raw, &req); err != nil {
 			return nil, err
 		}
-		return map[string]string{"identifier": provider}, nil
+		return map[string]any{
+			"identifier":           provider,
+			"identifiers":          []string{"workbuddy", "workbuddy-ai"},
+			"credential_providers": []string{provider},
+			"entries": []map[string]string{
+				{"identifier": "workbuddy", "name": "WorkBuddy国内"},
+				{"identifier": "workbuddy-ai", "name": "WorkBuddy国际"},
+			},
+		}, nil
 	}
 	if method == "auth.parse" {
 		return parse(raw)
@@ -203,8 +211,8 @@ func (s *Service) Handle(ctx context.Context, method string, raw []byte, call fu
 	if err := decode(raw, &req); err != nil {
 		return nil, err
 	}
-	if req.Provider != provider {
-		return nil, failure("invalid_provider", "provider must be workbuddy", 400)
+	if _, ok := selectSite(req.Provider); !ok {
+		return nil, failure("invalid_provider", "provider must be workbuddy or workbuddy-ai", 400)
 	}
 	switch method {
 	case "auth.login.start":
@@ -216,16 +224,21 @@ func (s *Service) Handle(ctx context.Context, method string, raw []byte, call fu
 	}
 }
 
-func loginSite(metadata map[string]any) (site, error) {
+func loginSite(entry string, metadata map[string]any) (site, error) {
+	chosen, ok := selectSite(entry)
+	if !ok {
+		return site{}, failure("invalid_provider", "provider must be workbuddy or workbuddy-ai", 400)
+	}
 	for key := range metadata {
 		if key != "site" && key != "is_webui" {
 			return site{}, failure("invalid_metadata", "unsupported browser login metadata", 400)
 		}
 	}
-	id, _ := metadata["site"].(string)
-	chosen, ok := selectSite(id)
-	if !ok {
-		return site{}, failure("invalid_site", "metadata.site must explicitly select workbuddy or workbuddy-ai", 400)
+	if value, present := metadata["site"]; present {
+		id, ok := value.(string)
+		if !ok || id != chosen.id {
+			return site{}, failure("invalid_site", "metadata.site must match the selected WorkBuddy login entry", 400)
+		}
 	}
 	return chosen, nil
 }
@@ -239,7 +252,7 @@ func randomState() (string, error) {
 }
 
 func (s *Service) start(ctx context.Context, req loginRequest, call func(string, []byte) ([]byte, error)) (any, error) {
-	chosen, err := loginSite(req.Metadata)
+	chosen, err := loginSite(req.Provider, req.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +315,7 @@ func (s *Service) start(ctx context.Context, req loginRequest, call func(string,
 	}
 	s.sessions[local] = sess
 	sess.timer = time.AfterFunc(time.Until(expires), func() { s.discard(local, sess) })
-	return StartResponse{Provider: provider, URL: page.String(), State: local, ExpiresAt: expires, Metadata: map[string]any{"site": chosen.id}}, nil
+	return StartResponse{Provider: chosen.id, URL: page.String(), State: local, ExpiresAt: expires, Metadata: map[string]any{"site": chosen.id}}, nil
 }
 
 func trustedLoginURL(chosen site, page *url.URL) bool {
@@ -341,11 +354,12 @@ func (s *Service) poll(ctx context.Context, req loginRequest, call func(string, 
 	if sess == nil {
 		return invalidSession(), nil
 	}
-	if len(req.Metadata) != 0 {
-		chosen, err := loginSite(req.Metadata)
-		if err != nil || chosen.id != sess.site.id {
-			return nil, failure("invalid_metadata", "poll metadata must match the login site", 400)
-		}
+	chosen, err := loginSite(req.Provider, req.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	if chosen.id != sess.site.id {
+		return nil, failure("invalid_site", "poll provider must match the login site", 400)
 	}
 	select {
 	case sess.gate <- struct{}{}:
@@ -448,6 +462,7 @@ func (s *Service) poll(ctx context.Context, req loginRequest, call func(string, 
 	if err != nil {
 		return PollResponse{Status: "error", Message: "WorkBuddy returned invalid browser credentials"}, nil
 	}
+	auth = captureModelSnapshot(pollCtx, auth, req.HostCallbackID, call)
 	if cancelled() {
 		return invalidSession(), nil
 	}
@@ -526,7 +541,7 @@ func request(ctx context.Context, chosen site, callbackID string, call func(stri
 	}
 	status := envelope.Result.StatusCode
 	authReason := authenticationReason(status, envelope.Result.Headers, envelope.Result.Body)
-	if status == 401 || status >= 500 {
+	if status == 401 || status >= 500 || authReason != "" {
 		return &upstreamError{status: status, invalidToken: authReason == "invalid_token", authReason: authReason}
 	}
 	if status == 408 || status == 429 {

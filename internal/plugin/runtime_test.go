@@ -31,13 +31,13 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	}
 	assertError("management.handle", `{}`, "not_registered")
 	assertError("auth.identifier", `{}`, "not_registered")
-	for _, request := range []string{"", "null", "[]", "{", `{"schema_version":6} trailing`, `{"schema_version":6,"config_yaml":"bad%base64"}`} {
+	for _, request := range []string{"", "null", "[]", "{", `{"schema_version":10} trailing`, `{"schema_version":10,"config_yaml":"bad%base64"}`} {
 		assertError("plugin.register", request, "invalid_request")
 	}
-	for _, request := range []string{`{}`, `{"schema_version":1}`, `{"schema_version":7}`} {
+	for _, request := range []string{`{}`, `{"schema_version":1}`, `{"schema_version":9}`} {
 		assertError("plugin.register", request, "incompatible_schema")
 	}
-	response := call("plugin.register", `{"schema_version":6,"config_yaml":null}`)
+	response := call("plugin.register", `{"schema_version":11,"multi_auth_providers":true,"config_yaml":null}`)
 	var result struct {
 		SchemaVersion int `json:"schema_version"`
 		Metadata      struct{ Name, Version, Author, GitHubRepository string }
@@ -46,19 +46,28 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	if err := json.Unmarshal(response["result"], &result); err != nil {
 		t.Fatal(err)
 	}
-	if string(response["ok"]) != "true" || result.SchemaVersion != 6 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != workbuddy.Version() {
+	if string(response["ok"]) != "true" || result.SchemaVersion != 10 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != workbuddy.Version() {
 		t.Fatalf("unexpected registration: %s", response)
 	}
 	if result.Metadata.Author == "" || result.Metadata.GitHubRepository == "" {
 		t.Fatalf("metadata must meet CPA validPlugin: %+v", result.Metadata)
 	}
-	if len(result.Capabilities) != 7 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai","claude"]` || string(result.Capabilities["executor_output_formats"]) != `["openai","claude"]` {
+	if len(result.Capabilities) != 7 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai","openai-response","claude","gemini"]` || string(result.Capabilities["executor_output_formats"]) != `["openai","openai-response","claude","gemini"]` {
 		t.Fatalf("unexpected capabilities: %v", result.Capabilities)
 	}
 	assertError("plugin.identifier", `{}`, "unknown_method")
 	identifier := call("auth.identifier", `{}`)
-	if string(identifier["ok"]) != "true" || string(identifier["result"]) != `{"identifier":"workbuddy"}` {
-		t.Fatalf("unexpected auth identifier: %s", identifier)
+	var portals struct {
+		Identifier  string                              `json:"identifier"`
+		Identifiers []string                            `json:"identifiers"`
+		Credentials []string                            `json:"credential_providers"`
+		Entries     []struct{ Identifier, Name string } `json:"entries"`
+	}
+	if err := json.Unmarshal(identifier["result"], &portals); err != nil {
+		t.Fatal(err)
+	}
+	if string(identifier["ok"]) != "true" || portals.Identifier != "workbuddy" || len(portals.Identifiers) != 2 || portals.Identifiers[0] != "workbuddy" || portals.Identifiers[1] != "workbuddy-ai" || len(portals.Credentials) != 1 || portals.Credentials[0] != "workbuddy" || len(portals.Entries) != 2 || portals.Entries[0].Identifier != "workbuddy" || portals.Entries[0].Name != "WorkBuddy国内" || portals.Entries[1].Identifier != "workbuddy-ai" || portals.Entries[1].Name != "WorkBuddy国际" {
+		t.Fatalf("unexpected auth entries: %s", identifier)
 	}
 	if string(call("executor.identifier", `{}`)["result"]) != `{"identifier":"workbuddy"}` {
 		t.Fatal("executor identifier is invalid")
@@ -75,7 +84,7 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 		t.Fatal("quiesce failed")
 	}
 	assertError("management.handle", `{}`, "plugin_quiesced")
-	if string(call("plugin.reconfigure", `{"schema_version":6,"config_yaml":"eDogMQo="}`)["ok"]) != "true" {
+	if string(call("plugin.reconfigure", `{"schema_version":10,"config_yaml":"eDogMQo="}`)["ok"]) != "true" {
 		t.Fatal("reconfigure failed")
 	}
 	response = call("management.register", `{"BasePath":"/v0/management","ResourceBasePath":"/v0/resource/plugins/cpa-workbuddy"}`)
@@ -105,7 +114,7 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	if err := json.Unmarshal(statusResponse.Body, &status); err != nil {
 		t.Fatal(err)
 	}
-	if statusResponse.StatusCode != 200 || len(statusResponse.Headers["Content-Type"]) != 1 || statusResponse.Headers["Content-Type"][0] != "application/json; charset=utf-8" || status.Name != "cpa-workbuddy" || status.Version != workbuddy.Version() || status.ABIVersion != 1 || status.SchemaVersion != 6 {
+	if statusResponse.StatusCode != 200 || len(statusResponse.Headers["Content-Type"]) != 1 || statusResponse.Headers["Content-Type"][0] != "application/json; charset=utf-8" || status.Name != "cpa-workbuddy" || status.Version != workbuddy.Version() || status.ABIVersion != 1 || status.SchemaVersion != 10 {
 		t.Fatalf("unexpected status: %+v, body %s", statusResponse, statusResponse.Body)
 	}
 	for range 2 {
@@ -115,6 +124,6 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	}
 	runtime.Shutdown()
 	runtime.Shutdown()
-	assertError("plugin.register", `{"schema_version":6}`, "plugin_shutdown")
+	assertError("plugin.register", `{"schema_version":10}`, "plugin_shutdown")
 	assertError("management.handle", `{}`, "plugin_shutdown")
 }

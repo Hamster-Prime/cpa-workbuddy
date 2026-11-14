@@ -596,7 +596,7 @@ func (c *controller) formatCheck() error {
 	return err
 }
 
-func (c *controller) modules() error {
+func (c *controller) modules() (resultErr error) {
 	files, err := c.ownedFiles("go.mod")
 	if err != nil {
 		return err
@@ -605,6 +605,25 @@ func (c *controller) modules() error {
 		if name != filepath.Join(c.root, "go.mod") {
 			return fmt.Errorf("undeclared nested Go module: %s", name)
 		}
+	}
+	stage, err := os.MkdirTemp(filepath.Join(c.out, "tmp"), "module-download-")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		resultErr = errors.Join(resultErr, os.RemoveAll(stage))
+	}()
+	for _, name := range []string{"go.mod", "go.sum"} {
+		data, err := os.ReadFile(filepath.Join(c.root, name))
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(stage, name), data, 0o600); err != nil {
+			return err
+		}
+	}
+	if _, err := c.tool("go", runPolicy{stderrFails: true}, "mod", "download", "-modfile="+filepath.Join(stage, "go.mod"), "all"); err != nil {
+		return err
 	}
 	if _, err := c.tool("go", runPolicy{nonemptyFails: true}, "mod", "tidy", "-diff"); err != nil {
 		return err
@@ -671,6 +690,9 @@ func (c *controller) build() error {
 			return err
 		}
 	}
+	if _, err := c.tool("go", runPolicy{stderrFails: true}, "mod", "download"); err != nil {
+		return err
+	}
 	if _, err := c.tool("go", runPolicy{nonemptyFails: true}, "build", "-trimpath", "-buildmode=c-shared", "-o", artifact, "./cmd/cpa-workbuddy"); err != nil {
 		return err
 	}
@@ -690,6 +712,9 @@ func (c *controller) build() error {
 
 func (c *controller) test(prebuilt bool) error {
 	if !prebuilt {
+		if err := c.modules(); err != nil {
+			return err
+		}
 		if err := c.build(); err != nil {
 			return err
 		}
@@ -761,6 +786,19 @@ func (c *controller) bundle() (resultErr error) {
 	if err != nil {
 		return err
 	}
+	dependencyLicenses, err := os.ReadFile(filepath.Join(c.root, "docs", "licenses", "Go-DEPENDENCIES.txt"))
+	if err != nil {
+		return err
+	}
+	for _, dependency := range info.Deps {
+		source := dependency
+		if source.Replace != nil {
+			source = source.Replace
+		}
+		if !bytes.Contains(dependencyLicenses, fmt.Appendf(nil, "\nModule: %s@%s\n", source.Path, source.Version)) {
+			return fmt.Errorf("missing third-party license inventory for %s@%s", source.Path, source.Version)
+		}
+	}
 	buildInfo := fmt.Appendf(nil, "product\tcpa-workbuddy\nversion\t%s\n%s", value, info.String())
 	goRoot, err := c.tool("go", runPolicy{stderrFails: true}, "env", "GOROOT")
 	if err != nil {
@@ -794,7 +832,7 @@ func (c *controller) bundle() (resultErr error) {
 		"docs/requirements.md", "docs/architecture.md", "docs/compatibility.md",
 		"docs/quality.md", "docs/deployment.md", "docs/third-party-notices.md",
 		"docs/tasks/workbuddy-plugin.md", "docs/licenses/CLIProxyAPI-MIT.txt",
-		"docs/patches/cpa-v7.3.15.patch",
+		"docs/licenses/Go-DEPENDENCIES.txt", "docs/licenses/Apache-2.0.txt",
 	} {
 		files = append(files, [2]string{filepath.Join(c.root, filepath.FromSlash(relative)), relative})
 	}

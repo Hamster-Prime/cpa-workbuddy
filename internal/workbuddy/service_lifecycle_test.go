@@ -97,7 +97,7 @@ func TestServiceCloseWaitsForSynchronousHostCallbacks(t *testing.T) {
 		{"model.for_auth", "/v3/config"},
 		{"model.for_auth", "host.log"},
 		{"auth.refresh", "/v2/plugin/auth/token/refresh"},
-		{"auth.refresh", "host.auth.save"},
+		{"auth.refresh", "/v3/config"},
 		{"auth.login.start", "/v2/plugin/auth/state?platform=workbuddy"},
 		{"auth.login.poll", "/v2/plugin/auth/token?state=upstream-workbuddy"},
 		{"auth.login.poll", "/v2/plugin/login/account?state=upstream-workbuddy"},

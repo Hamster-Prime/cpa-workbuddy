@@ -88,7 +88,6 @@ func (h *rotationHost) replace(id, access, refresh string) error {
 	}
 	fields["access_token"] = access
 	fields["refresh_token"] = refresh
-	fields["credential_state"] = nil
 	fields["credential_generation"] = fmt.Sprint(fields["credential_generation"]) + "-login"
 	fields["expires_at"] = time.Now().Add(time.Hour).UTC().Format(time.RFC3339Nano)
 	raw, err := json.Marshal(fields)
@@ -107,7 +106,7 @@ func (h *rotationHost) call(method string, raw []byte) ([]byte, error) {
 		for id := range h.files {
 			files = append(files, map[string]string{"id": id, "auth_index": id, "provider": "workbuddy"})
 		}
-		return json.Marshal(map[string]any{"ok": true, "result": map[string]any{"files": files, "credential_state_version": 1}})
+		return json.Marshal(map[string]any{"ok": true, "result": map[string]any{"files": files}})
 	case "host.auth.get":
 		var req struct {
 			AuthIndex string `json:"auth_index"`
@@ -118,9 +117,8 @@ func (h *rotationHost) call(method string, raw []byte) ([]byte, error) {
 		return json.Marshal(map[string]any{"ok": true, "result": map[string]any{"json": json.RawMessage(h.raw(req.AuthIndex))}})
 	case "host.auth.save":
 		var req struct {
-			Name     string          `json:"name"`
-			JSON     json.RawMessage `json:"json"`
-			Expected json.RawMessage `json:"expected_credential_json"`
+			Name string          `json:"name"`
+			JSON json.RawMessage `json:"json"`
 		}
 		if err := json.Unmarshal(raw, &req); err != nil {
 			return nil, err
@@ -134,31 +132,6 @@ func (h *rotationHost) call(method string, raw []byte) ([]byte, error) {
 		id := strings.TrimSuffix(req.Name, ".json")
 		if _, exists := h.files[id]; !exists {
 			return nil, errors.New("save changed credential identity")
-		}
-		if len(req.Expected) > 0 {
-			var expected, current map[string]any
-			if err := json.Unmarshal(req.Expected, &expected); err != nil {
-				return nil, err
-			}
-			if err := json.Unmarshal(h.files[id], &current); err != nil {
-				return nil, err
-			}
-			for _, key := range []string{"access_token", "refresh_token", "credential_generation"} {
-				if expected[key] != current[key] {
-					return nil, errors.New("credential generation changed")
-				}
-			}
-			before, err := json.Marshal(expected["credential_state"])
-			if err != nil {
-				return nil, err
-			}
-			after, err := json.Marshal(current["credential_state"])
-			if err != nil {
-				return nil, err
-			}
-			if !bytes.Equal(before, after) {
-				return nil, errors.New("credential state changed")
-			}
 		}
 		h.files[id] = bytes.Clone(req.JSON)
 		return []byte(`{"ok":true,"result":{}}`), nil
@@ -232,15 +205,17 @@ func refreshWire(auth workbuddy.AuthData) map[string]any {
 	return map[string]any{"AuthID": auth.ID, "AuthProvider": auth.Provider, "StorageJSON": auth.StorageJSON, "Metadata": auth.Metadata, "host_callback_id": "rotation-context"}
 }
 
-func TestRefreshHeadersExpiryAndHostState(t *testing.T) {
+func TestRefreshReturnsScopedTokensWithoutHostMutation(t *testing.T) {
 	for _, site := range []string{"workbuddy", "workbuddy-ai"} {
 		t.Run(site, func(t *testing.T) {
 			s := workbuddy.New()
 			defer s.Close()
 			auth := refreshIdentity(t, site, "enterprise-one", 3*time.Minute)
 			h := newRotationHost(t, auth)
+			original := h.raw(auth.ID)
+			call := h.call
 			before := time.Now()
-			result, err := invoke(s, context.Background(), "auth.refresh", refreshWire(auth), h.call)
+			result, err := invoke(s, context.Background(), "auth.refresh", refreshWire(auth), call)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -263,24 +238,24 @@ func TestRefreshHeadersExpiryAndHostState(t *testing.T) {
 			if len(req.Headers["Authorization"]) != 0 {
 				t.Error("refresh carried an expired access authorization")
 			}
-			if got.Auth.ID != auth.ID || got.Auth.FileName != auth.FileName || !got.Auth.Disabled || got.Auth.ProxyURL != "http://127.0.0.1:1234" || got.Auth.Metadata["priority"] != float64(7) {
+			if got.Auth.Provider != "workbuddy" || got.Auth.ID != auth.ID || got.Auth.FileName != auth.FileName || !got.Auth.Disabled || got.Auth.ProxyURL != "http://127.0.0.1:1234" || got.Auth.Metadata["priority"] != float64(7) {
 				t.Fatal("rotation changed host identity/management")
 			}
 			if got.Auth.Metadata["access_token"] != "access-next" || got.Auth.Metadata["refresh_token"] != "refresh-next" {
-				t.Fatal("rotated tokens were not installed")
+				t.Fatal("refresh response omitted renewed tokens")
 			}
-			if got.NextRefreshAfter.Before(before.Add(54*time.Minute)) || got.NextRefreshAfter.After(time.Now().Add(56*time.Minute)) || !got.NextRefreshAfter.Equal(got.Auth.NextRefreshAfter) {
-				t.Fatal("seconds expiry or five-minute schedule was lost")
+			expires, err := time.Parse(time.RFC3339Nano, fmt.Sprint(got.Auth.Metadata["expires_at"]))
+			if err != nil || expires.Before(before.Add(59*time.Minute)) || expires.After(time.Now().Add(61*time.Minute)) || !got.NextRefreshAfter.IsZero() || !got.Auth.NextRefreshAfter.IsZero() || fmt.Sprint(got.Auth.Metadata["refresh_interval_seconds"]) != "300" {
+				t.Fatal("renewed expiry or native periodic refresh metadata was lost")
 			}
-			stored := parseRefreshAuth(t, h.raw(auth.ID))
-			if stored.Metadata["access_token"] != "access-next" || !stored.Disabled || stored.ID != auth.ID {
-				t.Fatal("persisted credentials lost rotation/state")
+			if h.saves != 0 || !bytes.Equal(original, h.raw(auth.ID)) {
+				t.Fatal("plugin installed or persisted a refresh result")
 			}
 		})
 	}
 }
 
-func TestRefreshManualRequestAndDiscoveryShareConsumption(t *testing.T) {
+func TestConcurrentRefreshesShareOneUpstreamResult(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		s := workbuddy.New()
 		defer s.Close()
@@ -294,15 +269,15 @@ func TestRefreshManualRequestAndDiscoveryShareConsumption(t *testing.T) {
 			<-release
 			return success(map[string]any{"accessToken": "access-next", "refreshToken": "refresh-next", "expiresIn": 3600})
 		}
-		results := make(chan error, 3)
-		for _, method := range []string{"auth.refresh", "executor.execute", "model.for_auth"} {
+		type outcome struct {
+			value any
+			err   error
+		}
+		results := make(chan outcome, 8)
+		for range 8 {
 			go func() {
-				input := refreshWire(auth)
-				if method == "executor.execute" {
-					input = chatWireRequest(auth, false)
-				}
-				_, err := invoke(s, context.Background(), method, input, h.call)
-				results <- err
+				value, err := invoke(s, context.Background(), "auth.refresh", refreshWire(auth), h.call)
+				results <- outcome{value, err}
 			}()
 		}
 		synctest.Wait()
@@ -310,123 +285,17 @@ func TestRefreshManualRequestAndDiscoveryShareConsumption(t *testing.T) {
 			t.Fatalf("concurrent consumers spent token %d times", len(h.refreshes))
 		}
 		unblock()
-		for range 3 {
-			if err := <-results; err != nil {
-				t.Fatal(err)
+		for range 8 {
+			got := <-results
+			if got.err != nil {
+				t.Fatal(got.err)
+			}
+			if got.value.(workbuddy.RefreshResponse).Auth.Metadata["access_token"] != "access-next" {
+				t.Fatal("concurrent refresh returned a different token generation")
 			}
 		}
-		if len(h.refreshes) != 1 || h.saves != 1 || len(h.opens) != 1 || len(h.configTokens) != 1 {
-			t.Fatal("refresh fan-in did not share installed generation")
-		}
-		if strings.Join(h.opens[0].Headers["Authorization"], "") != "Bearer access-next" || h.configTokens[0] != "Bearer access-next" {
-			t.Fatal("chat and model discovery did not use the refreshed generation")
-		}
-	})
-}
-
-func TestChatUnauthorizedRecoveryIsBoundedAndKeepsRequest(t *testing.T) {
-	for _, rejectAll := range []bool{false, true} {
-		t.Run(fmt.Sprint(rejectAll), func(t *testing.T) {
-			s := workbuddy.New()
-			defer s.Close()
-			auth := refreshIdentity(t, "workbuddy-ai", "", time.Hour)
-			h := newRotationHost(t, auth)
-			h.rejectOld = true
-			h.rejectAll = rejectAll
-			_, err := invoke(s, context.Background(), "executor.execute", chatWireRequest(auth, false), h.call)
-			if (err != nil) != rejectAll {
-				t.Fatalf("second rejection outcome=%v", err)
-			}
-			if len(h.opens) != 2 || len(h.refreshes) != 1 {
-				t.Fatalf("auth recovery opens=%d refreshes=%d", len(h.opens), len(h.refreshes))
-			}
-			first, second := h.opens[0], h.opens[1]
-			if strings.Join(first.Headers["Authorization"], "") != "Bearer access-start" || strings.Join(second.Headers["Authorization"], "") != "Bearer access-next" {
-				t.Fatal("request did not switch tokens exactly once")
-			}
-			if !bytes.Equal(first.Body, second.Body) || strings.Join(first.Headers["X-Request-ID"], "") != strings.Join(second.Headers["X-Request-ID"], "") {
-				t.Fatal("auth replay changed request body or turn identity")
-			}
-		})
-	}
-}
-
-func TestRefreshAdoptsHostGenerationBeforeAndAfterNetwork(t *testing.T) {
-	for _, stage := range []string{"401", "success", "rejected"} {
-		t.Run(stage, func(t *testing.T) {
-			s := workbuddy.New()
-			defer s.Close()
-			auth := refreshIdentity(t, "workbuddy", "", time.Hour)
-			h := newRotationHost(t, auth)
-			if stage == "401" {
-				h.rejectOld = true
-				h.onOpen = func() {
-					if err := h.replace(auth.ID, "access-theirs", "refresh-theirs"); err != nil {
-						t.Error(err)
-					}
-				}
-				if _, err := invoke(s, context.Background(), "executor.execute", chatWireRequest(auth, false), h.call); err != nil {
-					t.Fatal(err)
-				}
-				if len(h.refreshes) != 0 || len(h.opens) != 2 || strings.Join(h.opens[1].Headers["Authorization"], "") != "Bearer access-theirs" {
-					t.Fatal("401 spent a token already replaced in host")
-				}
-				return
-			}
-			h.onRefresh = func(httpRequest) ([]byte, error) {
-				if err := h.replace(auth.ID, "access-theirs", "refresh-theirs"); err != nil {
-					return nil, err
-				}
-				if stage == "rejected" {
-					return response(401, map[string]any{"code": 12153})
-				}
-				return success(map[string]any{"accessToken": "access-late", "refreshToken": "refresh-late", "expiresIn": 3600})
-			}
-			result, err := invoke(s, context.Background(), "auth.refresh", refreshWire(auth), h.call)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if result.(workbuddy.RefreshResponse).Auth.Metadata["access_token"] != "access-theirs" || h.saves != 0 || parseRefreshAuth(t, h.raw(auth.ID)).Metadata["access_token"] != "access-theirs" {
-				t.Fatal("late result overwrote externally installed generation")
-			}
-		})
-	}
-}
-
-func TestRefreshSaveFailureKeepsMemoryAndCanPersistWithoutConsumption(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		s := workbuddy.New()
-		defer s.Close()
-		auth := refreshIdentity(t, "workbuddy", "", time.Hour)
-		h := newRotationHost(t, auth)
-		h.failSave = true
-		_, err := invoke(s, context.Background(), "auth.refresh", refreshWire(auth), h.call)
-		detail, ok := errors.AsType[*workbuddy.Error](err)
-		if !ok || detail.Code != "credential_save_failed" || !strings.Contains(detail.Message, "restarting") {
-			t.Fatalf("persistence failure not observable: %v", err)
-		}
-		time.Sleep(61 * time.Second)
-		if _, err := invoke(s, context.Background(), "executor.execute", chatWireRequest(auth, false), h.call); err != nil {
-			t.Fatal(err)
-		}
-		if len(h.refreshes) != 1 || strings.Join(h.opens[0].Headers["Authorization"], "") != "Bearer access-next" {
-			t.Fatal("save failure discarded memory rotation or consumed token again")
-		}
-		h.failSave = false
-		if _, err := invoke(s, context.Background(), "auth.refresh", refreshWire(auth), h.call); err != nil {
-			t.Fatal(err)
-		}
-		if len(h.refreshes) != 1 || parseRefreshAuth(t, h.raw(auth.ID)).Metadata["access_token"] != "access-next" {
-			t.Fatal("persistence retry reconsumed old refresh token")
-		}
-		restarted := workbuddy.New()
-		defer restarted.Close()
-		restored := parseRefreshAuth(t, h.raw(auth.ID))
-		if _, err := invoke(restarted, context.Background(), "auth.refresh", refreshWire(restored), h.call); err != nil {
-			t.Fatal(err)
-		}
-		if len(h.refreshes) != 2 || strings.Join(h.refreshes[1].Headers["X-Refresh-Token"], "") != "refresh-next" {
-			t.Fatal("restart did not recover persisted refresh generation")
+		if len(h.refreshes) != 1 || h.saves != 0 || len(h.opens) != 0 {
+			t.Fatal("refresh fan-in consumed or installed more than its upstream result")
 		}
 	})
 }
@@ -440,10 +309,11 @@ func TestRefreshResultWindowAndIdentityIsolation(t *testing.T) {
 		h.onRefresh = func(httpRequest) ([]byte, error) {
 			return success(map[string]any{"accessToken": "access-next", "refreshToken": "refresh-start", "expiresIn": 3600})
 		}
-		if _, err := invoke(s, context.Background(), "auth.refresh", refreshWire(auth), h.call); err != nil {
+		result, err := invoke(s, context.Background(), "auth.refresh", refreshWire(auth), h.call)
+		if err != nil {
 			t.Fatal(err)
 		}
-		current := parseRefreshAuth(t, h.raw(auth.ID))
+		current := result.(workbuddy.RefreshResponse).Auth
 		time.Sleep(59 * time.Second)
 		if _, err := invoke(s, context.Background(), "auth.refresh", refreshWire(current), h.call); err != nil {
 			t.Fatal(err)
@@ -470,62 +340,12 @@ func TestRefreshResultWindowAndIdentityIsolation(t *testing.T) {
 	})
 }
 
-func TestRefreshFailuresKeepUnexpiredAccessAndReportReason(t *testing.T) {
-	for _, mode := range []string{"network", "server", "timeout", "expired"} {
-		t.Run(mode, func(t *testing.T) {
-			s := workbuddy.New()
-			defer s.Close()
-			auth := refreshIdentity(t, "workbuddy", "", 30*time.Second)
-			if mode == "expired" {
-				fields := auth.Metadata
-				fields["refresh_expires_at"] = time.Now().Add(-time.Hour).UTC().Format(time.RFC3339Nano)
-				raw, err := json.Marshal(fields)
-				if err != nil {
-					t.Fatal(err)
-				}
-				auth = parseRefreshAuth(t, raw)
-			}
-			h := newRotationHost(t, auth)
-			h.onRefresh = func(httpRequest) ([]byte, error) {
-				switch mode {
-				case "network":
-					return nil, errors.New("isolated network failure")
-				case "server":
-					return response(502, map[string]any{})
-				case "timeout":
-					return response(408, map[string]any{})
-				default:
-					return response(401, map[string]any{"code": 12153})
-				}
-			}
-			if _, err := invoke(s, context.Background(), "executor.execute", chatWireRequest(auth, false), h.call); err != nil {
-				t.Fatal(err)
-			}
-			if len(h.opens) != 1 || strings.Join(h.opens[0].Headers["Authorization"], "") != "Bearer access-start" || len(h.logs) != 1 {
-				t.Fatal("temporary refresh failure discarded unexpired access or went unreported")
-			}
-			if bytes.Contains(h.logs[0], []byte("access-start")) || bytes.Contains(h.logs[0], []byte("refresh-start")) {
-				t.Fatal("refresh diagnostic exposed tokens")
-			}
-			if mode == "expired" && len(h.refreshes) != 0 {
-				t.Fatal("expired refresh token was consumed")
-			}
-		})
-	}
-}
-
-func TestRefreshAbsoluteExpiryAndRequestWindow(t *testing.T) {
+func TestRefreshAbsoluteExpiryAndOmittedTokenFields(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		s := workbuddy.New()
 		defer s.Close()
 		auth := refreshIdentity(t, "workbuddy-ai", "", 3*time.Minute)
 		h := newRotationHost(t, auth)
-		if _, err := invoke(s, context.Background(), "executor.execute", chatWireRequest(auth, false), h.call); err != nil {
-			t.Fatal(err)
-		}
-		if len(h.refreshes) != 0 {
-			t.Fatal("request used the five-minute host refresh window")
-		}
 		h.onRefresh = func(httpRequest) ([]byte, error) {
 			return success(map[string]any{"accessToken": "access-absolute", "expiresAt": int64(1893456000000), "refreshExpiresAt": int64(1924992000000)})
 		}
@@ -534,7 +354,7 @@ func TestRefreshAbsoluteExpiryAndRequestWindow(t *testing.T) {
 			t.Fatal(err)
 		}
 		got := result.(workbuddy.RefreshResponse)
-		if got.NextRefreshAfter.Format(time.RFC3339) != "2029-12-31T23:55:00Z" || got.Auth.Metadata["expires_at"] != "2030-01-01T00:00:00Z" || got.Auth.Metadata["refresh_expires_at"] != "2031-01-01T00:00:00Z" || got.Auth.Metadata["refresh_token"] != "refresh-start" {
+		if !got.NextRefreshAfter.IsZero() || got.Auth.Metadata["expires_at"] != "2030-01-01T00:00:00Z" || got.Auth.Metadata["refresh_expires_at"] != "2031-01-01T00:00:00Z" || got.Auth.Metadata["refresh_token"] != "refresh-start" {
 			t.Fatal("absolute millisecond expiry or omitted rotating fields were not preserved")
 		}
 	})
@@ -581,46 +401,6 @@ func TestRefreshCancelledWaiterDoesNotConsumeGeneration(t *testing.T) {
 	})
 }
 
-func TestChatHTTPStatusAndRecoverySurviveCleanupFailure(t *testing.T) {
-	for _, status := range []int{400, 401} {
-		t.Run(fmt.Sprint(status), func(t *testing.T) {
-			s := workbuddy.New()
-			defer s.Close()
-			auth := refreshIdentity(t, "workbuddy", "", time.Hour)
-			h := newRotationHost(t, auth)
-			h.rejectOld = status == 401
-			call := func(method string, raw []byte) ([]byte, error) {
-				if status == 400 && method == "host.http.do_stream" {
-					return json.Marshal(map[string]any{"ok": true, "result": map[string]any{"status_code": 400, "stream_id": "bad-request"}})
-				}
-				if method == "host.http.stream_close" {
-					var ref struct {
-						StreamID string `json:"stream_id"`
-					}
-					if err := json.Unmarshal(raw, &ref); err != nil {
-						return nil, err
-					}
-					if ref.StreamID == "bad-request" || ref.StreamID == "rotation-stream-1" {
-						return nil, errors.New("isolated cleanup failure")
-					}
-				}
-				return h.call(method, raw)
-			}
-			_, err := invoke(s, context.Background(), "executor.execute", chatWireRequest(auth, false), call)
-			if status == 401 {
-				if err != nil || len(h.opens) != 2 || len(h.refreshes) != 1 {
-					t.Fatalf("cleanup blocked one401recovery: %v", err)
-				}
-			} else if detail, ok := errors.AsType[*workbuddy.Error](err); !ok || detail.HTTPStatus != 400 {
-				t.Fatalf("cleanup replaced original HTTP400: %v", err)
-			}
-			if len(h.logs) != 1 {
-				t.Fatal("cleanup error was not reported through host logging")
-			}
-		})
-	}
-}
-
 func TestRefreshMissingExpiryIsRejectedBeforeInstallation(t *testing.T) {
 	s := workbuddy.New()
 	defer s.Close()
@@ -635,5 +415,95 @@ func TestRefreshMissingExpiryIsRejectedBeforeInstallation(t *testing.T) {
 	}
 	if h.saves != 0 || parseRefreshAuth(t, h.raw(auth.ID)).Metadata["access_token"] != "access-start" {
 		t.Fatal("invalid refresh installed a past plan")
+	}
+}
+
+func TestInflightOldRefreshCannotPolluteNewLoginGeneration(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		s := workbuddy.New()
+		defer s.Close()
+		old := refreshIdentity(t, "workbuddy", "", time.Hour)
+		h := newRotationHost(t, old)
+		release := make(chan struct{})
+		var once sync.Once
+		unblock := func() { once.Do(func() { close(release) }) }
+		defer unblock()
+		calls := 0
+		h.onRefresh = func(httpRequest) ([]byte, error) {
+			calls++
+			if calls == 1 {
+				<-release
+			}
+			return success(map[string]any{"accessToken": fmt.Sprintf("access-result-%d", calls), "refreshToken": fmt.Sprintf("refresh-result-%d", calls), "expiresIn": 3600})
+		}
+		type outcome struct {
+			value any
+			err   error
+		}
+		oldResult := make(chan outcome, 1)
+		go func() {
+			value, err := invoke(s, context.Background(), "auth.refresh", refreshWire(old), h.call)
+			oldResult <- outcome{value, err}
+		}()
+		synctest.Wait()
+		if err := h.replace(old.ID, "access-start", "refresh-start"); err != nil {
+			t.Fatal(err)
+		}
+		current := parseRefreshAuth(t, h.raw(old.ID))
+		newResult := make(chan outcome, 1)
+		go func() {
+			value, err := invoke(s, context.Background(), "auth.refresh", refreshWire(current), h.call)
+			newResult <- outcome{value, err}
+		}()
+		synctest.Wait()
+		unblock()
+		first, second := <-oldResult, <-newResult
+		if first.err != nil || second.err != nil {
+			t.Fatalf("refresh outcomes: old=%v new=%v", first.err, second.err)
+		}
+		if first.value.(workbuddy.RefreshResponse).Auth.Metadata["access_token"] != "access-result-1" || second.value.(workbuddy.RefreshResponse).Auth.Metadata["access_token"] != "access-result-2" || len(h.refreshes) != 2 {
+			t.Fatal("same-token browser login reused the previous generation's result")
+		}
+		for _, input := range []workbuddy.AuthData{old, current} {
+			result, err := invoke(s, context.Background(), "auth.refresh", refreshWire(input), h.call)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := "access-result-1"
+			if input.Metadata["credential_generation"] == current.Metadata["credential_generation"] {
+				want = "access-result-2"
+			}
+			if result.(workbuddy.RefreshResponse).Auth.Metadata["access_token"] != want {
+				t.Fatal("late old-generation result polluted another login generation")
+			}
+		}
+		if len(h.refreshes) != 2 || h.saves != 0 || parseRefreshAuth(t, h.raw(old.ID)).Metadata["access_token"] != "access-start" {
+			t.Fatal("plugin took ownership of host installation or bypassed its result cache")
+		}
+	})
+}
+
+func TestRefreshCancellationDuringUpstreamDoesNotCacheResult(t *testing.T) {
+	s := workbuddy.New()
+	defer s.Close()
+	auth := refreshIdentity(t, "workbuddy", "", time.Hour)
+	h := newRotationHost(t, auth)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	h.onRefresh = func(httpRequest) ([]byte, error) {
+		cancel()
+		return success(map[string]any{"accessToken": "cancelled-access", "expiresIn": 3600})
+	}
+	_, err := invoke(s, ctx, "auth.refresh", refreshWire(auth), h.call)
+	if detail, ok := errors.AsType[*workbuddy.Error](err); !ok || detail.Code != "request_cancelled" || detail.HTTPStatus != 408 {
+		t.Fatalf("cancelled upstream refresh = %v", err)
+	}
+	h.onRefresh = nil
+	result, err := invoke(s, context.Background(), "auth.refresh", refreshWire(auth), h.call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.(workbuddy.RefreshResponse).Auth.Metadata["access_token"] != "access-next" || len(h.refreshes) != 2 || h.saves != 0 {
+		t.Fatal("cancelled refresh was cached or installed")
 	}
 }

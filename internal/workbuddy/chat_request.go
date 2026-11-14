@@ -33,14 +33,15 @@ type executorRequest struct {
 }
 
 type preparedChat struct {
-	request   hostRequest
-	model     string
-	toolNames map[string]string
-	messages  bool
-	body      map[string]json.RawMessage
-	key       chatStrategyKey
-	strategy  chatStrategy
-	tried     chatStrategy
+	request     hostRequest
+	model       string
+	toolNames   map[string]string
+	messages    bool
+	body        map[string]json.RawMessage
+	key         chatStrategyKey
+	strategy    chatStrategy
+	tried       chatStrategy
+	translation *chatTranslation
 }
 
 const maxChatPayload = 32 << 20
@@ -78,12 +79,12 @@ func (s *Service) prepareChat(req executorRequest) (preparedChat, error) {
 	if native {
 		format = "claude"
 	}
-	if req.Format != format || req.SourceFormat != "" && req.SourceFormat != format {
-		return preparedChat{}, failure("unsupported_format", "the selected WorkBuddy model requires its native "+format+" format", 400)
+	capabilities := accountChatModel(stored, req.AuthID, model)
+	translation, payload, err := translateChatRequest(req, format, model, capabilities)
+	if err != nil {
+		return preparedChat{}, err
 	}
-	if len(req.Payload) > maxChatPayload {
-		return preparedChat{}, failure("request_too_large", "chat payload exceeds the 32 MiB limit", 413)
-	}
+	req.Payload = payload
 	var body map[string]json.RawMessage
 	if err := decode(req.Payload, &body); err != nil {
 		return preparedChat{}, err
@@ -92,7 +93,9 @@ func (s *Service) prepareChat(req executorRequest) (preparedChat, error) {
 		return preparedChat{}, err
 	}
 	if native {
-		return prepareMessages(req, stored, chosen, model, headers, body)
+		prepared, err := prepareMessages(req, stored, chosen, model, headers, body)
+		prepared.translation = translation
+		return prepared, err
 	}
 	for _, field := range []string{"thinking", "generate", "image", "image_generation", "audio"} {
 		if nonemptyChatValue(body[field]) {
@@ -105,7 +108,6 @@ func (s *Service) prepareChat(req executorRequest) (preparedChat, error) {
 			return preparedChat{}, failure("unsupported_feature", "chat execution currently supports text output only", 400)
 		}
 	}
-	capabilities := accountChatModel(stored, req.AuthID, model)
 	if err := applyChatEffort(body, capabilities); err != nil {
 		return preparedChat{}, err
 	}
@@ -173,7 +175,8 @@ func (s *Service) prepareChat(req executorRequest) (preparedChat, error) {
 	prepared := preparedChat{
 		request: hostRequest{Method: http.MethodPost, URL: chosen.endpoint + "/v2/chat/completions", Headers: headers, HostCallbackID: req.HostCallbackID},
 		model:   req.Model, toolNames: toolNames, body: body,
-		key: chatStrategyKey{site: chosen.id, account: req.AuthID, model: req.Model, system: chatSystemKey(body)},
+		key:         chatStrategyKey{site: chosen.id, account: req.AuthID, model: req.Model, system: chatSystemKey(body)},
+		translation: translation,
 	}
 	if err := prepared.applyStrategy(s.compatibility.strategy(prepared.key)); err != nil {
 		return preparedChat{}, err

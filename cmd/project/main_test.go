@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,6 +33,14 @@ func runControllerTests(m *testing.M) (status int) {
 	}
 	repositoryRoot = root
 	if err := configureTestEnvironment(filepath.Join(root, "out")); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	proxyPath := filepath.ToSlash(filepath.Join(root, "out", "cache", "go-mod", "cache", "download"))
+	if filepath.VolumeName(root) != "" {
+		proxyPath = "/" + proxyPath
+	}
+	if err := os.Setenv("GOPROXY", (&url.URL{Scheme: "file", Path: proxyPath}).String()); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
@@ -158,7 +167,7 @@ func newFixture(t *testing.T) fixture {
 		}
 	})
 	f := fixture{root: root}
-	for _, relative := range []string{"go.mod", "VERSION"} {
+	for _, relative := range []string{"go.mod", "go.sum", "VERSION"} {
 		copyFixtureFile(t, filepath.Join(repositoryRoot, relative), filepath.Join(root, relative))
 	}
 	return f
@@ -384,6 +393,8 @@ func main() {
 
 func TestNativeSmokeRequiresABITest(t *testing.T) {
 	f := newFixture(t)
+	checksumCache := filepath.Join("out", "cache", "go-mod", "cache", "download", "sumdb")
+	copyFixtureTree(t, filepath.Join(repositoryRoot, checksumCache), filepath.Join(f.root, checksumCache))
 	// Deliberately omit native_integration_test.go and this CLI test package.
 	for _, relative := range []string{
 		"version.go",

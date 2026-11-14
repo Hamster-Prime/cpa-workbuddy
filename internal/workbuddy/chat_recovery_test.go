@@ -175,8 +175,8 @@ func TestChatRecoveryEachCorrectionIsAttemptedOnce(t *testing.T) {
 	}
 }
 
-func TestChatRecoveryAllCorrectionAndRefreshOrderingsHaveFiveAttempts(t *testing.T) {
-	// Every legal ordering of comma, system move, after-tools, and one refresh.
+func TestChatCorrectionsReturnAuthenticationFailuresToManager(t *testing.T) {
+	// Authentication rejection at any correction stage belongs to the host.
 	for _, tc := range []struct {
 		codes []int
 		want  []string
@@ -194,30 +194,50 @@ func TestChatRecoveryAllCorrectionAndRefreshOrderingsHaveFiveAttempts(t *testing
 		{[]int{11153, 11128, 401, 11128}, []string{recoveryOriginal, recoveryAfter, recoveryCommaAfter, recoveryCommaAfter, recoverySystemAfter}},
 		{[]int{11153, 11128, 11128, 401}, []string{recoveryOriginal, recoveryAfter, recoveryCommaAfter, recoverySystemAfter, recoverySystemAfter}},
 	} {
-		for _, last := range []int{200, 11128, 11153, 401} {
-			t.Run(fmt.Sprint(tc.codes, "/", last), func(t *testing.T) {
+		t.Run(fmt.Sprint(tc.codes), func(t *testing.T) {
+			s := workbuddy.New()
+			defer s.Close()
+			auth := refreshIdentity(t, "workbuddy-ai", "", time.Hour)
+			h := newChatRecoveryHost(t, append(tc.codes, 200)...)
+			h.rotation = newRotationHost(t, auth)
+			count := 1
+			for _, code := range tc.codes {
+				if code == 401 {
+					break
+				}
+				count++
+			}
+			err := h.execute(s, recoveryInput(auth, "wb-ai/common", recoveryOriginal), tc.want[:count]...)
+			var detail *workbuddy.Error
+			if !errors.As(err, &detail) || detail.HTTPStatus != 401 || len(h.rotation.refreshes) != 0 || h.rotation.saves != 0 {
+				t.Fatalf("authentication handoff error=%v refreshes=%d saves=%d", err, len(h.rotation.refreshes), h.rotation.saves)
+			}
+			for _, request := range h.opens {
+				if strings.Join(request.Headers["Authorization"], "") != "Bearer access-start" {
+					t.Error("plugin changed credentials while handing authentication failure to the host")
+				}
+			}
+		})
+	}
+}
+
+func TestChatCorrectionsHaveFourBoundedAttempts(t *testing.T) {
+	for _, tc := range []struct {
+		codes []int
+		want  []string
+	}{
+		{[]int{11128, 11128, 11153}, []string{recoveryOriginal, recoveryComma, recoverySystem, recoverySystemAfter}},
+		{[]int{11128, 11153, 11128}, []string{recoveryOriginal, recoveryComma, recoveryCommaAfter, recoverySystemAfter}},
+		{[]int{11153, 11128, 11128}, []string{recoveryOriginal, recoveryAfter, recoveryCommaAfter, recoverySystemAfter}},
+	} {
+		for _, terminal := range []int{200, 11128, 11153} {
+			t.Run(fmt.Sprint(tc.codes, terminal), func(t *testing.T) {
 				s := workbuddy.New()
 				defer s.Close()
-				auth := refreshIdentity(t, "workbuddy-ai", "", time.Hour)
-				script := append(append([]int(nil), tc.codes...), last)
-				h := newChatRecoveryHost(t, script...)
-				h.rotation = newRotationHost(t, auth)
-				err := h.execute(s, recoveryInput(auth, "wb-ai/common", recoveryOriginal), tc.want...)
-				if (err == nil) != (last == 200) || len(h.rotation.refreshes) != 1 {
-					t.Fatalf("five-attempt recovery error=%v refreshes=%d", err, len(h.rotation.refreshes))
-				}
-				refreshed := false
-				for i, request := range h.opens {
-					want := "Bearer access-start"
-					if refreshed {
-						want = "Bearer access-next"
-					}
-					if strings.Join(request.Headers["Authorization"], "") != want {
-						t.Errorf("attempt %d did not retain the expected credential generation", i+1)
-					}
-					if script[i] == 401 {
-						refreshed = true
-					}
+				h := newChatRecoveryHost(t, append(tc.codes, terminal)...)
+				err := h.execute(s, recoveryInput(parsedIdentity(t, "workbuddy", ""), "wb/common", recoveryOriginal), tc.want...)
+				if (err == nil) != (terminal == 200) {
+					t.Fatalf("bounded correction result=%v terminal=%d", err, terminal)
 				}
 			})
 		}

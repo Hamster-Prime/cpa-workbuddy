@@ -1,0 +1,1636 @@
+Third-party Go module licenses and source notices
+
+Scope: go list -deps -json ./cmd/cpa-workbuddy, CGO_ENABLED=1, default build tags;
+windows/amd64, linux/amd64, linux/arm64, darwin/amd64, darwin/arm64.
+Modules, files, and notices are sorted; original license/notice bytes are retained
+between BEGIN/END delimiters. Module sums are from the Go module download cache.
+The Apache-2.0 terms referenced by yaml.v3 and redis are in Apache-2.0.txt.
+Embedded source attributions below do not imply additional linked Go modules.
+
+==============================================================================
+Module: github.com/cespare/xxhash/v2@v2.3.0
+Required as: github.com/cespare/xxhash/v2@v2.3.0
+Go module sum: h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
+Source: https://proxy.golang.org/github.com/cespare/xxhash/v2/@v/v2.3.0.zip
+File: LICENSE.txt
+SHA256: f566a9f97bacdaf00d9f21dd991e81dc11201c4e016c86b470799429a1c9a79c
+[BEGIN LICENSE.txt]
+Copyright (c) 2016 Caleb Spare
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+[END LICENSE.txt]
+
+==============================================================================
+Module: github.com/gabriel-vasile/mimetype@v1.4.3
+Required as: github.com/gabriel-vasile/mimetype@v1.4.3
+Go module sum: h1:in2uUcidCuFcDKtdcBxlR0rJ1+fsokWf+uqxgUFjbI0=
+Source: https://proxy.golang.org/github.com/gabriel-vasile/mimetype/@v/v1.4.3.zip
+File: LICENSE
+SHA256: 4335e2ceb33d8d7e75125192466ae8604617b0a67492b919604fe52dc56018d9
+[BEGIN LICENSE]
+MIT License
+
+Copyright (c) 2018-2020 Gabriel Vasile
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+[END LICENSE]
+Source notice: internal/json/json.go
+// Copyright (c) 2009 The Go Authors. All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//    * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//    * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//    * Neither the name of Google Inc. nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+==============================================================================
+Module: github.com/gin-contrib/sse@v0.1.0
+Required as: github.com/gin-contrib/sse@v0.1.0
+Go module sum: h1:Y/yl/+YNO8GZSjAhjMsSuLt29uWRFHdHYUb5lYOV9qE=
+Source: https://proxy.golang.org/github.com/gin-contrib/sse/@v/v0.1.0.zip
+File: LICENSE
+SHA256: 03458b6d5828e1be1127ca2adf122572eb574fc47b56190c3b38203b8b2a98d0
+[BEGIN LICENSE]
+The MIT License (MIT)
+
+Copyright (c) 2014 Manuel Martínez-Almeida
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+[END LICENSE]
+Source notice: sse-decoder.go, sse-encoder.go
+// Copyright 2014 Manu Martinez-Almeida.  All rights reserved.
+// Use of this source code is governed by a MIT style
+// license that can be found in the LICENSE file.
+
+==============================================================================
+Module: github.com/gin-gonic/gin@v1.10.1
+Required as: github.com/gin-gonic/gin@v1.10.1
+Go module sum: h1:T0ujvqyCSqRopADpgPgiTT63DUQVSfojyME59Ei63pQ=
+Source: https://proxy.golang.org/github.com/gin-gonic/gin/@v/v1.10.1.zip
+File: LICENSE
+SHA256: 03458b6d5828e1be1127ca2adf122572eb574fc47b56190c3b38203b8b2a98d0
+[BEGIN LICENSE]
+The MIT License (MIT)
+
+Copyright (c) 2014 Manuel Martínez-Almeida
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+[END LICENSE]
+Source notice: auth.go, binding/binding.go, binding/form.go, binding/form_mapping.go, binding/json.go, binding/protobuf.go, binding/xml.go, context.go, debug.go, deprecated.go, errors.go, gin.go, logger.go, mode.go, recovery.go, render/data.go, render/html.go, render/json.go, render/redirect.go, render/render.go, render/text.go, render/xml.go, render/yaml.go, response_writer.go, routergroup.go, utils.go
+// Copyright 2014 Manu Martinez-Almeida. All rights reserved.
+// Use of this source code is governed by a MIT style
+// license that can be found in the LICENSE file.
+Source notice: binding/default_validator.go, binding/msgpack.go, binding/query.go, fs.go, render/msgpack.go, test_helpers.go
+// Copyright 2017 Manu Martinez-Almeida. All rights reserved.
+// Use of this source code is governed by a MIT style
+// license that can be found in the LICENSE file.
+Source notice: binding/header.go, binding/toml.go, render/toml.go
+// Copyright 2022 Gin Core Team. All rights reserved.
+// Use of this source code is governed by a MIT style
+// license that can be found in the LICENSE file.
+Source notice: binding/multipart_form_mapping.go
+// Copyright 2019 Gin Core Team. All rights reserved.
+// Use of this source code is governed by a MIT style
+// license that can be found in the LICENSE file.
+Source notice: binding/uri.go, binding/yaml.go, render/protobuf.go, render/reader.go, version.go
+// Copyright 2018 Gin Core Team. All rights reserved.
+// Use of this source code is governed by a MIT style
+// license that can be found in the LICENSE file.
+Source notice: internal/bytesconv/bytesconv_1.20.go
+// Copyright 2023 Gin Core Team. All rights reserved.
+// Use of this source code is governed by a MIT style
+// license that can be found in the LICENSE file.
+Source notice: internal/json/json.go
+// Copyright 2017 Bo-Yi Wu. All rights reserved.
+// Use of this source code is governed by a MIT style
+// license that can be found in the LICENSE file.
+Source notice: path.go
+// Copyright 2013 Julien Schmidt. All rights reserved.
+// Based on the path package, Copyright 2009 The Go Authors.
+// Use of this source code is governed by a BSD-style license that can be found
+// at https://github.com/julienschmidt/httprouter/blob/master/LICENSE.
+Source notice: tree.go
+// Copyright 2013 Julien Schmidt. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be found
+// at https://github.com/julienschmidt/httprouter/blob/master/LICENSE
+
+==============================================================================
+Module: github.com/go-playground/locales@v0.14.1
+Required as: github.com/go-playground/locales@v0.14.1
+Go module sum: h1:EWaQ/wswjilfKLTECiXz7Rh+3BjFhfDFKv/oXslEjJA=
+Source: https://proxy.golang.org/github.com/go-playground/locales/@v/v0.14.1.zip
+File: LICENSE
+SHA256: a1a5ca382f9e8c646fa05240a74a6554bbc3084b5675f84c9eaafd3d95686612
+[BEGIN LICENSE]
+The MIT License (MIT)
+
+Copyright (c) 2016 Go Playground
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+[END LICENSE]
+
+==============================================================================
+Module: github.com/go-playground/universal-translator@v0.18.1
+Required as: github.com/go-playground/universal-translator@v0.18.1
+Go module sum: h1:Bcnm0ZwsGyWbCzImXv+pAJnYK9S473LQFuzCbDbfSFY=
+Source: https://proxy.golang.org/github.com/go-playground/universal-translator/@v/v0.18.1.zip
+File: LICENSE
+SHA256: a55d0c6e1a35ee6cf13afb4bbc3c8801cc570d7ac8edcd5e4503892f1c7ff4f7
+[BEGIN LICENSE]
+The MIT License (MIT)
+
+Copyright (c) 2016 Go Playground
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+[END LICENSE]
+
+==============================================================================
+Module: github.com/go-playground/validator/v10@v10.20.0
+Required as: github.com/go-playground/validator/v10@v10.20.0
+Go module sum: h1:K9ISHbSaI0lyB2eWMPJo+kOS/FBExVwjEviJTixqxL8=
+Source: https://proxy.golang.org/github.com/go-playground/validator/v10/@v/v10.20.0.zip
+File: LICENSE
+SHA256: 9e321f6a1db81616a6c344d3aefddf9834fef23bdd913eae0db283dfa6753dff
+[BEGIN LICENSE]
+The MIT License (MIT)
+
+Copyright (c) 2015 Dean Karn
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+[END LICENSE]
+
+==============================================================================
+Module: github.com/google/uuid@v1.6.0
+Required as: github.com/google/uuid@v1.6.0
+Go module sum: h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+Source: https://proxy.golang.org/github.com/google/uuid/@v/v1.6.0.zip
+File: LICENSE
+SHA256: 0a8d61ed3cbfd5312326e8126c31ce9c627a283adc99131b56896d29ada04b2d
+[BEGIN LICENSE]
+Copyright (c) 2009,2014 Google Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+[END LICENSE]
+Source notice: dce.go, doc.go, hash.go, marshal.go, node.go, sql.go, time.go, util.go, version1.go, version4.go
+// Copyright 2016 Google Inc.  All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: node_net.go
+// Copyright 2017 Google Inc.  All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: null.go
+// Copyright 2021 Google Inc.  All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: uuid.go
+// Copyright 2018 Google Inc.  All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: version6.go, version7.go
+// Copyright 2023 Google Inc.  All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+==============================================================================
+Module: github.com/leodido/go-urn@v1.4.0
+Required as: github.com/leodido/go-urn@v1.4.0
+Go module sum: h1:WT9HwE9SGECu3lg4d/dIA+jxlljEa1/ffXKmRjqdmIQ=
+Source: https://proxy.golang.org/github.com/leodido/go-urn/@v/v1.4.0.zip
+File: LICENSE
+SHA256: fe81a9072afbfe0fe32b0bc99a852d697d14fbbca99b0b1878ac8f5dcbdd6ee6
+[BEGIN LICENSE]
+MIT License
+
+Copyright (c) 2018 Leonardo Di Donato
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+[END LICENSE]
+
+==============================================================================
+Module: github.com/mattn/go-isatty@v0.0.20
+Required as: github.com/mattn/go-isatty@v0.0.20
+Go module sum: h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
+Source: https://proxy.golang.org/github.com/mattn/go-isatty/@v/v0.0.20.zip
+File: LICENSE
+SHA256: 08eab1118c80885fa1fa6a6dd7303f65a379fcb3733e063d20d1bbc2c76e6fa1
+[BEGIN LICENSE]
+Copyright (c) Yasuhiro MATSUMOTO <mattn.jp@gmail.com>
+
+MIT License (Expat)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+[END LICENSE]
+
+==============================================================================
+Module: github.com/pelletier/go-toml/v2@v2.4.3-0.20260624044523-35f78d5908f1
+Required as: github.com/pelletier/go-toml/v2@v2.4.3-0.20260624044523-35f78d5908f1
+Go module sum: h1:gIZQQ2+wbsdQGWLPDSdJFptR25tBCjSC0KbSIQZ1rgE=
+Source: https://proxy.golang.org/github.com/pelletier/go-toml/v2/@v/v2.4.3-0.20260624044523-35f78d5908f1.zip
+File: LICENSE
+SHA256: 26844e4b53c5adec04e557fd7dfef281cc0205a7d355626b1c68b778b99e9e7b
+[BEGIN LICENSE]
+The MIT License (MIT)
+
+go-toml v2
+Copyright (c) 2021 - 2023 Thomas Pelletier
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+[END LICENSE]
+
+==============================================================================
+Module: github.com/redis/go-redis/v9@v9.19.0
+Required as: github.com/redis/go-redis/v9@v9.19.0
+Go module sum: h1:XPVaaPSnG6RhYf7p+rmSa9zZfeVAnWsH5h3lxthOm/k=
+Source: https://proxy.golang.org/github.com/redis/go-redis/v9/@v/v9.19.0.zip
+File: LICENSE
+SHA256: a3a7dff87da3927db65cb4c87b1cfbc96ca2755704461a485d457be7ae300a86
+[BEGIN LICENSE]
+Copyright (c) 2013 The github.com/redis/go-redis Authors.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+[END LICENSE]
+Source notice: internal/hashtag/hashtag.go
+
+// CRC16 implementation according to CCITT standards.
+// Copyright 2001-2010 Georges Menie (www.menie.org)
+// Copyright 2013 The Go Authors. All rights reserved.
+// https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec#appendix-a-crc16-reference-implementation-in-ansi-c.
+Source notice: internal/once.go
+/*
+Copyright 2014 The Camlistore Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+Source notice: internal/util/atomic_max.go
+/*
+© 2023–present Harald Rudell <harald.rudell@gmail.com> (https://haraldrudell.github.io/haraldrudell/)
+ISC License
+
+Modified by htemelski-redis
+Removed the treshold, adapted it to work with float64
+*/
+Source notice: internal/util/atomic_min.go
+/*
+© 2023–present Harald Rudell <harald.rudell@gmail.com> (https://haraldrudell.github.io/haraldrudell/)
+ISC License
+
+Modified by htemelski-redis
+Adapted from the modified atomic_max, but with inverted logic
+*/
+
+==============================================================================
+Module: github.com/router-for-me/CLIProxyAPI/v8@v8.0.69
+Required as: github.com/router-for-me/CLIProxyAPI/v8@v8.0.69
+Go module sum: h1:ZEjBEGubQOaUW4uHvjZimGyyy/H9Hhm2qXysbgLKONs=
+Source: https://proxy.golang.org/github.com/router-for-me/!c!l!i!proxy!a!p!i/v8/@v/v8.0.69.zip
+File: LICENSE
+SHA256: 879792e89cf1bdd6a8d446033ec87e30496f97dcafc4656dc53f641509b346a6
+[BEGIN LICENSE]
+MIT License
+
+Copyright (c) 2025-2005.9 Luis Pater
+Copyright (c) 2025.9-present Router-For.ME
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+[END LICENSE]
+
+==============================================================================
+Module: github.com/router-for-me/moego@v0.1.2
+Required as: github.com/MoeForge/moego@v0.1.0-alpha.1
+Go module sum: h1:ME0iDkiFZK7N4MDj2C/XMvDT7euvTVIWMYEGd+VQGf0=
+Source: https://proxy.golang.org/github.com/router-for-me/moego/@v/v0.1.2.zip
+File: LICENSE
+SHA256: 86f028deb5895d8994571a0393face710851c29bb938e9b23fe7a9828efd99a8
+[BEGIN LICENSE]
+MIT License
+
+Copyright (c) 2026 Calcium-Ion
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+[END LICENSE]
+
+==============================================================================
+Module: github.com/sirupsen/logrus@v1.9.3
+Required as: github.com/sirupsen/logrus@v1.9.3
+Go module sum: h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
+Source: https://proxy.golang.org/github.com/sirupsen/logrus/@v/v1.9.3.zip
+File: LICENSE
+SHA256: 51a0c9ec7f8b7634181b8d4c03e5b5d204ac21d6e72f46c313973424664b2e6b
+[BEGIN LICENSE]
+The MIT License (MIT)
+
+Copyright (c) 2014 Simon Eskildsen
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+[END LICENSE]
+Source notice: alt_exit.go
+
+// The following code was sourced and modified from the
+// https://github.com/tebeka/atexit package governed by the following license:
+//
+// Copyright (c) 2012 Miki Tebeka <miki.tebeka@gmail.com>.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy of
+// this software and associated documentation files (the "Software"), to deal in
+// the Software without restriction, including without limitation the rights to
+// use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+// the Software, and to permit persons to whom the Software is furnished to do so,
+// subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+// FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+// COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+// IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+// CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+==============================================================================
+Module: github.com/ugorji/go/codec@v1.2.12
+Required as: github.com/ugorji/go/codec@v1.2.12
+Go module sum: h1:9LC83zGrHhuUA9l16C9AHXAqEV/2wBQ4nkvumAE65EE=
+Source: https://proxy.golang.org/github.com/ugorji/go/codec/@v/v1.2.12.zip
+File: LICENSE
+SHA256: c8a84b926246b4ac76e3810722858b0f83bdea8378de49911dccbefd70b0692e
+[BEGIN LICENSE]
+The MIT License (MIT)
+
+Copyright (c) 2012-2020 Ugorji Nwoke.
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+[END LICENSE]
+Source notice: 0_importpath.go
+// Copyright (c) 2012-2018 Ugorji Nwoke. All rights reserved.
+// Use of this source code is governed by a MIT license found in the LICENSE file.
+Source notice: binc.go, cbor.go, decimal.go, decode.go, doc.go, encode.go, goversion_arrayof_gte_go15.go, goversion_fmt_time_gte_go15.go, goversion_growslice_unsafe_gte_go120.go, goversion_makemap_unsafe_gte_go110.go, goversion_unexportedembeddedptr_gte_go110.go, goversion_vendor_gte_go17.go, helper.go, helper_internal.go, helper_unsafe.go, helper_unsafe_compiler_gc.go, json.go, msgpack.go, reader.go, register_ext.go, rpc.go, simple.go, sort-slice.generated.go, writer.go
+// Copyright (c) 2012-2020 Ugorji Nwoke. All rights reserved.
+// Use of this source code is governed by a MIT license found in the LICENSE file.
+Source notice: fast-path.generated.go, gen-helper.generated.go
+
+// Copyright (c) 2012-2020 Ugorji Nwoke. All rights reserved.
+// Use of this source code is governed by a MIT license found in the LICENSE file.
+
+==============================================================================
+Module: go.etcd.io/bbolt@v1.5.0
+Required as: go.etcd.io/bbolt@v1.5.0
+Go module sum: h1:S7GAl7Fxv12yohbwFfIbQCGDWbQbtDGPET4P/bD4lxU=
+Source: https://proxy.golang.org/go.etcd.io/bbolt/@v/v1.5.0.zip
+File: LICENSE
+SHA256: c15d721c37e277a11584547de6d618541501f7aa10c4e32a945a4f9ff36cb0f6
+[BEGIN LICENSE]
+The MIT License (MIT)
+
+Copyright (c) 2013 Ben Johnson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+[END LICENSE]
+
+==============================================================================
+Module: go.uber.org/atomic@v1.11.0
+Required as: go.uber.org/atomic@v1.11.0
+Go module sum: h1:ZvwS0R+56ePWxUNi+Atn9dWONBPp/AUETXlHW0DxSjE=
+Source: https://proxy.golang.org/go.uber.org/atomic/@v/v1.11.0.zip
+File: LICENSE.txt
+SHA256: edbb5a4d165ac69376c765b551c0662ff42bea87e1f1eda85f42ac90c34b09d0
+[BEGIN LICENSE.txt]
+Copyright (c) 2016 Uber Technologies, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+[END LICENSE.txt]
+Source notice: bool.go, duration.go, error.go, float32.go, float64.go, int32.go, int64.go, string.go, time.go, uint32.go, uint64.go, uintptr.go
+
+// Copyright (c) 2020-2023 Uber Technologies, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+Source notice: bool_ext.go, doc.go, duration_ext.go, gen.go, nocmp.go, value.go
+// Copyright (c) 2020 Uber Technologies, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+Source notice: error_ext.go, float32_ext.go, float64_ext.go
+// Copyright (c) 2020-2022 Uber Technologies, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+Source notice: pointer_go118.go, pointer_go119.go
+// Copyright (c) 2022 Uber Technologies, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+Source notice: string_ext.go
+// Copyright (c) 2020-2023 Uber Technologies, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+Source notice: time_ext.go
+//  Copyright (c) 2021 Uber Technologies, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+Source notice: unsafe_pointer.go
+// Copyright (c) 2021-2022 Uber Technologies, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+==============================================================================
+Module: golang.org/x/crypto@v0.57.0
+Required as: golang.org/x/crypto@v0.57.0
+Go module sum: h1:3ZVCjf8Ggz7zneR/EHRVx68Ctf+2pmIMP2UFhh9cC6M=
+Source: https://proxy.golang.org/golang.org/x/crypto/@v/v0.57.0.zip
+File: LICENSE
+SHA256: 911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad
+[BEGIN LICENSE]
+Copyright 2009 The Go Authors.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google LLC nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+[END LICENSE]
+File: PATENTS
+SHA256: 96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc
+[BEGIN PATENTS]
+Additional IP Rights Grant (Patents)
+
+"This implementation" means the copyrightable works distributed by
+Google as part of the Go project.
+
+Google hereby grants to You a perpetual, worldwide, non-exclusive,
+no-charge, royalty-free, irrevocable (except as stated in this section)
+patent license to make, have made, use, offer to sell, sell, import,
+transfer and otherwise run, modify and propagate the contents of this
+implementation of Go, where such license applies only to those patent
+claims, both currently owned or controlled by Google and acquired in
+the future, licensable by Google that are necessarily infringed by this
+implementation of Go.  This grant does not include claims that would be
+infringed only as a consequence of further modification of this
+implementation.  If you or your agent or exclusive licensee institute or
+order or agree to the institution of patent litigation against any
+entity (including a cross-claim or counterclaim in a lawsuit) alleging
+that this implementation of Go or any code incorporated within this
+implementation of Go constitutes direct or contributory patent
+infringement, or inducement of patent infringement, then any patent
+rights granted to you under this License for this implementation of Go
+shall terminate as of the date such litigation is filed.
+
+[END PATENTS]
+Source notice: bcrypt/base64.go, bcrypt/bcrypt.go
+// Copyright 2011 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: blowfish/block.go, blowfish/cipher.go, blowfish/const.go
+// Copyright 2010 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: sha3/hashes.go, sha3/legacy_hash.go, sha3/legacy_keccakf.go, sha3/shake.go
+// Copyright 2014 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+==============================================================================
+Module: golang.org/x/net@v0.60.0
+Required as: golang.org/x/net@v0.60.0
+Go module sum: h1:79p50tfZlm0J9YfoDsSi639qSXNGVwEzOPLCxM2FsYU=
+Source: https://proxy.golang.org/golang.org/x/net/@v/v0.60.0.zip
+File: LICENSE
+SHA256: 911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad
+[BEGIN LICENSE]
+Copyright 2009 The Go Authors.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google LLC nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+[END LICENSE]
+File: PATENTS
+SHA256: 96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc
+[BEGIN PATENTS]
+Additional IP Rights Grant (Patents)
+
+"This implementation" means the copyrightable works distributed by
+Google as part of the Go project.
+
+Google hereby grants to You a perpetual, worldwide, non-exclusive,
+no-charge, royalty-free, irrevocable (except as stated in this section)
+patent license to make, have made, use, offer to sell, sell, import,
+transfer and otherwise run, modify and propagate the contents of this
+implementation of Go, where such license applies only to those patent
+claims, both currently owned or controlled by Google and acquired in
+the future, licensable by Google that are necessarily infringed by this
+implementation of Go.  This grant does not include claims that would be
+infringed only as a consequence of further modification of this
+implementation.  If you or your agent or exclusive licensee institute or
+order or agree to the institution of patent litigation against any
+entity (including a cross-claim or counterclaim in a lawsuit) alleging
+that this implementation of Go or any code incorporated within this
+implementation of Go constitutes direct or contributory patent
+infringement, or inducement of patent infringement, then any patent
+rights granted to you under this License for this implementation of Go
+shall terminate as of the date such litigation is filed.
+
+[END PATENTS]
+Source notice: html/atom/atom.go
+// Copyright 2012 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: html/const.go, html/doctype.go, html/foreign.go, html/node.go, html/render.go, proxy/direct.go, proxy/per_host.go, proxy/proxy.go, proxy/socks5.go
+// Copyright 2011 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: html/doc.go, html/entity.go, html/escape.go, html/parse.go, html/token.go
+// Copyright 2010 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: html/iter.go, http2/unencrypted.go
+// Copyright 2024 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: http/httpguts/guts.go, http2/h2c/h2c.go, internal/socks/client.go, internal/socks/socks.go
+// Copyright 2018 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: http/httpguts/httplex.go
+// Copyright 2016 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: http2/ascii.go
+// Copyright 2021 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: http2/ciphers.go
+// Copyright 2017 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: http2/client_priority_go127.go, http2/clientconn.go, http2/server_common.go, http2/server_wrap.go, http2/transport_common.go, http2/transport_wrap.go, http2/writesched_common.go, internal/httpcommon/gzip.go
+// Copyright 2026 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: http2/config_go126.go, internal/httpcommon/ascii.go, internal/httpcommon/headermap.go, internal/httpcommon/request.go, internal/httpsfv/httpsfv.go
+// Copyright 2025 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: http2/databuffer.go, http2/errors.go, http2/flow.go, http2/frame.go, http2/gotrack.go, http2/hpack/encode.go, http2/hpack/hpack.go, http2/hpack/huffman.go, http2/hpack/tables.go, http2/http2.go, http2/pipe.go, http2/write.go
+// Copyright 2014 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: idna/idna.go, idna/punycode.go, idna/trie.go
+
+// Copyright 2016 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: proxy/dial.go
+// Copyright 2019 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+==============================================================================
+Module: golang.org/x/sys@v0.48.0
+Required as: golang.org/x/sys@v0.48.0
+Go module sum: h1:bbX/i/6MgT9BVLM9RT1thmxL04yeTAhbEz4SyadbXoo=
+Source: https://proxy.golang.org/golang.org/x/sys/@v/v0.48.0.zip
+File: LICENSE
+SHA256: 911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad
+[BEGIN LICENSE]
+Copyright 2009 The Go Authors.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google LLC nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+[END LICENSE]
+File: PATENTS
+SHA256: 96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc
+[BEGIN PATENTS]
+Additional IP Rights Grant (Patents)
+
+"This implementation" means the copyrightable works distributed by
+Google as part of the Go project.
+
+Google hereby grants to You a perpetual, worldwide, non-exclusive,
+no-charge, royalty-free, irrevocable (except as stated in this section)
+patent license to make, have made, use, offer to sell, sell, import,
+transfer and otherwise run, modify and propagate the contents of this
+implementation of Go, where such license applies only to those patent
+claims, both currently owned or controlled by Google and acquired in
+the future, licensable by Google that are necessarily infringed by this
+implementation of Go.  This grant does not include claims that would be
+infringed only as a consequence of further modification of this
+implementation.  If you or your agent or exclusive licensee institute or
+order or agree to the institution of patent litigation against any
+entity (including a cross-claim or counterclaim in a lawsuit) alleging
+that this implementation of Go or any code incorporated within this
+implementation of Go constitutes direct or contributory patent
+infringement, or inducement of patent infringement, then any patent
+rights granted to you under this License for this implementation of Go
+shall terminate as of the date such litigation is filed.
+
+[END PATENTS]
+Source notice: cpu/asm_darwin_arm64_gc.s, cpu/asm_darwin_x86_gc.s, cpu/cpu_darwin_x86.go, cpu/cpu_other_x86.go, cpu/syscall_darwin_arm64_gc.go, cpu/syscall_darwin_x86_gc.go, unix/vgetrandom_linux.go, unix/vgetrandom_unsupported.go
+// Copyright 2024 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: cpu/byteorder.go, cpu/cpu_arm64.go, cpu/cpu_arm64.s, cpu/cpu_gc_arm64.go, cpu/cpu_linux_noinit.go, cpu/hwcap_linux.go, unix/fcntl_darwin.go, unix/fdset.go, unix/readdirent_getdents.go, unix/readdirent_getdirentries.go, unix/sockcmsg_unix_other.go
+// Copyright 2019 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: cpu/cpu.go, cpu/cpu_gc_x86.go, cpu/cpu_gc_x86.s, cpu/cpu_linux_arm64.go, cpu/cpu_x86.go, unix/affinity_linux.go, unix/aliases.go, unix/ioctl_unsigned.go, unix/syscall_darwin_libSystem.go, unix/syscall_linux_gc.go, windows/aliases.go
+// Copyright 2018 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: cpu/cpu_darwin_arm64.go, cpu/cpu_windows.go, unix/readv_unix.go
+// Copyright 2026 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: cpu/endian_little.go, cpu/runtime_auxv.go, cpu/runtime_auxv_go121.go, unix/mmap_nomremap.go, unix/mremap.go
+// Copyright 2023 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: cpu/parse.go, cpu/proc_cpuinfo_linux.go, unix/syscall_linux_alarm.go
+// Copyright 2022 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unix/asm_bsd_amd64.s, unix/asm_bsd_arm64.s, unix/ifreq_linux.go, unix/ioctl_linux.go, unix/sysvshm_linux.go, unix/sysvshm_unix.go, unix/sysvshm_unix_other.go, windows/setupapi_windows.go
+// Copyright 2021 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unix/asm_linux_amd64.s, unix/dirent.go, unix/syscall.go, unix/syscall_bsd.go, unix/syscall_darwin_amd64.go, unix/syscall_linux.go, unix/syscall_linux_amd64.go, unix/syscall_unix.go, windows/exec_windows.go, windows/str.go, windows/syscall.go, windows/syscall_windows.go
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unix/asm_linux_arm64.s, unix/constants.go, unix/syscall_darwin_arm64.go, unix/syscall_linux_arm64.go
+// Copyright 2015 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unix/auxv.go
+// Copyright 2025 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unix/bluetooth_linux.go, unix/syscall_linux_amd64_gc.go, unix/syscall_unix_gc.go
+// Copyright 2016 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unix/dev_darwin.go, unix/dev_linux.go, unix/pagesize_unix.go, unix/timestruct.go, windows/memory_windows.go
+// Copyright 2017 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unix/endian_little.go
+// Copyright 2016 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+//
+//go:build 386 || amd64 || amd64p32 || alpha || arm || arm64 || loong64 || mipsle || mips64le || mips64p32le || nios2 || ppc64le || riscv || riscv64 || sh
+Source notice: unix/env_unix.go, windows/env_windows.go
+// Copyright 2010 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unix/fcntl.go
+// Copyright 2014 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unix/ptrace_darwin.go
+// Copyright 2020 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unix/race0.go, windows/eventlog.go, windows/race0.go, windows/security_windows.go, windows/service.go
+// Copyright 2012 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unix/sockcmsg_linux.go, unix/sockcmsg_unix.go, windows/dll_windows.go, windows/types_windows.go, windows/types_windows_amd64.go
+// Copyright 2011 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unix/syscall_darwin.go
+// Copyright 2009,2010 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+==============================================================================
+Module: golang.org/x/text@v0.42.0
+Required as: golang.org/x/text@v0.42.0
+Go module sum: h1:JbOZXgfeCPU9gacVtYliJqOhD+zhrEqK4LfdpmlUZqI=
+Source: https://proxy.golang.org/golang.org/x/text/@v/v0.42.0.zip
+File: LICENSE
+SHA256: 911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad
+[BEGIN LICENSE]
+Copyright 2009 The Go Authors.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google LLC nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+[END LICENSE]
+File: PATENTS
+SHA256: 96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc
+[BEGIN PATENTS]
+Additional IP Rights Grant (Patents)
+
+"This implementation" means the copyrightable works distributed by
+Google as part of the Go project.
+
+Google hereby grants to You a perpetual, worldwide, non-exclusive,
+no-charge, royalty-free, irrevocable (except as stated in this section)
+patent license to make, have made, use, offer to sell, sell, import,
+transfer and otherwise run, modify and propagate the contents of this
+implementation of Go, where such license applies only to those patent
+claims, both currently owned or controlled by Google and acquired in
+the future, licensable by Google that are necessarily infringed by this
+implementation of Go.  This grant does not include claims that would be
+infringed only as a consequence of further modification of this
+implementation.  If you or your agent or exclusive licensee institute or
+order or agree to the institution of patent litigation against any
+entity (including a cross-claim or counterclaim in a lawsuit) alleging
+that this implementation of Go or any code incorporated within this
+implementation of Go constitutes direct or contributory patent
+infringement, or inducement of patent infringement, then any patent
+rights granted to you under this License for this implementation of Go
+shall terminate as of the date such litigation is filed.
+
+[END PATENTS]
+Source notice: internal/language/compact.go, internal/language/compact/compact.go, internal/language/compose.go
+// Copyright 2018 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: internal/language/compact/language.go, internal/language/compact/tags.go, internal/language/language.go, internal/language/lookup.go, internal/language/match.go, internal/language/parse.go, internal/language/tags.go, language/language.go, language/match.go, language/parse.go, language/tags.go, transform/transform.go, unicode/norm/transform.go
+// Copyright 2013 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: internal/language/coverage.go, language/coverage.go
+// Copyright 2014 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: internal/tag/tag.go, unicode/bidi/bidi.go, unicode/bidi/bracket.go, unicode/bidi/core.go
+// Copyright 2015 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: language/doc.go
+// Copyright 2017 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: secure/bidirule/bidirule.go, unicode/bidi/prop.go
+// Copyright 2016 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: unicode/norm/composition.go, unicode/norm/forminfo.go, unicode/norm/input.go, unicode/norm/iter.go, unicode/norm/normalize.go, unicode/norm/readwriter.go, unicode/norm/trie.go
+// Copyright 2011 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+==============================================================================
+Module: google.golang.org/protobuf@v1.34.1
+Required as: google.golang.org/protobuf@v1.34.1
+Go module sum: h1:9ddQBjfCyZPOHPUiPxpYESBLc+T8P3E+Vo4IbKZgFWg=
+Source: https://proxy.golang.org/google.golang.org/protobuf/@v/v1.34.1.zip
+File: LICENSE
+SHA256: 4835612df0098ca95f8e7d9e3bffcb02358d435dbb38057c844c99d7f725eb20
+[BEGIN LICENSE]
+Copyright (c) 2018 The Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+[END LICENSE]
+File: PATENTS
+SHA256: 96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc
+[BEGIN PATENTS]
+Additional IP Rights Grant (Patents)
+
+"This implementation" means the copyrightable works distributed by
+Google as part of the Go project.
+
+Google hereby grants to You a perpetual, worldwide, non-exclusive,
+no-charge, royalty-free, irrevocable (except as stated in this section)
+patent license to make, have made, use, offer to sell, sell, import,
+transfer and otherwise run, modify and propagate the contents of this
+implementation of Go, where such license applies only to those patent
+claims, both currently owned or controlled by Google and acquired in
+the future, licensable by Google that are necessarily infringed by this
+implementation of Go.  This grant does not include claims that would be
+infringed only as a consequence of further modification of this
+implementation.  If you or your agent or exclusive licensee institute or
+order or agree to the institution of patent litigation against any
+entity (including a cross-claim or counterclaim in a lawsuit) alleging
+that this implementation of Go or any code incorporated within this
+implementation of Go constitutes direct or contributory patent
+infringement, or inducement of patent infringement, then any patent
+rights granted to you under this License for this implementation of Go
+shall terminate as of the date such litigation is filed.
+
+[END PATENTS]
+Source notice: encoding/protowire/wire.go, internal/detrand/rand.go, internal/errors/errors.go, internal/flags/flags.go, internal/flags/proto_legacy_disable.go, internal/pragma/pragma.go, internal/strs/strings_unsafe_go121.go, proto/decode.go, proto/decode_gen.go, proto/encode_gen.go, proto/proto.go, proto/size_gen.go, reflect/protoreflect/proto.go, reflect/protoreflect/type.go, reflect/protoreflect/value.go, reflect/protoreflect/value_union.go, reflect/protoreflect/value_unsafe_go121.go, reflect/protoregistry/registry.go, runtime/protoiface/legacy.go
+// Copyright 2018 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: internal/encoding/messageset/messageset.go, internal/genid/any_gen.go, internal/genid/api_gen.go, internal/genid/descriptor_gen.go, internal/genid/doc.go, internal/genid/duration_gen.go, internal/genid/empty_gen.go, internal/genid/field_mask_gen.go, internal/genid/go_features_gen.go, internal/genid/goname.go, internal/genid/map_entry.go, internal/genid/source_context_gen.go, internal/genid/struct_gen.go, internal/genid/timestamp_gen.go, internal/genid/type_gen.go, internal/genid/wrappers.go, internal/genid/wrappers_gen.go, internal/strs/strings.go, proto/checkinit.go, proto/doc.go, proto/encode.go, proto/equal.go, proto/extension.go, proto/merge.go, proto/messageset.go, proto/proto_methods.go, proto/reset.go, proto/size.go, proto/wrappers.go, reflect/protoreflect/source.go, reflect/protoreflect/source_gen.go, runtime/protoiface/methods.go
+// Copyright 2019 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: internal/errors/is_go113.go, internal/order/order.go, internal/order/range.go, reflect/protoreflect/methods.go
+// Copyright 2020 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+Source notice: reflect/protoreflect/value_equal.go
+// Copyright 2022 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+==============================================================================
+Module: gopkg.in/yaml.v3@v3.0.1
+Required as: gopkg.in/yaml.v3@v3.0.1
+Go module sum: h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+Source: https://proxy.golang.org/gopkg.in/yaml.v3/@v/v3.0.1.zip
+File: LICENSE
+SHA256: d18f6323b71b0b768bb5e9616e36da390fbd39369a81807cca352de4e4e6aa0b
+[BEGIN LICENSE]
+
+This project is covered by two different licenses: MIT and Apache.
+
+#### MIT License ####
+
+The following files were ported to Go from C files of libyaml, and thus
+are still covered by their original MIT license, with the additional
+copyright staring in 2011 when the project was ported over:
+
+    apic.go emitterc.go parserc.go readerc.go scannerc.go
+    writerc.go yamlh.go yamlprivateh.go
+
+Copyright (c) 2006-2010 Kirill Simonov
+Copyright (c) 2006-2011 Kirill Simonov
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+### Apache License ###
+
+All the remaining project files are covered by the Apache license:
+
+Copyright (c) 2011-2019 Canonical Ltd
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+[END LICENSE]
+File: NOTICE
+SHA256: f6c2dd3a67b576eafb89b80200b8b1627230bf3821a0c14cb99a22ac19107d00
+[BEGIN NOTICE]
+Copyright 2011-2016 Canonical Ltd.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+[END NOTICE]
+Source notice: apic.go, readerc.go, writerc.go, yamlprivateh.go
+// 
+// Copyright (c) 2011-2019 Canonical Ltd
+// Copyright (c) 2006-2010 Kirill Simonov
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy of
+// this software and associated documentation files (the "Software"), to deal in
+// the Software without restriction, including without limitation the rights to
+// use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+// of the Software, and to permit persons to whom the Software is furnished to do
+// so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+Source notice: decode.go, encode.go, resolve.go, sorter.go, yaml.go
+//
+// Copyright (c) 2011-2019 Canonical Ltd
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+Source notice: emitterc.go, parserc.go, scannerc.go, yamlh.go
+//
+// Copyright (c) 2011-2019 Canonical Ltd
+// Copyright (c) 2006-2010 Kirill Simonov
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy of
+// this software and associated documentation files (the "Software"), to deal in
+// the Software without restriction, including without limitation the rights to
+// use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+// of the Software, and to permit persons to whom the Software is furnished to do
+// so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+==============================================================================
+Embedded source: github.com/julienschmidt/httprouter@v1.3.0
+Used by: github.com/gin-gonic/gin@v1.10.1 (path.go, tree.go)
+Go module sum: h1:U0609e9tgbseu3rBINet9P48AI/D3oJs4dN7jwJOQ1U=
+Source: https://proxy.golang.org/github.com/julienschmidt/httprouter/@v/v1.3.0.zip
+File: LICENSE
+SHA256: 162ce11ad71338d0a0c6ebaf5c48af72c6ae237b468859d3656fe2d9ed3f3a85
+[BEGIN LICENSE]
+BSD 3-Clause License
+
+Copyright (c) 2013, Julien Schmidt
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+[END LICENSE]
+
+Embedded source: haraldrudell/parl ISC terms
+Used by: github.com/redis/go-redis/v9@v9.19.0 (internal/util/atomic_max.go, internal/util/atomic_min.go)
+Source: https://raw.githubusercontent.com/haraldrudell/parl/main/LICENSE
+Retrieved: 2026-11-14; original bytes fixed by SHA256 below.
+File: parl-LICENSE
+SHA256: 3d41422b23782d18b02880f557594dab7ffc8a192167ff11ebdcbe26817ea8b2
+[BEGIN parl-LICENSE]
+© 2021–present Harald Rudell <harald.rudell@gmail.com> (https://haraldrudell.github.io/haraldrudell/)
+
+Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee
+is hereby granted, provided that the above copyright notice and this permission notice appear in all
+copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
+FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH
+THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+[END parl-LICENSE]
+
+Embedded source: Georges Menie CRC16 BSD-3-Clause terms
+Used by: github.com/redis/go-redis/v9@v9.19.0 (internal/hashtag/hashtag.go)
+Source: https://www.menie.org/georges/embedded/crc16.c
+Retrieved: 2026-11-14; original notice bytes fixed by SHA256 below.
+File: crc16.c license notice
+SHA256: 9cf8c936402ee68414f4b77b39ede89d925465b4c8477a0730480ae0dd45f3a0
+[BEGIN crc16.c license notice]
+/* SPDX-License-Identifier: BSD-3-Clause */
+/*
+ * Copyright 2001-2022 Georges Menie (www.menie.org)
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+
+[END crc16.c license notice]

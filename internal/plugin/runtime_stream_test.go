@@ -44,7 +44,7 @@ func TestRuntimeShutdownJoinsStreamingHostCallbacks(t *testing.T) {
 	var registered struct {
 		OK bool `json:"ok"`
 	}
-	if json.Unmarshal(runtime.Handle("plugin.register", []byte(`{"schema_version":6}`)), &registered) != nil || !registered.OK {
+	if json.Unmarshal(runtime.Handle("plugin.register", []byte(`{"schema_version":10}`)), &registered) != nil || !registered.OK {
 		t.Fatal("registration failed")
 	}
 	credential := []byte(`{"provider":"workbuddy","type":"workbuddy","credential_type":"browser","version":1,"site":"workbuddy-ai","uid":"lifecycle","access_token":"fixture-access","expires_at":"2030-01-01T00:00:00Z"}`)

@@ -421,7 +421,7 @@ int main(int argc, char **argv) {
     failed_call(&api, "malformed-json", "plugin.register", (const uint8_t *)malformed, strlen(malformed), 0, "invalid_request");
     const uint8_t embedded_nul[] = {'{', '}', 0, '{', '}'};
     failed_call(&api, "embedded-nul", "plugin.register", embedded_nul, sizeof(embedded_nul), 0, "invalid_request");
-    const char *schema = "{\"schema_version\":7}";
+    const char *schema = "{\"schema_version\":9}";
     failed_call(&api, "schema-mismatch", "plugin.register", (const uint8_t *)schema, strlen(schema), 0, "incompatible_schema");
     const char *empty = "{}";
     failed_call(&api, "unknown-method", "workbuddy.unknown", (const uint8_t *)empty, 2, 0, "unknown_method");
@@ -429,10 +429,10 @@ int main(int argc, char **argv) {
     failed_call(&api, "auth-before-registration", "auth.identifier", (const uint8_t *)empty, 2, 0, "not_registered");
     failed_call(&api, "executor-before-registration", "executor.identifier", (const uint8_t *)empty, 2, 0, "not_registered");
 
-    buffer registration = call(&api, "plugin.register", "{\"config_yaml\":null,\"schema_version\":6}");
+    buffer registration = call(&api, "plugin.register", "{\"config_yaml\":null,\"schema_version\":10}");
     document registered = parse(registration);
     int result = field(&registered, 0, "result");
-    check(equals(&registered, field(&registered, result, "schema_version"), "6"), "registration schema must be 6");
+    check(equals(&registered, field(&registered, result, "schema_version"), "10"), "registration schema must be 10");
     int meta = field(&registered, result, "metadata");
     check(equals(&registered, field(&registered, meta, "Name"), "cpa-workbuddy"), "incorrect plugin identity");
     check(equals(&registered, field(&registered, meta, "Version"), argv[2]), "incorrect embedded product version");
@@ -511,7 +511,7 @@ int main(int argc, char **argv) {
     buffer quiesce = call(&api, "plugin.quiesce", "{}");
     api.free_buffer(quiesce.ptr, quiesce.len);
     failed_call(&api, "quiesced", "management.handle", (const uint8_t *)status_request, strlen(status_request), 0, "plugin_quiesced");
-    buffer reconfigure = call(&api, "plugin.reconfigure", "{\"schema_version\":6,\"config_yaml\":\"eDogMQo=\"}");
+    buffer reconfigure = call(&api, "plugin.reconfigure", "{\"schema_version\":10,\"config_yaml\":\"eDogMQo=\"}");
     api.free_buffer(reconfigure.ptr, reconfigure.len);
     status = call(&api, "management.handle", status_request);
     api.free_buffer(status.ptr, status.len);
@@ -536,7 +536,7 @@ int main(int argc, char **argv) {
     host.call = NULL;
     host.free_buffer = NULL;
     check(init(&host, &api) == 0, "reinitializing after shutdown failed");
-    registration = call(&api, "plugin.register", "{\"schema_version\":6}");
+    registration = call(&api, "plugin.register", "{\"schema_version\":10}");
     failed_login(&api);
     api.shutdown();
     failed_call(&api, "direct-native-shutdown", "management.handle", NULL, 0, 0, "plugin_shutdown");
@@ -548,14 +548,14 @@ int main(int argc, char **argv) {
     host.host_ctx = &host_context;
     host.call = login_host_call;
     check(init(&host, &api) == 0, "initializing without host release failed");
-    registration = call(&api, "plugin.register", "{\"schema_version\":6}");
+    registration = call(&api, "plugin.register", "{\"schema_version\":10}");
     api.free_buffer(registration.ptr, registration.len);
     failed_login(&api);
     api.shutdown();
     host.call = NULL;
     host.free_buffer = login_host_free;
     check(init(&host, &api) == 0, "initializing without host call failed");
-    registration = call(&api, "plugin.register", "{\"schema_version\":6}");
+    registration = call(&api, "plugin.register", "{\"schema_version\":10}");
     api.free_buffer(registration.ptr, registration.len);
     failed_login(&api);
     api.shutdown();
@@ -564,7 +564,7 @@ int main(int argc, char **argv) {
     host.call = login_host_call;
     callback_mode = 8;
     check(init(&host, &api) == 0, "initializing concurrent shutdown probe failed");
-    registration = call(&api, "plugin.register", "{\"schema_version\":6}");
+    registration = call(&api, "plugin.register", "{\"schema_version\":10}");
     api.free_buffer(registration.ptr, registration.len);
     event_init(&callback_entered);
     event_init(&callback_continue);

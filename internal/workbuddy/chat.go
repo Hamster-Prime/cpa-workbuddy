@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-	"maps"
 	"sync"
 	"time"
 )
@@ -141,30 +140,8 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 	if err != nil {
 		return nil, err
 	}
-	auth, err := checkedAuth(req.AuthID, req.AuthProvider, req.StorageJSON, req.AuthMetadata)
-	if err != nil {
-		finish()
-		return nil, err
-	}
-	auth, authRecovered, err := s.freshAuth(ctx, auth, req.HostCallbackID, call)
-	if err != nil {
-		finish()
-		return nil, err
-	}
-	applyAuth := func(next AuthData) error {
-		headers, err := next.RequestHeaders()
-		if err != nil {
-			return err
-		}
-		maps.Copy(prepared.request.Headers, headers)
-		return nil
-	}
-	if err := applyAuth(auth); err != nil {
-		finish()
-		return nil, err
-	}
 	signatureCorrected := false
-	const maxChatAttempts = 5
+	const maxChatAttempts = 4
 	for range maxChatAttempts {
 		var opened struct {
 			StatusCode int                 `json:"status_code"`
@@ -227,28 +204,6 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 			}
 			if closeErr != nil {
 				lease.reportCleanup("upstream", closeErr)
-			}
-			if opened.StatusCode == 401 && !authRecovered {
-				authRecovered = true
-				next, err := s.recoverAuthentication(ctx, auth, authenticationReason(opened.StatusCode, opened.Headers, body), req.HostCallbackID, call)
-				if err != nil {
-					finish()
-					return nil, errors.Join(err, closeErr)
-				}
-				if err := applyAuth(next); err != nil {
-					finish()
-					return nil, errors.Join(err, closeErr)
-				}
-				auth = next
-				continue
-			}
-			if reason := authenticationReason(opened.StatusCode, opened.Headers, body); reason != "" {
-				_, stateErr := s.invalidate(ctx, auth, reason, req.HostCallbackID, call)
-				finish()
-				if stateErr == nil {
-					return nil, failure("credentials_changed", "WorkBuddy credentials changed during this request; retry with the installed credentials", 409)
-				}
-				return nil, errors.Join(stateErr, closeErr)
 			}
 			if prepared.messages && !signatureCorrected && messagesSignatureRejected(body) {
 				rewritten, changed, err := dropMessagesThinking(prepared.request.Body, true)
@@ -322,11 +277,4 @@ func (s *Service) execute(ctx context.Context, method string, raw []byte, call f
 	}
 	finish()
 	return nil, failure("recovery_limit_exceeded", "WorkBuddy request exhausted its bounded recovery attempts", 502)
-}
-
-func (prepared *preparedChat) consume(read func() ([]byte, bool, error), emit func([]byte) error) ([]byte, error) {
-	if prepared.messages {
-		return consumeMessagesStream(read, prepared.model, emit)
-	}
-	return consumeChatStream(read, prepared.model, prepared.toolNames, emit)
 }

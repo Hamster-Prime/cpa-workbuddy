@@ -7,17 +7,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"strconv"
 	"sync"
+	"time"
 
 	workbuddy "cpa-workbuddy"
 	protocol "cpa-workbuddy/internal/workbuddy"
 )
 
-// These wire contracts follow CPA sdk/pluginabi and sdk/pluginapi, ABI 1/schema 6.
+// These wire contracts follow CPA sdk/pluginabi and sdk/pluginapi, ABI 1/schema 10.
 // In particular Metadata and ManagementResponse retain CPA's capitalized fields.
 const (
 	ABIVersion    = 1
-	SchemaVersion = 6
+	SchemaVersion = 10
 	Name          = "cpa-workbuddy"
 	StatusPath    = "/v0/management/plugins/" + Name + "/status"
 	MaxRPCPayload = 64 << 20
@@ -63,11 +66,11 @@ type managementResponse struct {
 }
 
 type rpcError struct {
-	Code         string `json:"code"`
-	Message      string `json:"message"`
-	HTTPStatus   int    `json:"http_status,omitempty"`
-	UpstreamCode string `json:"upstream_code,omitempty"`
-	RetryAfter   string `json:"retry_after,omitempty"`
+	Code              string      `json:"code"`
+	Message           string      `json:"message"`
+	HTTPStatus        int         `json:"http_status,omitempty"`
+	UpstreamCode      string      `json:"upstream_code,omitempty"`
+	RetryAfterSeconds json.Number `json:"retry_after_seconds,omitempty"`
 }
 
 type envelope struct {
@@ -139,8 +142,8 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 		if err := decodeObject(raw, &req); err != nil {
 			return Failure("invalid_request", err.Error(), 400)
 		}
-		if req.SchemaVersion != SchemaVersion {
-			return Failure("incompatible_schema", fmt.Sprintf("schema_version must be %d", SchemaVersion), 400)
+		if req.SchemaVersion < SchemaVersion {
+			return Failure("incompatible_schema", fmt.Sprintf("schema_version must be at least %d", SchemaVersion), 400)
 		}
 		if r.quiesced {
 			r.ctx, r.cancel = context.WithCancel(context.Background())
@@ -155,7 +158,7 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 				Author:           "sheepyu",
 				GitHubRepository: "ygq-future/cpa-workbuddy",
 			},
-			Capabilities: capabilities{ManagementAPI: true, AuthProvider: true, ModelProvider: true, Executor: true, ExecutorModelScope: "oauth", ExecutorInputFormats: []string{"openai", "claude"}, ExecutorOutputFormats: []string{"openai", "claude"}},
+			Capabilities: capabilities{ManagementAPI: true, AuthProvider: true, ModelProvider: true, Executor: true, ExecutorModelScope: "oauth", ExecutorInputFormats: []string{"openai", "openai-response", "claude", "gemini"}, ExecutorOutputFormats: []string{"openai", "openai-response", "claude", "gemini"}},
 		})
 	case "plugin.quiesce":
 		r.quiesced = true
@@ -229,7 +232,18 @@ func (r *Runtime) handleAuth(ctx context.Context, method string, raw []byte) []b
 	result, err := r.auth.Handle(ctx, method, raw, r.call)
 	if err != nil {
 		if detail, ok := errors.AsType[*protocol.Error](err); ok {
-			return marshal(envelope{Error: &rpcError{Code: detail.Code, Message: detail.Message, HTTPStatus: detail.HTTPStatus, UpstreamCode: detail.UpstreamCode, RetryAfter: detail.RetryAfter}})
+			var retry json.Number
+			if seconds, parseErr := strconv.ParseUint(detail.RetryAfter, 10, 64); parseErr == nil {
+				retry = json.Number(strconv.FormatUint(seconds, 10))
+			} else if deadline, parseErr := http.ParseTime(detail.RetryAfter); parseErr == nil {
+				delay := max(time.Until(deadline), 0)
+				seconds := int64(delay / time.Second)
+				if delay%time.Second != 0 {
+					seconds++
+				}
+				retry = json.Number(strconv.FormatInt(seconds, 10))
+			}
+			return marshal(envelope{Error: &rpcError{Code: detail.Code, Message: detail.Message, HTTPStatus: detail.HTTPStatus, UpstreamCode: detail.UpstreamCode, RetryAfterSeconds: retry}})
 		}
 		return Failure("request_failed", "WorkBuddy request failed", 502)
 	}

@@ -116,7 +116,7 @@ func TestNativeABI(t *testing.T) {
 			if err := json.Unmarshal(envelope.Result, &result); err != nil {
 				t.Fatal(err)
 			}
-			if !envelope.OK || envelope.Error != nil || result.SchemaVersion != 6 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != expectedVersion || result.Metadata.Author != "sheepyu" || result.Metadata.GitHubRepository != "ygq-future/cpa-workbuddy" || len(result.Capabilities) != 7 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai","claude"]` || string(result.Capabilities["executor_output_formats"]) != `["openai","claude"]` {
+			if !envelope.OK || envelope.Error != nil || result.SchemaVersion != 10 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != expectedVersion || result.Metadata.Author != "sheepyu" || result.Metadata.GitHubRepository != "ygq-future/cpa-workbuddy" || len(result.Capabilities) != 7 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai","openai-response","claude","gemini"]` || string(result.Capabilities["executor_output_formats"]) != `["openai","openai-response","claude","gemini"]` {
 				t.Fatalf("registration violates CPA contract: %s", raw)
 			}
 		case "routes":
@@ -146,7 +146,7 @@ func TestNativeABI(t *testing.T) {
 			if err := json.Unmarshal(result.Body, &status); err != nil {
 				t.Fatalf("invalid status JSON body: %v", err)
 			}
-			if !envelope.OK || result.StatusCode != 200 || len(result.Headers["Content-Type"]) != 1 || result.Headers["Content-Type"][0] != "application/json; charset=utf-8" || status.Name != "cpa-workbuddy" || status.Version != expectedVersion || status.ABIVersion != 1 || status.SchemaVersion != 6 {
+			if !envelope.OK || result.StatusCode != 200 || len(result.Headers["Content-Type"]) != 1 || result.Headers["Content-Type"][0] != "application/json; charset=utf-8" || status.Name != "cpa-workbuddy" || status.Version != expectedVersion || status.ABIVersion != 1 || status.SchemaVersion != 10 {
 				t.Fatalf("unexpected native status response: %s", raw)
 			}
 		case "auth-identifier":

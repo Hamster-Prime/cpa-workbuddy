@@ -22,6 +22,10 @@ go run ./cmd/project --help
 
 工程入口在 `out/go.mod` 建立产物模块边界，使根 `./...` 扫描排除依赖缓存及其他生成的 Go 源码；该文件属于忽略的本地产物，不是产品依赖模块。隔离测试同样通过工程入口创建此边界。
 
+模块检查先将 go.mod/go.sum 复制到 `out/tmp`，通过 `go mod download -modfile=<临时清单> all` 准备完整固定模块图，再对根清单静默执行 `go mod tidy -diff`；临时清单及下载新增校验项在阶段结束后清理。单独原生编译使用 `go mod download` 准备已声明模块。下载与编译分别检查错误，编译阶段继续拒绝诊断输出。工程消费者测试复制实际 go.mod/go.sum，将测试进程 GOPROXY 指向本仓库已准备的模块归档缓存；隔离副本使用自己的 GOMODCACHE，仅预置已有的 sumdb 签名校验证明，保留 Go 的正常验证。从模块归档冷缓存实际运行 modules 与 package，断言源码模块文件字节不变，测试不依赖外网下载。
+
+独立 `test` 入口在构建前执行模块检查与缓存准备；完整 `quality` 在前置 modules 阶段完成该步骤，测试阶段复用已有准备结果。
+
 首次 `go run` 的编译发生在工程命令启动前。需将该次编译缓存也放到项目目录时，在当前终端先设置以下环境；CI 已在共享 toolchain action 中设置：
 
 ```powershell
@@ -59,7 +63,7 @@ export GOTMPDIR="$PWD/out/tmp/go"
 | 产品版本 | 根 VERSION、Go embed、原生注册/status 消费者 | SemVer 不合法、显式 tag/RELEASE_TAG 不等于 v+VERSION 失败 |
 | Git 消息 | 实际消息文件、历史范围与 GitHub event | 非法消息、空范围、缺失历史失败 |
 | 本地 hooks | 真实 index 副本与消息文件 | 保护部分暂存，保留已有 hook manager |
-| CI / 交付流水线 | 三个原生 runner，同一 Go 根入口 | 聚合拒绝失败、取消及意外 skipped；tag 必须匹配版本 |
+| CI / 交付流水线 | 五条原生 OS/arch runner，同一 Go 根入口 | 聚合拒绝失败、取消及意外 skipped；tag 必须匹配版本 |
 
 分析只覆盖自有源码；`_ref/` 保持原始字节，仅执行完整性校验，`out/` 是产物目录。gopls 默认关闭的可选分析器不在覆盖声明内。目前没有 clangd、clang-tidy 或 clang-format，C 覆盖由严格编译及实际加载测试承担，不声称覆盖 clang 专属检查或自动格式检查。
 
@@ -87,13 +91,13 @@ commit-msg 读取真实消息文件，约定 `<type>[(scope)][!]: <subject>`，t
 
 `build` 在当前主机 Go/C 工具链上构建 `out/bin/cpa-workbuddy.dll`、`.so` 或 `.dylib`，支持的原生目标为 Windows amd64、Linux amd64/arm64、macOS amd64/arm64；检查生成头导出。`test` 构建该库并以绝对路径 WORKBUDDY_TEST_LIBRARY 交给真实原生 smoke；完整质量门禁复用 build 阶段产物。控制器清除继承的 GOOS/GOARCH，跨平台验证需在目标原生 runner 或对应实际环境执行。
 
-`package` 重新构建当前源码，生成 `out/dist/cpa-workbuddy-v<VERSION>-<goos>-<goarch>.zip` 和外部 `.zip.sha256`。严格白名单为库、Go 生成头、native.h、VERSION、根 MIT LICENSE/README、需求/架构/兼容/质量/部署/许可/任务文档、固定 CPA 补丁及其 MIT 许可、构建工具链的 Go LICENSE/PATENTS；文档保留相对路径。`build-info.txt` 从实际库读取 Go 版本、模块与 GOOS/GOARCH/CGO 构建设置，不记录本机产物路径；包内 `checksums.sha256` 覆盖其他所有成员，外部摘要在压缩写入时计算。白名单以外的参考快照、凭证、账号响应、缓存、日志和探索工具均不收录。产品版本与 ABI/schema/上游包/工具版本各自独立。
+`package` 重新构建当前源码，生成 `out/dist/cpa-workbuddy-v<VERSION>-<goos>-<goarch>.zip` 和外部 `.zip.sha256`。严格白名单为库、Go 生成头、native.h、VERSION、根 MIT LICENSE/README、需求/架构/兼容/质量/部署/许可/任务文档，以及 CPA SDK MIT、实际 Go 依赖完整许可汇总、Apache-2.0 全文和构建工具链的 Go LICENSE/PATENTS；文档保留相对路径。`build-info.txt` 从实际库读取 Go 版本、模块与 GOOS/GOARCH/CGO 构建设置，不记录本机产物路径；打包入口逐项要求链接模块的实际来源版本具有许可汇总条目。包内 `checksums.sha256` 覆盖其他所有成员，外部摘要在压缩写入时计算。白名单以外的参考快照、凭证、账号响应、缓存、日志和探索工具均不收录。产品版本与 ABI/schema/上游包/工具版本各自独立。
 
 CI 与 tag 的 release-artifacts 工作流采用五条原生矩阵：`windows-2025`、`ubuntu-24.04`、`ubuntu-24.04-arm`、`macos-15-intel`、`macos-15`，对应上述五个 OS/arch，每项先核对 `go env GOOS/GOARCH`。两工作流都执行完整原生质量门禁；tag 工作流另核对 VERSION、打包并上传 workflow artifact，权限仅 `contents: read`，不创建 GitHub Release。官方 runner 标签依据及实际平台运行情况在兼容性记录中单列；配置存在不等于远程 CI 已运行。
 
 ## 固定工具依据
 
-沿用已验证工具基线，本次不升级第三方工具或增加 Go 模块依赖。
+工具基线保持下表版本。工程命令使用 Go 标准库；插件的客户端协议转换使用公开 CPA SDK，实际链接模块、版本与完整许可由 [版权与许可](third-party-notices.md) 记录。
 
 | 工具 | 官方依据 | 本项目选择 |
 | --- | --- | --- |
@@ -103,13 +107,15 @@ CI 与 tag 的 release-artifacts 工作流采用五条原生矩阵：`windows-20
 
 ## 验证状态与债务
 
-Windows amd64：Go1.27.1、MinGW GCC14.2.0、gopls0.23.0、golangci-lint2.12.2。`go run ./cmd/project quality` 完整 10 阶段 exit 0，包含七类工程 CLI 行为测试、原生/生命周期测试和独立 C 动态加载；工程命令只依赖 Go 标准库，根 go.mod 没有新增第三方模块。
+Windows amd64 工具基线为 Go1.27.1、MinGW GCC14.2.0、gopls0.23.0、golangci-lint2.12.2。完整 `quality` 包含工程 CLI 行为测试、原生/生命周期测试和独立 C 动态加载。当前实现的完整运行结果与官方宿主加载证据以 [兼容性记录](compatibility.md) 为准。
+
+官方宿主迁移后的完整十阶段 `go run ./cmd/project quality` 已通过，记录 `out/logs/native-migration-quality.log`；25个变更Go文件的真实 `gopls check -severity=hint` 无warning/info/hint，完整命令和结果在 `native-migration-incremental-lsp.json`。独立两轴审查修复HTTP日期/前导零Retry-After编码，公共Runtime回归通过；索引同步及七维结果见当前兼容性首表与交付回复。
 
 `go run ./cmd/project --help`、`bootstrap`、`install-hooks`、`package` 均 exit 0。真实 commit-msg hook 的合法消息 exit 0、非法消息 exit 1；部分暂存测试确认工作树与 index 原始字节不变、隔离副本退出清理。仓库 local hook 使用实际 Go 路径。
 
 隔离 Go 工程副本分别注入格式、类型、LSP 语义、弃用 API SA1019 和失败测试，全部使同一根入口阻断；源码字节保持不变，副本已清理。额外验证了项目本地已无已迁移的脚本、配置、解释器或相关工具缓存。证据见 `out/logs/go-gate-probes.json`。
 
-本机 Windows 包通过六项白名单、库/头/VERSION/README 原始字节及 SHA256 核验。临时验证程序在完成后删除，只有日志保留。最终 LSP 与双轴审查结果见本节验证记录；七维审查在交付回复中提供，XERJ 前缀 `cpawb`。质量命令不执行 Git 提交、推送或发布；这些动作由用户授权后单独执行。
+包消费者测试实际调用 `package`，核对完整白名单、构建信息、外层与逐成员 SHA256、依赖许可来源原始字节、私有材料排除和文档链接。七维审查在交付回复中提供，XERJ 前缀为 `cpawb`。质量命令不执行 Git 提交、推送或发布；这些动作由用户授权后单独执行。
 
 规格/行为轴由主代理核对 CLI 分派、诊断传播、来源清单、实际测试事件、ZIP 成员和精确 index 快照，并结合上述运行证据完成审查；未发现待修缺陷。独立架构审查收敛为 0 项硬性违规、0 项设计待修项。测试环境的 GOPLSCACHE 与正式入口一致，使用 gopls 自带的子目录规则。
 

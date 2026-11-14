@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"maps"
 	"reflect"
 	"slices"
@@ -19,7 +20,6 @@ type ModelInfo struct {
 	Type                      string
 	DisplayName               string
 	Name                      string
-	NativeFormat              string
 	ContextLength             int64
 	InputTokenLimit           int64
 	OutputTokenLimit          int64
@@ -65,15 +65,13 @@ func (s *Service) models(ctx context.Context, method string, raw []byte, call fu
 	if method == "model.static" {
 		return result, nil
 	}
+	return discoverModels(ctx, req, call)
+}
+
+func discoverModels(ctx context.Context, req authModelRequest, call func(string, []byte) ([]byte, error)) (ModelResponse, error) {
+	result := ModelResponse{Provider: provider, Models: []ModelInfo{}}
 	auth, err := checkedAuth(req.AuthID, req.AuthProvider, req.StorageJSON, req.Metadata)
 	if err != nil {
-		return result, err
-	}
-	auth, authRecovered, err := s.freshAuth(ctx, auth, req.HostCallbackID, call)
-	if err != nil {
-		if detail, ok := errors.AsType[*Error](err); ok && detail.Code == "reauth_required" {
-			return s.unavailableModels(auth, req.HostCallbackID, call)
-		}
 		return result, err
 	}
 	stored, metadata, _, err := credentialFromJSON(auth.StorageJSON)
@@ -90,43 +88,7 @@ func (s *Service) models(ctx context.Context, method string, raw []byte, call fu
 		return result, err
 	}
 	var config json.RawMessage
-	var recoveryError error
 	err = request(ctx, chosen, req.HostCallbackID, call, "GET", "/v3/config", headers, nil, &config)
-	if upstream, ok := errors.AsType[*upstreamError](err); ok && upstream.status == 401 && !authRecovered {
-		next, refreshErr := s.recoverAuthentication(ctx, auth, upstream.authReason, req.HostCallbackID, call)
-		if refreshErr != nil {
-			if detail, ok := errors.AsType[*Error](refreshErr); ok && detail.Code == "reauth_required" {
-				return s.unavailableModels(next, req.HostCallbackID, call)
-			}
-			if detail, ok := errors.AsType[*Error](refreshErr); ok && (detail.Code == "credential_save_failed" || detail.Code == "credential_state_save_failed") {
-				return result, refreshErr
-			}
-			recoveryError = refreshErr
-		} else {
-			authRecovered = true
-			auth = next
-			stored, metadata, _, err = credentialFromJSON(auth.StorageJSON)
-			if err != nil {
-				return result, err
-			}
-			maps.Copy(metadata, auth.Metadata)
-			headers, err = auth.RequestHeaders()
-			if err != nil {
-				return result, err
-			}
-			err = request(ctx, chosen, req.HostCallbackID, call, "GET", "/v3/config", headers, nil, &config)
-		}
-	}
-	if upstream, ok := errors.AsType[*upstreamError](err); ok && upstream.authReason != "" && (authRecovered || upstream.authReason != "invalid_token") {
-		next, stateErr := s.invalidate(ctx, auth, upstream.authReason, req.HostCallbackID, call)
-		if stateErr != nil {
-			if detail, ok := errors.AsType[*Error](stateErr); ok && detail.Code == "reauth_required" {
-				return s.unavailableModels(next, req.HostCallbackID, call)
-			}
-			return result, stateErr
-		}
-		return result, failure("credentials_changed", "WorkBuddy credentials changed during model discovery; retry discovery", 409)
-	}
 	if ctx.Err() != nil {
 		return result, failure("model_discovery_cancelled", "model discovery was cancelled", 408)
 	}
@@ -162,10 +124,6 @@ func (s *Service) models(ctx context.Context, method string, raw []byte, call fu
 			DisplayName: model.Name, Name: model.ID, ContextLength: model.ContextLength,
 			InputTokenLimit: model.ContextLength, OutputTokenLimit: model.MaxOutputTokens, MaxCompletionTokens: model.MaxOutputTokens,
 			SupportedInputModalities: []string{"text"}, SupportedOutputModalities: []string{"text"},
-			NativeFormat: "openai",
-		}
-		if messagesModel(chosen.id, model.ID) {
-			info.NativeFormat = "claude"
 		}
 		if catalogImages(chosen.id, model.ID, model.Images) {
 			info.SupportedInputModalities = append(info.SupportedInputModalities, "image")
@@ -182,12 +140,6 @@ func (s *Service) models(ctx context.Context, method string, raw []byte, call fu
 		}
 	}
 	fields := map[string]any{"site": chosen.id, "auth_id": req.AuthID, "status": status, "reason": reason, "model_count": len(result.Models)}
-	if recoveryError != nil {
-		fields["refresh_error"] = "refresh_failed"
-		if detail, ok := errors.AsType[*Error](recoveryError); ok {
-			fields["refresh_error"] = detail.Code
-		}
-	}
 	if status == "snapshot" {
 		fields["snapshot_at"] = stored.ModelSnapshot.CapturedAt.Format(time.RFC3339Nano)
 	}
@@ -218,6 +170,30 @@ func (s *Service) models(ctx context.Context, method string, raw []byte, call fu
 		return result, failure("model_discovery_cancelled", "model discovery was cancelled", 408)
 	}
 	return result, nil
+}
+
+// captureModelSnapshot attaches the current account catalog before a credential
+// lifecycle result reaches CPA's persistence boundary. Catalog failures must not
+// discard credentials after a successful upstream token rotation.
+func captureModelSnapshot(ctx context.Context, auth AuthData, callbackID string, call func(string, []byte) ([]byte, error)) AuthData {
+	if ctx.Err() != nil {
+		return auth
+	}
+	result, err := discoverModels(ctx, authModelRequest{
+		AuthID: auth.ID, AuthProvider: auth.Provider, StorageJSON: auth.StorageJSON,
+		Metadata: auth.Metadata, HostCallbackID: callbackID,
+	}, call)
+	if err != nil {
+		code := "model_snapshot_unavailable"
+		if detail, ok := err.(*Error); ok {
+			code = detail.Code
+		}
+		log.Printf("WorkBuddy account %s retained its credentials after model snapshot failure (%s)", auth.ID, code)
+	}
+	if result.AuthUpdate.ID != "" {
+		return result.AuthUpdate
+	}
+	return auth
 }
 
 func discoveryReason(err error) string {
