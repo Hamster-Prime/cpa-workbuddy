@@ -29,7 +29,7 @@ GET /v0/management/workbuddy-auth-url?site=workbuddy-ai
 
 用户自行打开返回的 `url`，随后使用返回的 `state` 查询 `GET /v0/management/get-auth-status?state=<state>`；`wait` 表示等待浏览器完成，`ok` 表示 CPA 已成功保存凭证，可从 `GET /v0/management/auth-files` 查看。插件会话有效期最多五分钟，重启、过期、取消或已消费的状态需要重新发起登录；同一状态只交付一次凭证。登录 URL 与 state 属于敏感数据，不应粘贴到日志或问题报告。真实网页登录与企业微信步骤由用户完成，自动化验证使用隔离协议上游。
 
-兼容 CPA 宿主需要稳定身份保存、刷新计划、凭证代次校验、原生格式转换、原生 HTTP 边界和模型发现结果的原子保存。当前本地累计补丁位于 `out/verification/cpa-management-contract.patch`，原参考版本尚不满足这些契约；补丁和独立宿主副本是本地交接材料，首次克隆不会自带。插件在凭证写入前验证宿主 `credential_state_version=1`，不支持时返回 `unsupported_host_contract`。保存失败明确报告重启风险；已轮换的可用凭证与已确认的失效结果分别保留在内存中。构建、安装、固定管理前端、容器持久化与人工验收步骤见 [部署说明](docs/deployment.md)，实际运行证据见兼容性记录。
+兼容 CPA 宿主需要稳定身份保存、刷新计划、凭证代次校验、原生格式转换、原生 HTTP 边界和模型发现结果的原子保存。完整累计补丁见 [CPA v7.3.15 兼容补丁](docs/patches/cpa-v7.3.15.patch)，随仓库与交付包提供；在固定 CPA 基线的独立 checkout 应用。插件在凭证写入前验证宿主 `credential_state_version=1`，不支持时返回 `unsupported_host_contract`。保存失败明确报告重启风险；已轮换的可用凭证与已确认的失效结果分别保留在内存中。构建、安装、固定管理前端、容器持久化与人工验收步骤见 [部署说明](docs/deployment.md)，实际运行证据见兼容性记录。
 
 ## 工程入口
 
@@ -44,6 +44,23 @@ go run ./cmd/project package
 ```
 
 代码入口为 `cmd/cpa-workbuddy/`，ABI/wire 与分派位于 `internal/plugin/`，根 `version.go` 读取 `VERSION`。所有产物、缓存、临时文件和日志统一位于 `out/`，本地探索材料保留在 `out/scratch/`。工具链及质量门禁见 [quality.md](docs/quality.md)，验证结果见兼容性记录。
+
+`build`、`test`、`package` 使用当前主机的 Go/C 原生工具链。CI 与本地包以 Windows amd64、Linux amd64/arm64、macOS amd64/arm64 为目标；每个 CI job 核对实际 OS/arch。当前实际构建与宿主加载证据覆盖 Windows amd64 和 Linux amd64，其他三项及远程 CI 未验证。
+
+`package` 输出 `out/dist/cpa-workbuddy-v<VERSION>-<goos>-<goarch>.zip` 与 `.zip.sha256`。包内保留文档路径、兼容宿主补丁和许可，`build-info.txt` 记录实际 Go 构建信息，`checksums.sha256` 覆盖每个 payload；安装前核对外部 ZIP 摘要及解压后的逐文件摘要。库放入 CPA 的插件目录，启动与凭证操作由宿主管理。
+
+## 安装与文档索引
+
+| 文档 | 内容 |
+| --- | --- |
+| [需求](docs/requirements.md) | 功能、站点与验收范围 |
+| [架构](docs/architecture.md) | 宿主/插件边界、身份与资源所有权 |
+| [兼容性](docs/compatibility.md) | 固定来源、逐平台实际构建/加载证据及未验证限制 |
+| [部署](docs/deployment.md) | 包校验、兼容补丁、安装、双站点登录、管理、容器、故障与真人验收 |
+| [质量契约](docs/quality.md) | 统一工程命令、工具、CI、原生测试与包白名单 |
+| [任务表](docs/tasks/workbuddy-plugin.md) | 14 片状态、依赖及实际勾选的 AC |
+| [版权与许可](docs/third-party-notices.md) | 协议移植、CPA 补丁与 Go runtime 的完整许可位置 |
+
 
 ## 首版目标
 
@@ -65,4 +82,4 @@ go run ./cmd/project package
 - [工程质量](docs/quality.md)：固定工具安装、统一门禁、Git hooks、CI 与验证证据。
 - [14 片任务](docs/tasks/workbuddy-plugin.md)：精确依赖、实施内容和可观察 AC；状态按验证证据更新。
 
-WorkBuddy 行为参考固定 [Magpie WorkBuddy commit](https://github.com/magpie-community/plugins/tree/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy)。原始源码、测试、样本和上游根许可证保存在 `_ref/`，来源与文件摘要见 [_ref/UPSTREAM.json](_ref/UPSTREAM.json)，不修改且不打包。CPA 契约以只读 `../.cpa-upstream-src/` 为准，`../cpa-secret-manager/` 只提供桥接模式参考。项目采用 MIT；移植代码保留必要版权及许可证声明。
+WorkBuddy 行为参考固定 [Magpie WorkBuddy commit](https://github.com/magpie-community/plugins/tree/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy)。源码仓库的 `_ref/` 保留原始源码、测试、样本和上游根许可证，文件来源与摘要由仓库 `_ref/UPSTREAM.json` 固定；交付来源和完整许可位置见 [版权与许可](docs/third-party-notices.md)。CPA 契约以只读 `../.cpa-upstream-src/` 为准，`../cpa-secret-manager/` 提供桥接模式参考。项目采用 MIT，移植代码保留必要版权及许可证声明。

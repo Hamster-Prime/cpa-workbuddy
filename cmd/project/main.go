@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"crypto/sha256"
+	"debug/buildinfo"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -636,9 +637,16 @@ func (c *controller) lint() error {
 }
 
 func (c *controller) libraryPath() (string, error) {
-	extension := map[string]string{"windows": ".dll", "linux": ".so", "darwin": ".dylib"}[runtime.GOOS]
-	if extension == "" {
-		return "", fmt.Errorf("unsupported native host: %s", runtime.GOOS)
+	var extension string
+	switch runtime.GOOS + "/" + runtime.GOARCH {
+	case "windows/amd64":
+		extension = ".dll"
+	case "linux/amd64", "linux/arm64":
+		extension = ".so"
+	case "darwin/amd64", "darwin/arm64":
+		extension = ".dylib"
+	default:
+		return "", fmt.Errorf("unsupported native target: %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
 	return filepath.Join(c.out, "bin", "cpa-workbuddy"+extension), nil
 }
@@ -749,6 +757,19 @@ func (c *controller) bundle() (resultErr error) {
 	if err != nil {
 		return err
 	}
+	info, err := buildinfo.ReadFile(artifact)
+	if err != nil {
+		return err
+	}
+	buildInfo := fmt.Appendf(nil, "product\tcpa-workbuddy\nversion\t%s\n%s", value, info.String())
+	goRoot, err := c.tool("go", runPolicy{stderrFails: true}, "env", "GOROOT")
+	if err != nil {
+		return err
+	}
+	toolchainRoot := strings.TrimSpace(string(goRoot))
+	if !filepath.IsAbs(toolchainRoot) {
+		return errors.New("toolchain must provide an absolute GOROOT for license notices")
+	}
 	directory := filepath.Join(c.out, "dist")
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return err
@@ -759,12 +780,46 @@ func (c *controller) bundle() (resultErr error) {
 		return err
 	}
 	defer func() { resultErr = errors.Join(resultErr, file.Close()) }()
-	writer := zip.NewWriter(file)
-	files := []string{artifact, headerPath(artifact), filepath.Join(c.root, "cmd", "cpa-workbuddy", "native.h"), filepath.Join(c.root, "VERSION"), filepath.Join(c.root, "LICENSE"), filepath.Join(c.root, "README.md")}
-	for _, name := range files {
-		if err := addZipFile(writer, name); err != nil {
+	archiveHash := sha256.New()
+	writer := zip.NewWriter(io.MultiWriter(file, archiveHash))
+	files := [][2]string{
+		{artifact, filepath.Base(artifact)},
+		{headerPath(artifact), filepath.Base(headerPath(artifact))},
+		{filepath.Join(c.root, "cmd", "cpa-workbuddy", "native.h"), "native.h"},
+		{filepath.Join(toolchainRoot, "LICENSE"), "licenses/Go-LICENSE"},
+		{filepath.Join(toolchainRoot, "PATENTS"), "licenses/Go-PATENTS"},
+	}
+	for _, relative := range []string{
+		"VERSION", "LICENSE", "README.md",
+		"docs/requirements.md", "docs/architecture.md", "docs/compatibility.md",
+		"docs/quality.md", "docs/deployment.md", "docs/third-party-notices.md",
+		"docs/tasks/workbuddy-plugin.md", "docs/licenses/CLIProxyAPI-MIT.txt",
+		"docs/patches/cpa-v7.3.15.patch",
+	} {
+		files = append(files, [2]string{filepath.Join(c.root, filepath.FromSlash(relative)), relative})
+	}
+	var checksums []byte
+	for _, member := range files {
+		digest, err := addZipFile(writer, member[0], member[1])
+		if err != nil {
 			return errors.Join(err, writer.Close())
 		}
+		checksums = fmt.Appendf(checksums, "%x  %s\n", digest, member[1])
+	}
+	metadata, err := writer.Create("build-info.txt")
+	if err != nil {
+		return errors.Join(err, writer.Close())
+	}
+	if _, err := metadata.Write(buildInfo); err != nil {
+		return errors.Join(err, writer.Close())
+	}
+	checksums = fmt.Appendf(checksums, "%x  build-info.txt\n", sha256.Sum256(buildInfo))
+	manifest, err := writer.Create("checksums.sha256")
+	if err != nil {
+		return errors.Join(err, writer.Close())
+	}
+	if _, err := manifest.Write(checksums); err != nil {
+		return errors.Join(err, writer.Close())
 	}
 	if err := writer.Close(); err != nil {
 		return err
@@ -772,39 +827,38 @@ func (c *controller) bundle() (resultErr error) {
 	if err := file.Sync(); err != nil {
 		return err
 	}
-	content, err := os.ReadFile(archive)
-	if err != nil {
-		return err
-	}
-	digest := sha256.Sum256(content)
-	return os.WriteFile(archive+".sha256", fmt.Appendf(nil, "%x  %s\n", digest, filepath.Base(archive)), 0o644)
+	return os.WriteFile(archive+".sha256", fmt.Appendf(nil, "%x  %s\n", archiveHash.Sum(nil), filepath.Base(archive)), 0o644)
 }
 
-func addZipFile(writer *zip.Writer, name string) (resultErr error) {
+func addZipFile(writer *zip.Writer, name, destination string) (digest [sha256.Size]byte, resultErr error) {
 	if !regularFile(name) {
-		return fmt.Errorf("missing or unsafe package member: %s", name)
+		return digest, fmt.Errorf("missing or unsafe package member: %s", name)
 	}
 	file, err := os.Open(name)
 	if err != nil {
-		return err
+		return digest, err
 	}
 	defer func() { resultErr = errors.Join(resultErr, file.Close()) }()
 	info, err := file.Stat()
 	if err != nil {
-		return err
+		return digest, err
 	}
 	header, err := zip.FileInfoHeader(info)
 	if err != nil {
-		return err
+		return digest, err
 	}
-	header.Name = filepath.Base(name)
+	header.Name = destination
 	header.Method = zip.Deflate
 	member, err := writer.CreateHeader(header)
 	if err != nil {
-		return err
+		return digest, err
 	}
-	_, err = io.Copy(member, file)
-	return err
+	memberHash := sha256.New()
+	if _, err := io.Copy(io.MultiWriter(member, memberHash), file); err != nil {
+		return digest, err
+	}
+	memberHash.Sum(digest[:0])
+	return digest, nil
 }
 
 func validateMessage(message []byte) error {

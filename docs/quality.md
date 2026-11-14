@@ -85,11 +85,11 @@ commit-msg 读取真实消息文件，约定 `<type>[(scope)][!]: <subject>`，t
 
 ## 产物与产品版本
 
-`build` 为当前主机构建 `out/bin/cpa-workbuddy.dll`、`.so` 或 `.dylib`，检查导出头。`test` 构建该库并以绝对路径 WORKBUDDY_TEST_LIBRARY 交给原生 smoke；完整质量门禁复用 build 阶段产物。
+`build` 在当前主机 Go/C 工具链上构建 `out/bin/cpa-workbuddy.dll`、`.so` 或 `.dylib`，支持的原生目标为 Windows amd64、Linux amd64/arm64、macOS amd64/arm64；检查生成头导出。`test` 构建该库并以绝对路径 WORKBUDDY_TEST_LIBRARY 交给真实原生 smoke；完整质量门禁复用 build 阶段产物。控制器清除继承的 GOOS/GOARCH，跨平台验证需在目标原生 runner 或对应实际环境执行。
 
-`package` 重新构建当前源码，生成 `out/dist/cpa-workbuddy-v<VERSION>-<goos>-<goarch>.zip` 和 SHA256。严格白名单为库、Go 生成头、native.h、VERSION、LICENSE、README.md。插件产物不包含工程工具、上游快照、凭证或缓存。产品版本与 ABI/schema/上游包/工具版本相互独立。
+`package` 重新构建当前源码，生成 `out/dist/cpa-workbuddy-v<VERSION>-<goos>-<goarch>.zip` 和外部 `.zip.sha256`。严格白名单为库、Go 生成头、native.h、VERSION、根 MIT LICENSE/README、需求/架构/兼容/质量/部署/许可/任务文档、固定 CPA 补丁及其 MIT 许可、构建工具链的 Go LICENSE/PATENTS；文档保留相对路径。`build-info.txt` 从实际库读取 Go 版本、模块与 GOOS/GOARCH/CGO 构建设置，不记录本机产物路径；包内 `checksums.sha256` 覆盖其他所有成员，外部摘要在压缩写入时计算。白名单以外的参考快照、凭证、账号响应、缓存、日志和探索工具均不收录。产品版本与 ABI/schema/上游包/工具版本各自独立。
 
-release 工作流只在版本 tag 执行质量、版本核对及打包，上传 workflow artifact，不创建 GitHub Release。远程 CI 与其他平台运行情况应单独记录，不能以本地门禁代替。
+CI 与 tag 的 release-artifacts 工作流采用五条原生矩阵：`windows-2025`、`ubuntu-24.04`、`ubuntu-24.04-arm`、`macos-15-intel`、`macos-15`，对应上述五个 OS/arch，每项先核对 `go env GOOS/GOARCH`。两工作流都执行完整原生质量门禁；tag 工作流另核对 VERSION、打包并上传 workflow artifact，权限仅 `contents: read`，不创建 GitHub Release。官方 runner 标签依据及实际平台运行情况在兼容性记录中单列；配置存在不等于远程 CI 已运行。
 
 ## 固定工具依据
 

@@ -325,7 +325,7 @@ Implementation:
 
 ## Slice 14: 多平台构建与交付包
 
-Status: pending
+Status: in_progress
 
 Blocked by: 13
 
@@ -336,9 +336,16 @@ What to build:
 Acceptance criteria:
 
 - [ ] 统一入口 build/package 与 CI 为目标平台/架构产出正确扩展名的 `cpa-workbuddy` 动态库，产品版本均来自 VERSION，不以交叉编译成功宣称运行兼容。
-- [ ] 每平台分别记录构建状态、实际宿主加载状态、工具链、动态链接依赖与 Linux 容器 libc 要求；未加载平台明确未验证。
-- [ ] 发布包包含所需 MIT 及移植代码版权/许可证声明、版本与 checksums，校验和可用于安装核对。
-- [ ] 打包排除凭证/token/state/日志缓存、`_ref/` 原始快照、`out/scratch/` 探索材料和临时工具，产物仅写入 out。
+- [x] 每平台分别记录构建状态、实际宿主加载状态、工具链、动态链接依赖与 Linux 容器 libc 要求；未加载平台明确未验证。
+- [x] 发布包包含所需 MIT 及移植代码版权/许可证声明、版本与 checksums，校验和可用于安装核对。
+- [x] 打包排除凭证/token/state/日志缓存、`_ref/` 原始快照、`out/scratch/` 探索材料和临时工具，产物仅写入 out。
 - [ ] README 安装/登录/容器/故障说明、实际兼容版本与文档契约索引对应最终实现；14 片 AC 证据齐备且真实账号未验证项未被勾选。
-- [ ] 最终质量入口、适用静态/LSP、行为测试、真实加载、XERJ 索引同步与 post-impl 完成，失败先修复再交付；无未实现 capabilities、空壳或兼容 shim。
-- [ ] 交付只生成本地可审查包；commit、push、发布和自动发布启用均等待用户明确授权，不把 CI 构建配置等同发布授权。
+- [x] 最终质量入口、适用静态/LSP、行为测试、真实加载、XERJ 索引同步与 post-impl 完成，失败先修复再交付；无未实现 capabilities、空壳或兼容 shim。
+- [x] 交付只生成本地可审查包；commit、push、发布和自动发布启用均等待用户明确授权，不把 CI 构建配置等同发布授权。
+
+Implementation:
+
+- build/test/package 保持当前 Go/C 原生目标，Windows amd64、Linux amd64/arm64、macOS amd64/arm64 分别选择实际扩展名；CI 与 tag 交付配置覆盖五条原生 runner 并核对 OS/arch，运行权限仅 contents:read。
+- 包保留文档相对路径，含实际库、头、VERSION、根 MIT、Go LICENSE/PATENTS、CPA MIT、协议移植许可说明与固定兼容补丁。实际库生成 build-info.txt，流式计算 ZIP 摘要并生成逐文件清单；公开 CLI 消费者测试同时验证必需文件、版权原文和私有材料排除。
+- Windows amd64 和 Linux amd64 已实际构建与宿主加载；另外三个原生目标没有运行环境/远程 CI 证据，第一项 AC 保持未勾选，切片状态保持 in_progress。真实账号/浏览器人工验收仍在 Slice 13 保留，不以平台交付替代。
+

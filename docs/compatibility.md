@@ -347,7 +347,35 @@ Slice 02 已通过隔离实际 CPA 宿主/管理处理器的 DLL 加载、双站
 - `internal/pluginhost/model_auth_update.go` 与 `sdk/cliproxy/service_executors.go`：网络发现的 AuthUpdate 复用物理凭证 CAS 和原子保存，不继承 watcher 输入的 skip-persist；保存失败不授予模型资格。公开 Host 回归覆盖落盘、并发新登录、文件已删除及取消，实际 server 证明快照、刷新期限和能力重启恢复。
 - `internal/pluginhost/auth_provider.go`：凭证替换继承磁盘操作员设置；同代管理保存接受当前记录的显式启用/禁用及字段移除。实际 FileTokenStore 回归复现原手动禁用未落盘，修复后禁用/启用、排除清理及同 token 新登录保持禁用均通过。
 - `internal/util/provider.go` 与实际 Gin access log 回归：用户/企业/租户头完整脱敏，OAuth `state` 包括大小写、编码键与数组形式完整脱敏；正文捕获仍需关闭。SDK web-search 测试按目录 SSOT 验证探测仅增加能力，不再把目录中已有能力的模型误断言为不支持。
-- 本次累计补丁为 `out/verification/cpa-management-contract.patch`，包含此前全部边界修复和本片宿主修复，共 48 个文件，SHA256 `b99eaf584200f7d1c23be728a11583fa0970f785b299afa10cc128a562c0bded`；对只读基线 `git apply --check` exit 0。安装、两站点 API 登录、管理、固定页面、卷布局、代理与故障步骤见 [部署说明](deployment.md)。补丁及 proof 程序是本地忽略产物，首次克隆不会自带，也未提交/发布到 CPA 仓库。
+- 累计交付补丁为 [docs/patches/cpa-v7.3.15.patch](patches/cpa-v7.3.15.patch)，包含此前全部边界修复和本片宿主修复，共 48 个文件，SHA256 `b99eaf584200f7d1c23be728a11583fa0970f785b299afa10cc128a562c0bded`；对只读基线 `git apply --check` exit 0。安装、两站点 API 登录、管理、固定页面、卷布局、代理与故障步骤见 [部署说明](deployment.md)。独立宿主副本及完整服务 proof 保留在被忽略的 out，未向 CPA 仓库提交或发布。
 - `go run ./cmd/project quality` 全部十阶段 exit 0；宿主受影响的 pluginhost、management、synthesizer 与 SDK 包完整 race 测试 exit 0，隐私 util/logging 包完整测试 exit 0；所有累计改动宿主文件经实际 gopls stdio `textDocument/diagnostic` 最终 0 条。日志 `slice13-quality.log`、`slice13-host-race.log`、`slice13-host-privacy-suites.log`、`slice13-host-diagnostics.log`。此前原生 Manager/DLL 的认证、刷新、模型及客户端协议回归 exit 0，另记 `slice13-native-regressions.log`，不与完整程序的证据混同。
 
+
+
+## Slice 14 多平台构建与本地交付
+
+### 平台记录
+
+| 目标 | 本地构建与包契约 | 实际 CPA 宿主加载 | 工具链与动态依赖 | 原生 CI runner |
+| --- | --- | --- | --- | --- |
+| Windows amd64 | DLL 构建通过，隔离公开 CLI 包内容/校验和测试通过 | 完整 Windows server 62 项通过 | Go1.27.1；MinGW-Builds GCC14.2.0，MCF/SEH/UCRT；导入 KERNEL32、UCRT API DLL 与 libmcfgthread-1.dll，MCF 库需由运行环境提供 | windows-2025，远程未运行 |
+| Linux amd64 | SO 构建、Linux 原生完整测试与隔离 CLI 包契约通过 | 固定 Debian/glibc2.41 Docker 完整 server 62 项通过 | Go1.27.1；Ubuntu GCC13.3.0/glibc2.39；NEEDED 为 libc.so.6，最高所需符号 GLIBC_2.34；其他 libc 组合未验证 | ubuntu-24.04，远程未运行 |
+| Linux arm64 | 未实际构建，已配置原生 CI | 未验证 | CI 固定 Go1.27.1；C 编译器、库依赖与 libc 未产生实际运行记录 | ubuntu-24.04-arm，远程未运行 |
+| macOS amd64 | 未实际构建，已配置原生 CI | 未验证 | CI 固定 Go1.27.1；Apple C 工具链、部署版本和 dylib 依赖未产生实际记录 | macos-15-intel，远程未运行 |
+| macOS arm64 | 未实际构建，已配置原生 CI | 未验证 | CI 固定 Go1.27.1；Apple C 工具链、部署版本和 dylib 依赖未产生实际记录 | macos-15，远程未运行 |
+
+- 2026-11-14 打开 [GitHub 官方 runner-images Available Images](https://github.com/actions/runner-images#available-images) 核对五个标签及架构，采用明确版本标签；标准 macos-15 为 arm64、macos-15-intel 为 x64。两工作流使用 include 矩阵并比较 go env 的实际目标；配置解析验证五个目标无缺漏，权限均为 contents:read。远程仓库尚未建立，未执行 CI、上传或发布。
+- Windows PE 依赖由本机 objdump -p 读取，详见 `out/logs/slice14-windows-dependencies.log`；Linux ELF 由 readelf -d/-V 读取，记录 `slice14-linux-dependencies.log`。动态运行库安装与 Windows 阴影加载要求见部署说明，C 依赖未作为插件文件分发。
+
+### 本地验证与交付契约
+
+- `go test -timeout=180s -run '^TestPackageContentsAndChecksums$' ./cmd/project` exit 0。通过真实 CLI 编译、打包生产源码，在独立目录放入凭证/日志/下载/参考目录私有哨兵；验证 19 项完整白名单、相对文档路径、每个 payload 摘要、ZIP 外部摘要、实际 CGO/OS/arch 构建信息、VERSION 与 Go/CPA 许可证原文，私有文件未进入包。
+- Linux 在独立 ext4 源码副本通过统一入口 `go run ./cmd/project test` exit 0，完整测试包含实际 SO 的 C ABI 动态加载及包契约。副本只复制当前源码输入，工具链与缓存复用项目 out，生成物在副本 out；日志 `out/logs/slice14-linux-native-ext4-tests.log`。失败路径的同一 hooks 测试在该环境重复十次 exit 0，见 `slice14-linux-native-cleanup.log`。
+- Windows 挂载目录的 WSL/DrvFS 验收曾在 hooks 临时空目录清理发生 permission denied，同一场景十次中六次失败，目录可在进程退出后删除。源码与业务断言未改；转到 Linux ext4 的完整场景及十次相同用例均通过。[INFERENCE] 差异来自共享文件系统的目录句柄/删除语义；未验证具体持有者。保留 `slice14-linux-native-tests.log` 和 `slice14-linux-hook-cleanup.log`，不将该共享文件系统运行标成通过，不添加重试或测试豁免。
+- package 只构建当前原生目标并从 VERSION 命名，保留库/头/许可、七类契约文档和固定兼容宿主补丁。build-info.txt 由实际库读取；checksums.sha256 覆盖除自身外的全部成员，ZIP SHA256 在压缩写入时计算。Go runtime 许可从实际 go env GOROOT 取得；根 MIT 许可 SHA256 与固定上游 manifest 一致，CPA MIT 版权保留原始字节。
+- 本地交付仅位于 out/dist，兼容补丁与许可是版本化安装输入。没有执行 push、创建 GitHub Release 或启用自动发布；产品版本、ABI/schema 与平台实测结论分别维护。三项真实账号/浏览器 AC 和三个平台的实际构建仍保持未验证。
+
+- `go run ./cmd/project quality` 十阶段 exit 0（`out/logs/slice14-quality.log`）；`gopls check -severity=hint cmd/project/main.go cmd/project/package_test.go` 实际增量扫描 0 条 warning/info/hint。已修复 Go1.27 废弃的 runtime.GOROOT 查询，测试使用实际 go env GOROOT；错误文本符合 staticcheck。XERJ Post-Edit Sync exit 0、code_files_indexed=89，七维审查执行后保留实际平台及账号验收缺口。
+
+- ZIP 文档导航回归先在真实包中复现 README 指向未收录源码文件的缺链，`slice14-package-navigation-repro.log` 为预期失败；修复后发布说明链接到随包许可文档。消费者测试遍历包内 Markdown 的本地链接并要求目标成员存在，源码仓库路径保留为来源说明，参考快照继续排除。
 

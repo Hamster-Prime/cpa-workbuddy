@@ -12,11 +12,21 @@
 | Docker 中实际 CPA 程序加载 Linux 库、卷重启记录 | 指定镜像摘要、架构、libc 与挂载布局下的运行和恢复 | 其他镜像、arm64、macOS 或真实账号可用 |
 | 用户自行完成的真实账号清单 | 清单列出的账号、身份、模型和协议行为 | 未列出的权限、套餐、模型和平台可用 |
 
-部署必须使用累计补丁 **`out/verification/cpa-management-contract.patch`**。它从上述固定 CPA 基线包含全部兼容改动：稳定身份保存、刷新计划、凭证代次/CAS、永久认证失效、协议转换、故障边界、模型发现结果原子保存、操作员字段写入及管理日志隐私；仅启用 ABI 1/schema 6 不够。补丁与 `out/verification/cpa-compatible/` 都是被忽略的本地验收材料，**不是公开 CPA release 或插件发布包的一部分**。以前的 `cpa-boundary-contract.patch`、`cpa-refresh-contract.patch` 仅保留历史切片证据，不能替代本累计补丁，也不是安装时叠加应用的别名。拿不到该补丁或等价且已验收的宿主构建时，不能按本文完成相同部署。
-首次克隆仓库不会自带被忽略的 `out/`；先从本次本地验收交接取得这份累计补丁及其 SHA256，或取得有同等独立证据的兼容宿主源码/二进制。不能给新克隆者一条依赖不存在补丁的安装命令，也不能从未发布的插件仓库 URL 下载假想 release。
+部署使用仓库及交付包内的累计补丁 [docs/patches/cpa-v7.3.15.patch](patches/cpa-v7.3.15.patch)，SHA256 `b99eaf584200f7d1c23be728a11583fa0970f785b299afa10cc128a562c0bded`。它针对上述固定 CPA 基线，包含稳定身份保存、刷新计划、凭证代次/CAS、永久认证失效、协议转换、故障边界、模型发现结果原子保存、操作员字段写入和管理日志隐私契约。先在独立 CPA checkout 运行 `git apply --check <补丁绝对路径>`，确认通过后在该 checkout 应用并构建；原参考目录保持只读。
+插件 ZIP 提供补丁源码及其 CPA MIT 版权许可，CPA 完整程序和 CPAMC 页面需按固定来源另行构建/取得。补丁并未提交 CPA 上游，也未发布为官方 CPA release。本地完整服务验收程序及日志保留在被忽略的 `out/`，与可从仓库或 ZIP 获取的安装输入分别记录。
 
 
 原始 `../.cpa-upstream-src/` 和 `_ref/` 保持只读。复现仅使用新建的隔离工作目录和专用凭证目录，不指向已有用户 auth 目录。记录 CPA 基线 commit、累计补丁 SHA256、二进制/动态库 SHA256、插件版本、OS/arch、Go/C 编译器和 libc；自编译程序的版本头可能为 `dev`，此时以 commit、补丁和文件摘要共同标识，不能把 `dev` 当正式版本。
+
+## 包校验与运行依赖
+
+本地包为 `out/dist/cpa-workbuddy-v<VERSION>-<goos>-<goarch>.zip`，同目录的 `.zip.sha256` 记录完整 ZIP 的 SHA256。先用 SHA256 文件校验工具核对 ZIP，再解压并按 `checksums.sha256` 核对各成员；该内层清单覆盖除清单自身以外的全部文件。保留文档目录层级以便本地链接可用，确认 `VERSION` 与 `build-info.txt` 的产品版本一致，并核对实际 GOOS、GOARCH、Go 与 CGO 构建设置。
+
+包内包含动态库、生成头、native.h、版本、许可、安装/契约文档和固定 CPA 兼容补丁。`licenses/Go-LICENSE`、`licenses/Go-PATENTS` 从实际 Go 工具链取得；CPA 及协议移植的版权见 [版权与许可](third-party-notices.md)。凭证和运行日志属于宿主管理的数据，不属于插件安装包。
+
+本机 Windows amd64 库由 GCC14.2.0（MinGW-Builds，MCF/SEH/UCRT）构建，PE 实际导入 `KERNEL32.dll`、UCRT API DLL 和 `libmcfgthread-1.dll`。本插件包不分发该 MCF 运行库；部署时需从相同编译器发行方提供匹配的 amd64 运行库，使 CPA 进程能够通过其程序目录或进程 PATH 解析。CPA Windows loader 会先把插件阴影复制再 `LoadDLL`（`internal/pluginhost/loader_windows.go:73-78`）；按实际 CPA 进程验证依赖加载。采用其他 C 工具链重新构建时需重新核对导入，不能沿用本机这一依赖清单。
+
+本机 Linux amd64 库由 Ubuntu GCC13.3.0/glibc2.39 构建，实际 ELF `NEEDED` 仅 `libc.so.6`，最高所需 glibc 符号为 `GLIBC_2.34`。完整宿主加载在 Debian/glibc2.41 容器通过；这组证据不覆盖 musl、其他 glibc 环境、arm64 或 macOS。五平台各自的实际构建、宿主加载与未验证项见 [平台记录](compatibility.md#slice-14-多平台构建与本地交付)。
 
 ## 构建、安装与版本确认
 

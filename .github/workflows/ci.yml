@@ -13,7 +13,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-2025, macos-15]
+        include:
+          - os: windows-2025
+            target: windows/amd64
+          - os: ubuntu-24.04
+            target: linux/amd64
+          - os: ubuntu-24.04-arm
+            target: linux/arm64
+          - os: macos-15-intel
+            target: darwin/amd64
+          - os: macos-15
+            target: darwin/arm64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -22,6 +32,11 @@ jobs:
           persist-credentials: false
           set-safe-directory: false
       - uses: ./.github/actions/toolchain
+      - name: Verify native target
+        shell: bash
+        env:
+          EXPECTED_TARGET: ${{ matrix.target }}
+        run: test "$(go env GOOS)/$(go env GOARCH)" = "$EXPECTED_TARGET"
       - name: Native source and event gate
         run: go run ./cmd/project quality --github-event
   quality-required:
