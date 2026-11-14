@@ -18,11 +18,13 @@ Slice 03 的 `credentialIdentity` 统一生成站点/uid/个人或企业作用�
 
 持久化明确写出 `enterprise_id`、`refresh_token`、`domain`、`token_type` 和 `refresh_expires_at` 的当前值，包括空字符串/null；这些是插件拥有的协议字段。CPA 重新登录时只补回缺失元数据，因此当前空值同样是认证 SSOT，防止旧认证值被补回。禁用、优先级、代理和模型排除等宿主管理字段由 CPA 合并；插件不在登录成功结果中设置这些字段的默认值。
 
-Slice 04 声明 `model_provider`：`model.static` 返回空目录，`model.for_auth` 以当前凭证通过宿主 HTTP 读取固定站点 `/v3/config`，使用上游 CLI User-Agent。CLI 列表之后追加企业 `custom:`，保留完整 ID。成功结果通过 `AuthUpdate` 交给 CPA 的模型注册路径，由其更新 Manager 与 FileTokenStore；插件不直接访问凭证目录。
+Slice 04 声明 `model_provider`：`model.static` 返回空目录，`model.for_auth` 以当前凭证通过宿主 HTTP 读取固定站点 `/v3/config`，使用上游 CLI User-Agent。CLI 列表之后追加企业 `custom:`，保留完整 ID。成功结果通过 `AuthUpdate` 交给 CPA 的模型注册路径；兼容宿主使用凭证代次 CAS 原子保存并安装派生更新，再注册模型。文件 watcher 的 skip-persist 只适用于已在磁盘上的输入记录，不能阻止网络发现结果落盘；保存失败撤销对应模型资格并报告诊断。插件不直接访问凭证目录。
 
 凭证内 `model_snapshot` 保存身份摘要、站点、成功采集时间和完整能力/积分元数据，`model_discovery_failure` 保存结构或明确 token 拒绝状态。临时故障只恢复匹配身份且未被拒绝的快照；结构错误、缺 CLI 和带 `invalid_token` challenge 的 401 返回成功空列表，使宿主撤销旧资格，并保留最后成功快照作为历史。成功发现清除失败状态；重新登录明确写出 null 快照和空失败状态，覆盖 CPA 合并时保留的旧字段。静态目录不授予权限；图片和 reasoning 等执行能力完成后才对外声明。诊断只含身份摘要、站点、状态、原因、模型数量及恢复快照时间。
 
 相同成功模型内容沿用快照采集时间，不产生 AuthUpdate；内容、作用域或失败状态变化时才更新成功快照。CPA watcher 会比较完整凭证元数据，此规则使发现与凭证文件更新收敛。认证请求头由 `AuthData.RequestHeaders` 统一维护，站点应用名和模型前缀由 `selectSite` 提供。
+兼容宿主的插件凭证存储区分凭证替换与当前凭证的管理写入：token 或登录代次改变时继承磁盘上的操作员设置；同代凭证的显式禁用、启用、排除和字段删除由当前管理记录决定，不被旧文件值覆盖。两类保存共用原子文件替换与凭证文件锁；重新登录不解除手动禁用。
+
 
 executor 以 OAuth 作用域接受和输出原生 `openai` 与 `claude`。请求使用宿主解析的模型与凭证站点：国内 Claude 固定发送到 `/v1/messages`，保留原生 JSON；其他模型固定发送到本站点 `/v2/chat/completions`，JSON gzip。上游始终流式，模型发现通过 `NativeFormat` 声明实际协议，CPA 兼容适配器按已解析模型选择格式，验证请求和对应输出模式的 translator，再翻译到原生格式交给插件。`AuthData.RequestHeaders` 提供认证与应用归属，共用 SDK 头和账号会话派生。会话优先取 CPA canonical/execution/derived session 元数据，再按用户消息派生，账号摘要参与会话和轮次身份。
 

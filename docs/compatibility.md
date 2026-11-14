@@ -20,9 +20,9 @@
 | 全局模型合并 | `internal/registry/model_registry.go:670-675`、`:1183-1204`、`:1347-1364` | 本次已读源码；每凭证支持列表与全局公开 Info 是两层 |
 | 永久失效与恢复 | `sdk/cliproxy/auth/conductor_refresh.go:374-414`、`:552-586` | 本次已读源码；仅刷新返回错误不能保证撤销凭证立即停调度 |
 | 原生测试宿主加载 | Windows amd64；Go1.27.1；MinGW GCC14.2.0；独立 C 进程加载实际 DLL | 通过；另验证 9 次回调与 9 次配对释放、transport/坏响应/取消边界、同步回调在途时 shutdown 等待和卸载 |
-| 实际 CPA 宿主加载 | 只读源码 commit `673131f57484517c3a1eae7e36c4cfa7b9bb4efc`；Windows amd64 隔离 Go 测试进程调用实际 host/management/FileTokenStore，加载真实 DLL | 通过双站点协议模拟登录、管理鉴权、保存/列表和子进程重启恢复；完整 CPA server 可执行程序尚未验收 |
-| 管理前端与账号 | 双站点入口、卡片状态、重新登录恢复、真实请求 | 后端管理处理器已验证；前端、真实网页登录、WeCom 与账号请求未验证 |
-| 发布平台 | Windows amd64 DLL 构建、原生探针和隔离 CPA 宿主加载通过；Linux amd64/arm64、macOS amd64/arm64 未验证 | 完整服务、容器和其他平台的实际加载仍由后续切片独立验收 |
+| 实际 CPA 宿主加载 | 固定 CPA `v7.3.15` commit `673131f57484517c3a1eae7e36c4cfa7b9bb4efc` 加累计管理兼容补丁；Windows amd64 完整 server 程序加载实际 DLL | 62 项 headless HTTP 验收通过，含双站点四账号、24 个协议方向/输出模式、12 个工具结果闭环及两阶段独立进程恢复；远端 WorkBuddy 协议由隔离 CONNECT 设施提供 |
+| 管理前端与账号 | CPAMC `v1.24.2` commit `4530da271ba2e89810d4dccebc57f3091afa590a`；固定 HTML 经实际 CPA 服务返回并核对 SHA256 | 静态服务与后端 API 通过；既有动态 OAuth 入口缺显式 site，外部扩展位置见部署说明。页面交互、真实网页登录、WeCom 与账号请求未验证 |
+| 发布平台 | Windows amd64 DLL 与完整服务；Linux amd64 SO 与真实 Debian 容器加载均通过 | Linux arm64、macOS amd64/arm64 未验证；构建与宿主加载按平台分列，真实账号验收保持未验证 |
 
 CPA `v7.3.15` 参考版本和 `v7.2.155` schema 起点属于此前调研记录。本次未重新联网核对，不据此设定正式支持下限；正式版本选择须通过 Web Search 并打开官方来源验证，再附实际加载证据。
 
@@ -318,3 +318,36 @@ Slice 02 已通过隔离实际 CPA 宿主/管理处理器的 DLL 加载、双站
 - `go test -race -timeout=240s ./internal/workbuddy ./internal/plugin` exit 0，日志 `slice12-plugin-race.log`；较短的 90 秒总时限曾在既有 32 MiB 工具聚合边界回归执行中到期，同一完整范围以明确 240 秒时限通过。修改的 14 个插件 Go 文件经 `gopls check -severity=hint` 无输出，宿主 stdio `textDocument/diagnostic` 总诊断 0。XERJ 同步 exit 0，`code_files_indexed=88`。
 - 累计 CPA 补丁为 `out/verification/cpa-boundary-contract.patch`，SHA256 `2d4bf1290d887281dca212f2c6082744123b690549f2369928f3c6e87dcb9fc7`；对只读 CPA 参考目录执行 `git apply --check` exit 0。原生 HTTP 限制施加于 RPC 回调边界，通用 transport 文件与原始参考一致；测试专用 envelope decoder 移入测试文件，无实际消费者的私有 HTTP/decoder helper 经 LSP references 核验后清理。
 - 规格审查补齐 HTTP 400 的结构化 11128 触发：本地化错误文案仍按逗号 → system 顺序纠正。公共回归分别使用数字 `internal_code` 与字符串 `code`，断言三次请求的完整 payload 顺序；原有 429/5xx 与非适用形状不重放回归保留。
+
+## Slice 13 实际管理服务与容器验收
+
+### 固定来源与 Windows 服务
+
+- 只读 CPA 基线为 tag `v7.3.15` / commit `673131f57484517c3a1eae7e36c4cfa7b9bb4efc`，`git show -s` 记录日期为 2026-09-23；完整程序在独立兼容副本以 Go1.27.1 构建，标识 `v7.3.15-compatible`。原参考目录不应用补丁。插件版本 `0.1.0`、ABI 1/schema 6 沿用根 VERSION 与注册/status。
+- `out/verification/cpa-live/main.go` 是标准库 headless 验收程序，启动真实 CPA `cmd/server`，经实际 HTTP 管理鉴权、FileTokenStore、watcher、Manager 和原生 DLL 执行；仅远端 WorkBuddy HTTPS 由受控 CONNECT 设施替换。设施只接受固定两 API host，独立 CA/密钥、合成凭证及产物全部在 `out/`，不安装系统证书、不访问用户凭证目录。Go1.27.1 构建的宿主因其模块兼容默认值仍含 `x509sslcertoverrideplatform=0`；Windows 隔离证明显式设置文档支持的 `GODEBUG=x509sslcertoverrideplatform=1` 与专用 `SSL_CERT_FILE`，见 `go doc crypto/x509.SystemCertPool` 与 `go version -m` 输出。这是证明环境配置，不是产品信任绕过。
+- `out/logs/slice13-live-windows.json`：完整 Windows amd64 服务验收 exit 0，62 项通过、0 失败。四条记录分别为两张国内与两张国际，真实上游观察命中四个独立稳定 auth ID；全局合并、账号模型资格、两级别名/排除、禁用/启用、删除、手动刷新及代理生效均经公开 HTTP 入口验证。
+- 四客户端 Chat/Responses/Messages/Gemini × 国内 Claude Messages、国内 GLM Chat、国际 Claude Chat × 两种输出模式，共 24 项全部通过；另有 12 个客户端工具调用 → 工具结果 → 原生后续请求闭环、账号二请求与国际 GLM 图片明确拒绝。断言文本、reasoning、工具名称/参数/结果归属、站点与原生路由；不以 HTTP 200 代替语义证明。此处合成上游结果不代表真实账号权限和远端模型能力。
+- 实际进程先在永久失效及手动禁用状态下重启，比较 token/登录代次/绑定摘要/刷新期限/账号模型快照及管理字段，失效身份无新增上游请求；同身份重登保持原 ID/FileName 与禁用，显式启用后重新发现并请求，再次独立进程重启恢复健康状态。取消关闭实际上游，管理停用/卸载撤销路由。当前 Windows 运行的 7 个生成日志文件及 52,799 字节进程输出经精确 fixture token/state/管理密钥/用户和企业标识检查，无原值泄漏。
+
+### Linux amd64 容器
+
+- 容器运行时为 WSL Ubuntu 上的 Docker Engine 28.3.3，固定本地 Debian 镜像 `sha256:c038a8ef24ab88bc8edacfc93704c9bf301647b9253a59077f6f5342f39727ae`，分发摘要 `debian@sha256:f324c7ff54321e8d9c588493a20244965938ce0aa50bbd1022d38010e9ffc4b1`，实际 `getconf GNU_LIBC_VERSION` 为 glibc 2.41。CPA 与 `.so` 均由项目局部 Go1.27.1/linux-amd64、Ubuntu GCC13.3.0 构建；插件 ELF 最高所需 glibc 符号为 `GLIBC_2.34`，不把此结果外推到 musl 或更旧 glibc。
+- `out/logs/slice13-live-container.json` exit 0，62 项通过、0 失败，四实际 auth ID、24 个跨协议场景、12 个工具结果闭环及失效/健康两阶段重建均通过。每次使用新的命名容器，`--pull=never` 固定镜像，持久目录映射 `/proof`、CPA 程序映射 `/opt/cpa/cli-proxy-api`、静态页映射 `/opt/cpa/static/management.html`。容器配置仅使用这些内部 Linux 路径；凭证及模型快照不依赖开发机盘符。无桌面、无可见浏览器。
+- 登录 state/token/account、模型、刷新和 Chat/Messages 全部由配置的宿主 CONNECT 代理观察；拒绝其他目标，57 个实际推理请求的模型和账号资格均匹配。7 个日志文件及 46,166 字节容器进程输出经过同样的精确敏感值检查。账号失效和禁用时重建不触及该身份上游，显式启用后的健康状态再次重建仍可请求。
+- Linux 验收补齐了由 Windows 文件事件掩盖的宿主缺口：管理修改直接复用文件加载的模型规则投影，清理旧排除/别名属性并合并全局规则；凭证删除同步撤销模型注册；AuthProvider 与原生 executor 两条刷新入口都保留宿主物理凭证路径。公开 HTTP/Manager 回归在没有文件 watcher 的条件下断言这些行为，不能依赖稍后的文件事件修正管理状态。
+
+### 管理前端与人工边界
+
+- 官方 [CPAMC v1.24.2 release API](https://api.github.com/repos/router-for-me/Cli-Proxy-API-Management-Center/releases/tags/v1.24.2) 正文核实于 2026-11-14；下载 `management.html` 为 2,767,070 字节，SHA256 `51b24db8170a5414875602c2f4e35017185b1c1dd7e9a6b1c0de69905a81e997`。实际 CPA 的 `GET /management.html` 返回相同摘要，未打开可见浏览器。预装固定 HTML，`MANAGEMENT_STATIC_PATH` 配合 `disable-auto-update-panel:true`，避免缺文件后取 latest。
+- 固定前端使用 `/v0/management` 且支持插件动态 OAuth provider，但 adapter 未传必需的 `site`；国内/国际选择需要在既有 OAuth 页和 API adapter 扩展，详见 [部署说明](deployment.md) 的固定源码链接。当前官方 main 已为 CPA v8 的 `/v8/management`，不能直接替换该固定 v7 页面。页面交互、卡片展示和真实浏览器登录不列为通过。
+- 真实账号资源未提供，Chat/Messages/Responses/Gemini 的真实推理、工具、图片/reasoning、WeCom 与远端容器网页登录均未验证；[真实账号人工清单](deployment.md#真实账号人工验收单) 分别列出四账号、权限、协议、模型、流模式、持久化和失败场景及必填证据，不以协议设施代勾。
+
+### 宿主修复与复现入口
+
+- `internal/pluginhost/model_auth_update.go` 与 `sdk/cliproxy/service_executors.go`：网络发现的 AuthUpdate 复用物理凭证 CAS 和原子保存，不继承 watcher 输入的 skip-persist；保存失败不授予模型资格。公开 Host 回归覆盖落盘、并发新登录、文件已删除及取消，实际 server 证明快照、刷新期限和能力重启恢复。
+- `internal/pluginhost/auth_provider.go`：凭证替换继承磁盘操作员设置；同代管理保存接受当前记录的显式启用/禁用及字段移除。实际 FileTokenStore 回归复现原手动禁用未落盘，修复后禁用/启用、排除清理及同 token 新登录保持禁用均通过。
+- `internal/util/provider.go` 与实际 Gin access log 回归：用户/企业/租户头完整脱敏，OAuth `state` 包括大小写、编码键与数组形式完整脱敏；正文捕获仍需关闭。SDK web-search 测试按目录 SSOT 验证探测仅增加能力，不再把目录中已有能力的模型误断言为不支持。
+- 本次累计补丁为 `out/verification/cpa-management-contract.patch`，包含此前全部边界修复和本片宿主修复，共 48 个文件，SHA256 `b99eaf584200f7d1c23be728a11583fa0970f785b299afa10cc128a562c0bded`；对只读基线 `git apply --check` exit 0。安装、两站点 API 登录、管理、固定页面、卷布局、代理与故障步骤见 [部署说明](deployment.md)。补丁及 proof 程序是本地忽略产物，首次克隆不会自带，也未提交/发布到 CPA 仓库。
+- `go run ./cmd/project quality` 全部十阶段 exit 0；宿主受影响的 pluginhost、management、synthesizer 与 SDK 包完整 race 测试 exit 0，隐私 util/logging 包完整测试 exit 0；所有累计改动宿主文件经实际 gopls stdio `textDocument/diagnostic` 最终 0 条。日志 `slice13-quality.log`、`slice13-host-race.log`、`slice13-host-privacy-suites.log`、`slice13-host-diagnostics.log`。此前原生 Manager/DLL 的认证、刷新、模型及客户端协议回归 exit 0，另记 `slice13-native-regressions.log`，不与完整程序的证据混同。
+
+
