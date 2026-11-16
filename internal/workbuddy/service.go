@@ -462,6 +462,10 @@ func (s *Service) poll(ctx context.Context, req loginRequest, call func(string, 
 	if err != nil {
 		return PollResponse{Status: "error", Message: "WorkBuddy returned invalid browser credentials"}, nil
 	}
+	auth, err = preserveLoginFileName(auth, req.HostCallbackID, call)
+	if err != nil {
+		return nil, err
+	}
 	auth = captureModelSnapshot(pollCtx, auth, req.HostCallbackID, call)
 	if cancelled() {
 		return invalidSession(), nil

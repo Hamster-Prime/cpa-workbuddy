@@ -39,6 +39,9 @@ func success(data any) ([]byte, error) {
 func host(t *testing.T, handle func(httpRequest) ([]byte, error)) hostCall {
 	t.Helper()
 	return func(method string, raw []byte) ([]byte, error) {
+		if method == "host.auth.list" {
+			return []byte(`{"ok":true,"result":{"files":[]}}`), nil
+		}
 		if method == "host.log" {
 			return []byte(`{"ok":true,"result":{}}`), nil
 		}
@@ -271,8 +274,8 @@ func TestConcurrentSitesRestoreCredentialsAndConsumeSuccess(t *testing.T) {
 			t.Fatal(result.err)
 		}
 		got := result.value.(workbuddy.PollResponse)
-		if got.Status != "success" || got.Auth.Provider != "workbuddy" || got.Auth.Prefix != "" || got.Auth.FileName != got.Auth.ID+".json" || strings.Contains(got.Auth.FileName, "same-user") {
-			t.Fatal("login did not produce a scoped, opaque host auth record")
+		if got.Status != "success" || got.Auth.Provider != "workbuddy" || got.Auth.Prefix != "" || !strings.Contains(got.Auth.FileName, "Person") || !strings.HasSuffix(got.Auth.FileName, ".json") || strings.Contains(got.Auth.FileName, "same-user") {
+			t.Fatal("login did not produce a scoped auth record with a readable credential filename")
 		}
 		if ids[got.Auth.ID] {
 			t.Fatal("same uid on two sites shared a host identity")

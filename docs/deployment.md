@@ -320,15 +320,17 @@ MANAGEMENT_STATIC_PATH="$PWD/out/verification/cpa-official-release-rs9gn_e4/CPAM
 
 每次复现使用尚未包含凭证的新 proof 目录。当前 Linux 官方发布包与同包的 Debian 容器均62/62项通过；Windows官方源码构建61/62项，唯一目录迟留按已接受边界记录，不能重写成全部通过。重启检查只把实际推理命中视为禁用账号调度，模型验证/刷新与推理分开；轮换token不要求重启前后字节不变，必须检查有效期、代次、快照和管理字段。完整证据见 `out/logs/native-official-summary.json`。
 
-### CPAMC 账号标题 label 补丁
+### 账号名称与凭证文件
 
-CPAMC `v1.28.0` 的账号卡片标题只使用 email、projectId 或文件名；WorkBuddy已返回的label不会进入标题。源码仓库提供可选补丁 `docs/patches/cpamc-auth-label.patch`，包含规范化、类型、标题回退和消费者回归。补丁将标题选择改为 `email → projectId → label → 文件名`，不改插件凭证ID/FileName，不把昵称写入email/projectId，也不展示可能包含API key的account。
+插件返回独立的AuthData.ID、FileName和Label：完整ID标识站点/用户/企业作用域，FileName用于官方列表与模型弹窗标题，Label保存展示名。首次生成的可读文件名带短身份区分符；规范file_name随凭证保存，源文件解析、刷新及同身份重登沿用。昵称变化更新Label，已有文件的名称通过管理接口明确迁移。
 
-在独立的官方CPAMC `v1.28.0` 源码副本应用该补丁后，使用其锁文件执行 `bun install --frozen-lockfile`，再执行 `bun test tests/authFileIdentity.test.ts tests/authFilesResponseNormalization.test.ts`、`bun run type-check` 与 `VERSION=v1.28.0 bun run build`（POSIX shell）。`VERSION` 是官方Vite配置的版本输入，避免Windows cmd.exe执行其POSIX版本探测命令。单文件产物为该前端构建的 `dist/index.html`，部署时命名为 `management.html`，同时保留CPAMC的MIT许可。该流程属于可选管理前端维护，插件本身的Go构建、测试、打包不依赖前端工具。
+既有摘要文件名可在同一官方宿主上迁移：
 
-将HTML与许可放入已有持久卷中的专用目录，设置容器环境 `MANAGEMENT_STATIC_PATH=/CLIProxyAPI/data/workbuddy-panel/management.html`，并设置 `management.disable-auto-update-panel:true`。启动时核对现有镜像ID和挂载不变；访问 `/management.html` 核对文件SHA256，使用隔离headless浏览器经管理登录检查账号label成为主标题。已有配置应只增加这两项，并保留原配置及原HTML备份。恢复官方前端时移除该环境覆盖、恢复原自动更新设置并重新创建容器。
-
-本地实际部署已完成同镜像容器重建、凭证ID/label保持、真实Chat流式/非流式HTTP200及标题DOM验证，见兼容性记录。补丁是本地管理前端分支，不改变官方基线验证结论；CPAMC升级需要重新应用或确认官方已覆盖此逻辑，不能把后续官方HTML自动覆盖当成补丁仍有效。
+1. 经认证的 `GET /v0/management/auth-files` 与download接口读取目标记录和当前JSON，记录完整ID、登录代次、Label及宿主管理设置；凭证JSON按敏感资料处理。
+2. 选取可读、唯一且安全的.json文件名，将JSON中的file_name设为该值，通过 `POST /v0/management/auth-files` 的file表单上传。保留站点、用户、企业、登录代次、token和管理字段。
+3. 重新读取列表，确认完整ID与代次不变、name为目标名称；通过新name下载并核对JSON，确认模型列表和手动刷新可用。
+4. 确认运行记录的name/path均指向新文件，且旧文件名不等于当前ID或name，再经 `DELETE /v0/management/auth-files?name=<旧名称>` 清理旧文件。删除失败须处理，不能把重复文件留作迁移成功。
+5. 保持镜像和持久卷重启，检查单条记录、名称、作用域、管理状态和实际请求；使用未修改的官方页面检查账号卡片与模型弹窗。整个流程不直接操作用户auth目录。
 
 ## 日志与隐私
 

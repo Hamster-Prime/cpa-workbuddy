@@ -14,7 +14,7 @@ C ABI 入口按值保存宿主回调表，借用请求输入，复制宿主响�
 
 持久 provider 为 `workbuddy`。两个 OAuth 入口 `workbuddy`、`workbuddy-ai` 分别公开“WorkBuddy国内”“WorkBuddy国际”，由原版管理前端按入口元数据展示。入口确定站点，显式 metadata.site 必须与入口一致；凭证 provider 与登录入口分别保存。
 
-浏览器登录通过宿主 HTTP 获取 state，用户完成网页登录，服务端轮询 token/account。state 按会话隔离，五分钟过期，最多 128 个；取消、失败、完成和关闭释放会话。个人、企业及站点身份由账号响应确认，凭证 ID/FileName 基于 `site + uid + enterprise/tenant scope` 的稳定摘要，昵称不参与唯一性。
+浏览器登录通过宿主HTTP获取state，用户完成网页登录，服务端轮询token/account。state按会话隔离，五分钟过期，最多128个；取消、失败、完成和关闭释放会话。AuthData.ID基于 `site + uid + enterprise/tenant scope` 的完整稳定摘要，Label保存账号展示名，FileName为可读名称加短身份区分符。规范file_name随凭证持久化；登录完成前通过host.auth.list读取同一完整ID的宿主记录并复用其文件名，宿主元数据是命名依据。解析接受宿主安全相对路径并保留Windows规范名称的大小写，刷新和重登沿用。CPA宿主与管理前端使用官方发行物，展示适配属于插件认证输出。
 
 `auth.refresh` 只返回轮换后的 AuthData；原版 Manager 负责保存、安装、凭证版本检查与迟到结果处理。执行端把 401 交回宿主，由原生流程读取最新凭证、刷新并最多重试一次。同账号同登录代次的 refresh token 在插件内单飞，成功结果保留 60 秒；缓存不跨站点、身份或登录代次采用。
 

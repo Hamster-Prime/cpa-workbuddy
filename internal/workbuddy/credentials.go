@@ -7,8 +7,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"maps"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 const credentialVersion = 1
@@ -161,6 +165,7 @@ type credential struct {
 	UID                   string         `json:"uid"`
 	EnterpriseID          string         `json:"enterprise_id"`
 	DisplayName           string         `json:"display_name"`
+	FileName              string         `json:"file_name,omitempty"`
 	AccessToken           string         `json:"access_token"`
 	RefreshToken          string         `json:"refresh_token"`
 	Domain                string         `json:"domain"`
@@ -211,7 +216,8 @@ func credentialSite(stored credential) (site, error) {
 		strings.TrimSpace(stored.AccessToken) == "" || stored.ExpiresAt.IsZero() || stored.ExpiresAt.UnixMilli() <= 0 ||
 		stored.EnterpriseID != strings.TrimSpace(stored.EnterpriseID) || !safeValue(stored.UID) || !safeValue(stored.EnterpriseID) ||
 		!safeValue(stored.AccessToken) || !safeValue(stored.RefreshToken) || !safeValue(stored.Domain) || !safeValue(stored.TokenType) ||
-		(stored.RefreshExpiresAt != nil && (stored.RefreshExpiresAt.IsZero() || stored.RefreshExpiresAt.UnixMilli() <= 0)) {
+		(stored.RefreshExpiresAt != nil && (stored.RefreshExpiresAt.IsZero() || stored.RefreshExpiresAt.UnixMilli() <= 0)) ||
+		(stored.FileName != "" && !validCredentialFileName(stored.FileName)) {
 		return site{}, failure("invalid_credentials", "invalid WorkBuddy browser credentials", 400)
 	}
 	return chosen, nil
@@ -230,6 +236,33 @@ func credentialIdentity(stored credential) (string, string, error) {
 	return "workbuddy-" + hex.EncodeToString(digest[:]), scope, nil
 }
 
+func validCredentialFileName(name string) bool {
+	if !filepath.IsLocal(name) || filepath.Clean(name) != name || !strings.EqualFold(filepath.Ext(name), ".json") {
+		return false
+	}
+	for _, char := range name {
+		if unicode.IsControl(char) {
+			return false
+		}
+	}
+	return true
+}
+
+func readableCredentialFileName(label, id string) string {
+	var name strings.Builder
+	name.Grow(min(len(label), 80))
+	for _, char := range label {
+		if unicode.IsControl(char) || strings.ContainsRune(`<>:"/\|?*`, char) {
+			char = '-'
+		}
+		if name.Len()+utf8.RuneLen(char) > 80 {
+			break
+		}
+		name.WriteRune(char)
+	}
+	return strings.Trim(name.String(), " .") + "-" + id[len("workbuddy-"):len("workbuddy-")+16] + ".json"
+}
+
 func authFromCredential(stored credential, metadata map[string]any) (AuthData, error) {
 	chosen, err := credentialSite(stored)
 	if err != nil {
@@ -238,6 +271,13 @@ func authFromCredential(stored credential, metadata map[string]any) (AuthData, e
 	id, scope, err := credentialIdentity(stored)
 	if err != nil {
 		return AuthData{}, err
+	}
+	label := chosen.name
+	if stored.DisplayName != "" {
+		label += " · " + stored.DisplayName
+	}
+	if stored.FileName == "" {
+		stored.FileName = readableCredentialFileName(label, id)
 	}
 	raw, err := json.Marshal(stored)
 	if err != nil {
@@ -253,23 +293,76 @@ func authFromCredential(stored credential, metadata map[string]any) (AuthData, e
 	}
 	maps.Copy(metadata, own)
 	metadata["refresh_interval_seconds"] = int64(refreshLead / time.Second)
-	label := chosen.name + " · " + stored.DisplayName
-	if stored.DisplayName == "" {
-		label = chosen.name
-	}
 	disabled, _ := metadata["disabled"].(bool)
 	proxy, _ := metadata["proxy_url"].(string)
 	return AuthData{
-		Provider: provider, ID: id, FileName: id + ".json", Label: label, ProxyURL: proxy, Disabled: disabled,
+		Provider: provider, ID: id, FileName: stored.FileName, Label: label, ProxyURL: proxy, Disabled: disabled,
 		StorageJSON: raw, Metadata: metadata,
 		Attributes: map[string]string{"site": stored.Site, "uid": stored.UID, "scope": scope},
 	}, nil
+}
+
+func preserveLoginFileName(auth AuthData, callbackID string, call func(string, []byte) ([]byte, error)) (AuthData, error) {
+	request, err := json.Marshal(struct {
+		CallbackID string `json:"host_callback_id"`
+	}{callbackID})
+	if err != nil {
+		return AuthData{}, failure("internal_error", "cannot encode host authentication lookup", 500)
+	}
+	reply, err := call("host.auth.list", request)
+	var envelope struct {
+		OK     bool `json:"ok"`
+		Result struct {
+			Files json.RawMessage `json:"files"`
+		} `json:"result"`
+	}
+	if err != nil || json.Unmarshal(reply, &envelope) != nil || !envelope.OK || len(envelope.Result.Files) == 0 {
+		return AuthData{}, failure("host_auth_unavailable", "cannot read authentication metadata from the CPA host", 503)
+	}
+	var files []struct{ ID, Name, Provider, Type string }
+	if json.Unmarshal(envelope.Result.Files, &files) != nil {
+		return AuthData{}, failure("invalid_host_auth", "CPA returned invalid authentication metadata", 502)
+	}
+	name := ""
+	conflict := false
+	for _, file := range files {
+		if file.ID != auth.ID {
+			if strings.EqualFold(file.Name, auth.FileName) {
+				conflict = true
+			}
+			continue
+		}
+		if (file.Provider != provider && file.Type != provider) || !validCredentialFileName(file.Name) || (name != "" && name != file.Name) {
+			return AuthData{}, failure("invalid_host_auth", "CPA returned an ambiguous WorkBuddy credential filename", 502)
+		}
+		name = file.Name
+	}
+	if name == "" && conflict {
+		return AuthData{}, failure("credential_name_conflict", "CPA already owns the proposed credential filename", 409)
+	}
+	if name == "" || name == auth.FileName {
+		return auth, nil
+	}
+	var stored credential
+	if json.Unmarshal(auth.StorageJSON, &stored) != nil {
+		return AuthData{}, failure("internal_error", "cannot read the login credential filename", 500)
+	}
+	stored.FileName = name
+	auth.FileName = name
+	auth.Metadata["file_name"] = name
+	auth.StorageJSON, err = json.Marshal(stored)
+	if err != nil {
+		return AuthData{}, failure("internal_error", "cannot encode the canonical credential filename", 500)
+	}
+	return auth, nil
 }
 
 func parse(raw []byte) (any, error) {
 	var req struct {
 		Provider string
 		RawJSON  []byte
+		FileName string
+		Path     string
 	}
 	if err := decode(raw, &req); err != nil {
 		return nil, err
@@ -283,6 +376,22 @@ func parse(raw []byte) (any, error) {
 	}
 	if !handled {
 		return ParseResponse{}, nil
+	}
+	if req.FileName != "" {
+		source := filepath.Clean(req.FileName)
+		if runtime.GOOS == "windows" && strings.EqualFold(filepath.Clean(stored.FileName), source) {
+			source = filepath.Clean(stored.FileName)
+		} else if req.Path != "" {
+			base := filepath.Base(req.Path)
+			if filepath.IsAbs(source) {
+				source = base
+			} else if strings.EqualFold(filepath.Base(source), base) {
+				source = filepath.Join(filepath.Dir(source), base)
+			}
+		}
+		if validCredentialFileName(source) {
+			stored.FileName = source
+		}
 	}
 	auth, err := authFromCredential(stored, metadata)
 	if err != nil {
@@ -338,7 +447,11 @@ func (auth AuthData) RequestHeaders() (map[string][]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if auth.ID != id || (auth.FileName != "" && auth.FileName != id+".json") {
+	expectedFileName := stored.FileName
+	if auth.FileName != "" && expectedFileName == "" {
+		expectedFileName = id + ".json"
+	}
+	if auth.ID != id || (auth.FileName != "" && auth.FileName != expectedFileName) {
 		return nil, failure("identity_mismatch", "credential scope does not match the selected account", 400)
 	}
 	headers := map[string][]string{

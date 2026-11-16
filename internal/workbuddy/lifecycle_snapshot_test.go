@@ -40,6 +40,9 @@ func TestLoginCatalogCheckpointRestoresDuringDirectoryOutage(t *testing.T) {
 			defer s.Close()
 			catalogRequests := 0
 			call := func(method string, raw []byte) ([]byte, error) {
+				if method == "host.auth.list" {
+					return []byte(`{"ok":true,"result":{"files":[]}}`), nil
+				}
 				if method == "host.log" {
 					return []byte(`{"ok":true,"result":{}}`), nil
 				}
