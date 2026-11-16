@@ -1,83 +1,121 @@
-# cpa-workbuddy
+<div align="center">
 
-面向**未修改的官方 CLIProxyAPI（CPA）**的 WorkBuddy 原生动态库插件：一个 provider `workbuddy` 承载国内 `copilot.tencent.com` 与国际 `www.workbuddy.ai` 的多个账号及个人/企业身份。
+# CPA WorkBuddy (`cpa-workbuddy`)
 
-## 当前契约
+[![CI](https://github.com/ygq-future/cpa-workbuddy/actions/workflows/ci.yml/badge.svg)](https://github.com/ygq-future/cpa-workbuddy/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ygq-future/cpa-workbuddy)](https://github.com/ygq-future/cpa-workbuddy/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-| 项目 | 固定值 |
-| --- | --- |
-| 宿主 | 官方 CPA `v8.0.69`，commit `f7ae8feeb3710319f524730849fbe32fde1751e4`；不改源码、不打补丁 |
-| 管理前端 | 官方 CPAMC `v1.28.0`，`management.html` SHA256 `035cdd5340a5b9a76cb43d11e45444be1990ae1ecff413d6a92b7e8f03bc6373`（3,879,501 bytes） |
-| 插件 | 产品版本见 [VERSION](VERSION)；C ABI `1`；JSON schema `10` |
-| 配置 | 官方 v8 布局（`config-version: 8`），字段以宿主自带 `config.example.yaml` 为准 |
+**CLIProxyAPI 的 WorkBuddy 国内 / 国际双站点插件**
 
-插件只用官方公开接口：schema 10 的多 OAuth 入口、认证 provider、模型 provider、四格式 executor，以及插件自有只读管理路由。安装不要求宿主补丁、不要求前端分支或外部页面扩展；管理操作全部走官方 `/v8/management`，插件自有状态仍在 `GET /v0/management/plugins/cpa-workbuddy/status`。宿主与前端均保持原版字节，升级宿主时只需重新核对本文列出的公开契约。
+</div>
 
-## 已实现能力
+通过 CPA 管理页面登录 WorkBuddy，将账号可用模型接入 OpenAI、Responses、Claude 与 Gemini 客户端。插件 ID、动态库基础名和 CPA 配置键均为 `cpa-workbuddy`。
 
-原生接入、双站点浏览器登录与恢复、个人/企业身份管理、账号模型发现、Chat 文本/工具/图片/reasoning、国内 Claude Messages、CPA 客户端协议互通、凭证刷新与永久认证失效恢复、有界兼容纠正及资源生命周期。同身份重新登录更新原记录并保留宿主管理设置；模型使用 `wb/`、`wb-ai/` 前缀。
+## 导航
 
-OpenAI Chat、Responses、Claude Messages 与 Gemini 客户端按已选站点和已解析模型进入原生路由，结果再按客户端协议返回，支持流式、非流式及客户端工具循环；四种格式的请求/响应转换直接使用官方公开 translator SDK（`sdk/translator`、`sdk/translator/builtin`）。图片和 effort 依据当前账号成功模型快照核验，国际 GLM 保持文本输入。Chat 兼容纠正与认证恢复、Messages 签名纠正与认证恢复都有明确合计上限；成功策略按站点、账号、模型及请求形状隔离，输出后不重放。安全过滤保留停止语义，请求体、错误体、SSE 单事件、聚合响应与原生缓冲区均有上限；停用/卸载取消并等待在途工作。
+- [功能概览](#功能概览)
+- [安装与配置](#安装与配置)
+- [登录与使用](#登录与使用)
+- [Docker 部署](#docker-部署)
+- [常见问题](#常见问题)
+- [本地构建](#本地构建)
+- [许可证](#许可证)
 
-刷新与 401 由官方 Manager 接管：插件 `auth.refresh` 只返回轮换后的凭证，宿主负责保存、安装、代次校验与重试；自动续期使用宿主读到的 `refresh_interval_seconds=300`。插件内同账号同代次 refresh 单飞、成功结果保留 60 秒。刷新凭证被明确拒绝与“access token 仍有效”分别处理：未到期且未被上游拒绝的 access token 仍可推理，重启后由宿主重新加载并重建状态。
+## 功能概览
 
-## 当前验证状态
+- **国内与国际登录**：管理页面提供“WorkBuddy国内”和“WorkBuddy国际”两个浏览器登录入口。
+- **多账号与企业身份**：国内、国际、个人及企业身份独立保存；同一身份重新登录更新原记录，保留宿主管理设置。
+- **动态模型发现**：按账号获取可用模型，国内使用 `wb/` 前缀，国际使用 `wb-ai/` 前缀。
+- **四种客户端协议**：支持 OpenAI Chat Completions、OpenAI Responses、Claude Messages 和 Gemini，提供流式与非流式响应。
+- **工具、图片与推理**：支持工具调用闭环、图片输入和 reasoning / effort；具体能力取决于所选模型和账号权限。
+- **凭证自动刷新**：接入 CPA 的保存、刷新和请求恢复流程；账号卡片与模型弹窗显示可读名称。
 
-官方 Linux amd64 发布包与同一插件 SO 在 WSL 及 Debian 容器分别通过62/62项检查；各包含四身份、24个跨协议流模式场景及12个工具结果闭环。Windows官方源码构建通过61/62项，唯一目录迟留已接受：删除立即移除凭证并阻断调用，独占模型可能暂留在全局目录（实测请求HTTP503）。官方Windows发布包加载与管理页验证通过，专用测试CA条件下的完整协议未验。
+## 安装与配置
 
-原版CPAMC v1.28.0已在隔离headless Chromium中实际点击国内/国际两入口，完成合成上游登录、轮询、保存及双凭证列表，控制台错误为0。证据集中于 [兼容性记录](docs/compatibility.md)；真实WorkBuddy网页、WeCom及账号模型能力仍未验证。
+使用支持原生插件及 JSON schema 10 的官方 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)；推荐 CPA `v8.0.69` 或更新版本。管理页面使用官方 CPAMC。
 
-- 尚未验证：真实账号与 WeCom 网页登录、Linux arm64、macOS amd64/arm64、远程 CI。
+1. 从 [Releases](https://github.com/ygq-future/cpa-workbuddy/releases) 下载与 **CPA 运行平台和架构**一致的 ZIP 及其 `.sha256` 文件。
+2. 核对 ZIP 的 SHA256 后解压，将动态库放入 CPA 的插件目录，保留文件名。
 
-不把构建成功当宿主加载成功，也不把隔离上游结果当真实账号结果；逐项状态与未验证范围以 [兼容性记录](docs/compatibility.md) 和运行记录为准。
+| CPA 运行环境 | 发布包后缀 | 动态库安装路径示例 |
+| --- | --- | --- |
+| Windows x64 | `windows-amd64.zip` | `plugins/windows/amd64/cpa-workbuddy.dll` |
+| Linux x64 | `linux-amd64.zip` | `plugins/linux/amd64/cpa-workbuddy.so` |
+| Linux ARM64 | `linux-arm64.zip` | `plugins/linux/arm64/cpa-workbuddy.so` |
+| macOS Intel | `darwin-amd64.zip` | `plugins/darwin/amd64/cpa-workbuddy.dylib` |
+| macOS Apple Silicon | `darwin-arm64.zip` | `plugins/darwin/arm64/cpa-workbuddy.dylib` |
 
-## 交付边界
+3. 在 CPA 的配置文件中启用插件：
 
-| 能力 | 说明 |
-| --- | --- |
-| 管理路由 | `GET /v0/management/plugins/cpa-workbuddy/status`，返回 `name`、`version`、`abi_version`、`schema_version` |
-| OAuth 入口 | `workbuddy`（WorkBuddy国内）与 `workbuddy-ai`（WorkBuddy国际）；持久 provider 只有 `workbuddy` |
-| 模型 | `wb/<上游 ID>`、`wb-ai/<上游 ID>`；`AuthData.Prefix` 留空，执行前校验并只剥离一层 |
-| 输入/输出格式 | `openai`、`openai-response`、`claude`、`gemini` |
-| 上游路由 | 国内 `claude-*` 走 `/v1/messages`；国内其他模型与国际全部模型走对应站点 `/v2/chat/completions` |
-| 计数/任意转发 | `count_tokens` 与 `http_request` 返回明确不支持，不伪造上游计数 |
+```yaml
+plugins:
+  enabled: true
+  dir: "plugins"
+  configs:
+    cpa-workbuddy:
+      enabled: true
+```
 
-浏览器登录：调用 `GET /v8/management/oauth/auth-url?provider=workbuddy`（或 `provider=workbuddy-ai`）取得 `url` 与 `state`，用户自行在浏览器完成登录，再轮询 `GET /v8/management/oauth/status?state=<state>`。`wait` 表示等待，`ok` 表示宿主已完成凭证保存，随后从 `GET /v8/management/credentials` 查看。会话最多五分钟；重启、过期、取消或已消费的状态需要重新发起。登录 URL 与 state 属于敏感数据，不得粘贴到日志或问题报告。真实网页登录与企业微信步骤由用户完成。
+4. 重启 CPA，在管理页面的插件列表确认 `cpa-workbuddy` 已加载并启用。
 
-模型发现读取账号 `/v3/config` 的 CLI 与企业 `custom:` 模型。普通发现只更新宿主进程内状态，不承诺每次立即落盘；登录与原生刷新结果携带当前快照，由宿主随凭证持久化，因此重启后沿用的快照可能早于最后一次普通发现。首次发现失败且无快照的账号不获得静态模型路由资格。
+插件复用 CPA 的网络代理、凭证目录及管理鉴权。管理密钥与客户端 API key 分别由 CPA 配置。
 
-## 安装与文档索引
+## 登录与使用
 
-安装输入是官方 CPA v8.0.69 发布包与官方 CPAMC v1.28.0 页面；插件交付包包含动态库、生成头、版本、契约文档、`licenses/THIRD-PARTY.txt`（打包时按实际链接模块从 Go 模块缓存生成）、`licenses/Go-LICENSE` 与 `licenses/Go-PATENTS`。`build-info.txt` 记录实际模块版本，`checksums.sha256` 覆盖其余成员。库放入 CPA 的 `plugins.dir`，两个 `enabled` 由宿主管理，启动与凭证操作由宿主负责。完整步骤见 [部署说明](docs/deployment.md)。
+1. 打开 CPA 管理页面，进入 OAuth 登录。
+2. 选择 **WorkBuddy国内** 或 **WorkBuddy国际**，打开生成的登录链接。
+3. 在浏览器完成登录、扫码及所需的身份授权，等待 CPA 提示成功。
+4. 在认证文件列表确认账号，打开模型列表查看可用模型。
+5. 将客户端的 API 地址和 API key 指向 CPA，选择带对应站点前缀的模型。
 
-| 文档 | 内容 |
-| --- | --- |
-| [需求](docs/requirements.md) | 功能、站点与验收范围 |
-| [架构](docs/architecture.md) | 宿主/插件边界、身份与资源所有权 |
-| [兼容性](docs/compatibility.md) | 固定来源、逐平台实际构建/加载证据及未验证限制 |
-| [部署](docs/deployment.md) | 官方包校验、v8 配置、双入口登录、管理、容器、故障与真人验收 |
-| [质量契约](docs/quality.md) | 统一工程命令、工具、CI、原生测试、包白名单与许可生成 |
-| [任务表](docs/tasks/workbuddy-plugin.md) | 14 片状态、依赖及实际勾选的 AC |
+例如，通过 OpenAI Chat Completions 调用国际站模型：
 
-## 工程入口
+```sh
+curl http://127.0.0.1:8317/v1/chat/completions \
+  -H "Authorization: Bearer $CPA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"wb-ai/hy4flash-free","messages":[{"role":"user","content":"你好"}],"stream":false}'
+```
 
-在仓库根目录使用统一 Go 入口：
+请从账号实际模型列表选择模型。国内模型形如 `wb/<模型 ID>`，国际模型形如 `wb-ai/<模型 ID>`。登录会话有效期为五分钟，超时后重新发起即可。
 
-```text
+## Docker 部署
+
+将插件目录挂载到容器，并确保配置中的 `plugins.dir` 指向容器内目录。例如，在现有 Compose 服务的 `volumes` 中加入：
+
+```yaml
+volumes:
+  - ./plugins:/CLIProxyAPI/plugins:ro
+```
+
+Linux amd64 容器对应的宿主文件为 `./plugins/linux/amd64/cpa-workbuddy.so`。在 CPA 配置中填写 `dir: "/CLIProxyAPI/plugins"`，并启用上述两个开关；保留 CPA 的配置和凭证目录持久卷。
+
+容器内运行 CPA，浏览器登录在你自己的电脑上完成。选择与容器架构匹配的 Linux 包；Linux 发布包使用 glibc，Alpine / musl 环境需使用匹配环境构建的产物。
+
+## 常见问题
+
+**插件未加载？** 检查动态库的平台、架构、文件名和目录，确认 `plugins.enabled` 与 `plugins.configs.cpa-workbuddy.enabled` 均为 `true`，再查看 CPA 启动日志。Windows 如提示缺少 DLL，检查构建工具链所需的运行库。
+
+**看不到登录入口？** 确认插件已启用，更新官方 CPA 和管理页面后刷新。
+
+**模型未出现或请求被拒绝？** 查看该账号的模型列表、禁用状态及模型排除规则，使用包含 `wb/` 或 `wb-ai/` 的完整 ID。模型和图片、工具、推理能力由上游账号权限决定。
+
+**需要重新登录？** 在同一站点重新发起登录，同一身份会更新已有凭证。网络故障先检查 CPA 代理配置；不要在问题报告中附上 token、登录链接或完整凭证文件。
+
+## 本地构建
+
+准备 Go **1.27.1**、Git 和 C 编译器，在仓库根目录执行：
+
+```sh
 go run ./cmd/project bootstrap
 go run ./cmd/project quality
 go run ./cmd/project build
-go run ./cmd/project test
-go run ./cmd/project package
 ```
 
-代码入口为 `cmd/cpa-workbuddy/`，ABI/wire 与分派位于 `internal/plugin/`，业务协议位于 `internal/workbuddy/`，根 `version.go` 读取 `VERSION`。所有产物、缓存、临时文件和日志统一位于 `out/`，本地探索材料保留在 `out/scratch/`。工具链及质量门禁见 [quality.md](docs/quality.md)。
+动态库位于 `out/bin/`；`go run ./cmd/project package` 生成当前平台 ZIP 和 SHA256。开发约定与发布流程见 [开发指南](docs/development.md)，版本变更见 [Release notes](docs/release-notes.md)。
 
-`build`、`test`、`package` 使用当前主机的 Go/C 原生工具链（Baseline 为 Go1.27.1 与可用 C 编译器）。CI 与本地包以 Windows amd64、Linux amd64/arm64、macOS amd64/arm64 为目标；每个 CI job 核对实际 OS/arch。当前实际构建与宿主加载证据只覆盖 Windows amd64 与 Linux amd64，其余三项及远程 CI 未验证。
+## 许可证
 
-`package` 输出 `out/dist/cpa-workbuddy-v<VERSION>-<goos>-<goarch>.zip` 与 `.zip.sha256`。库的文件名固定为 `cpa-workbuddy` + 平台扩展名（`.dll`/`.so`/`.dylib`）。
-
-## 许可
-
-本项目采用 [MIT](LICENSE) 许可。
+本项目采用 [MIT License](LICENSE)。二进制包中的 `licenses/` 目录包含实际链接依赖的许可声明。
 

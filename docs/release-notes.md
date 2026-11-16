@@ -1,0 +1,34 @@
+# v0.1.0
+
+CPA WorkBuddy 首个版本，为 CLIProxyAPI 提供 WorkBuddy 国内与国际账号接入。
+
+## 功能
+
+- 在官方管理页面提供“WorkBuddy国内”和“WorkBuddy国际”两个浏览器登录入口。
+- 支持多账号、个人及企业身份，按站点与账号隔离凭证和模型资格。
+- 自动发现账号可用模型，使用 `wb/`、`wb-ai/` 前缀区分站点。
+- 支持 OpenAI Chat Completions、OpenAI Responses、Claude Messages 和 Gemini 客户端，提供流式与非流式响应。
+- 支持工具调用、图片输入、reasoning 与 effort，按模型及账号权限启用。
+- 接入 CPA 凭证刷新与请求恢复，同身份重登保留原记录及管理设置。
+- 使用可读账号文件名，在官方账号卡片与模型弹窗展示账号名称。
+
+## 安装
+
+下载匹配 CPA 运行系统和架构的 ZIP，核对同名 `.sha256` 文件后解压，将动态库放入 `plugins/<系统>/<架构>/`，保留 `cpa-workbuddy` 文件名。在 CPA 配置中启用：
+
+```yaml
+plugins:
+  enabled: true
+  dir: "plugins"
+  configs:
+    cpa-workbuddy:
+      enabled: true
+```
+
+重启 CPA，在 OAuth 登录页面选择对应站点。完整步骤见 [README](../README.md)。
+
+## 发布产物
+
+提供 Windows amd64、Linux amd64 / arm64、macOS amd64 / arm64 的 ZIP 与 SHA256。每个包包含动态库、版本及构建信息、文档和完整许可声明。
+
+使用支持原生插件及 JSON schema 10 的官方 CPA，推荐 `v8.0.69` 或更新版本。Linux 产物使用 glibc；Windows 需要具备对应 C 工具链所需的运行库。图片、工具和推理能力取决于上游模型及账号权限。

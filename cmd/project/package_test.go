@@ -78,8 +78,7 @@ func TestPackageContentsAndChecksums(t *testing.T) {
 	for _, name := range []string{
 		"cpa-workbuddy" + extension, "cpa-workbuddy.h", "native.h", "VERSION", "LICENSE", "README.md",
 		"licenses/Go-LICENSE", "licenses/Go-PATENTS", "licenses/THIRD-PARTY.txt",
-		"docs/requirements.md", "docs/architecture.md", "docs/compatibility.md", "docs/quality.md", "docs/deployment.md",
-		"docs/tasks/workbuddy-plugin.md", "build-info.txt", "checksums.sha256",
+		"docs/development.md", "docs/release-notes.md", "build-info.txt", "checksums.sha256",
 	} {
 		expected[name] = true
 	}

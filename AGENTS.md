@@ -8,19 +8,17 @@ cpa-workbuddy 是 Go/CGO 实现的 CLIProxyAPI WorkBuddy 动态库插件。应�
 - 测试：`go run ./cmd/project test`
 - 完整质量门禁：`go run ./cmd/project quality`
 - 本机交付包：`go run ./cmd/project package`
-- 工具安装、单阶段检查和 Git hooks 的准确用法见 `docs/quality.md`。质量门禁只检查，工具安装单独执行。
+- 工具安装、单阶段检查和 Git hooks 的准确用法见 `docs/development.md`。质量门禁只检查，工具安装单独执行。
 - 插件由 CPA 加载，没有独立的服务进程生命周期。
 
 ## 范围与依据
 
-- 需求唯一正文：`docs/requirements.md`；任务与状态：`docs/tasks/workbuddy-plugin.md`。
-- 架构边界：`docs/architecture.md`；宿主兼容及移植证据：`docs/compatibility.md`。
-- 任务文档仅维护状态、依赖、实施内容和验收项；验证证据归质量与兼容性文档，七维审查报告在交付回复中提供。
+- 功能、安装与使用以 `README.md` 为入口；开发及发布流程见 `docs/development.md`，版本说明见 `docs/release-notes.md`。
+- 首版任务与验收结论：`docs/tasks/workbuddy-plugin.md`。详细验证日志保留在忽略的 `out/`，七维审查报告在交付回复中提供。
 - WorkBuddy 协议参考固定 commit 的原始源码与测试；`_ref/` 为本地忽略的只读参考副本，不参与构建、测试、CI 或打包。
-- 每项功能记录上游函数/测试、CPA 适配位置和验证证据。推论标记 `[INFERENCE]`；实际账号、宿主和平台未验证时如实记录。
+- 依据实际代码、测试和用户验收维护当前契约；推论标记 `[INFERENCE]`，用户接受的验收范围与代理实测结果分别记录。
 - 单 provider `workbuddy`，两站点模型分别为 `wb/*` 与 `wb-ai/*`；`AuthData.Prefix` 留空。本站点、用户及企业作用域贯穿认证、缓存和调度。
-- 只实现当前任务批准的切片；认证、模型及执行能力完成前不得声明对应 capability。
-- 项目初始化只交付工程框架、统一工具和质量门禁，并形成独立 init 提交；插件能力与业务实现按切片单独实施和提交。提交拆分须保证每个提交可验证、门禁通过。
+- 能力声明与实际实现保持一致；功能改动按可验证切片实施。
 
 ## 目录与工程约束
 
@@ -47,5 +45,5 @@ XERJ prefix: "cpawb"
 - 迭代使用覆盖变更的最窄检查；最终工作树运行一次完整 `go run ./cmd/project quality`。失败先修复对应阶段，再运行完整门禁。
 - CLI LSP 的 warning/info/hint 与编译、静态检查错误同样阻断完成；本地与 CI 平台结果分别记录。
 - 非平凡代码变更在质量门禁及索引同步通过后，显式读取并执行 `post-impl` 七维审查；涉及公开协议或生命周期时先执行 `code-review`。有修复则重跑受影响检查。
-- 按实际证据勾选任务 Acceptance Criteria；没有运行的宿主或账号验收不能勾选为通过。
+- 按实际证据或用户明确接受的范围收尾验收；远程 CI 结果以实际 workflow 运行为准。
 - 所有变更留在工作树。只有用户明确要求时才 commit、push 或发布。

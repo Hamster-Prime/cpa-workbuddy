@@ -711,8 +711,7 @@ func (c *controller) bundle() (resultErr error) {
 	}
 	for _, relative := range []string{
 		"VERSION", "LICENSE", "README.md",
-		"docs/requirements.md", "docs/architecture.md", "docs/compatibility.md",
-		"docs/quality.md", "docs/deployment.md", "docs/tasks/workbuddy-plugin.md",
+		"docs/development.md", "docs/release-notes.md",
 	} {
 		files = append(files, [2]string{filepath.Join(c.root, filepath.FromSlash(relative)), relative})
 	}

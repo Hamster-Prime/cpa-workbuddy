@@ -3,6 +3,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -38,7 +39,11 @@ jobs:
           EXPECTED_TARGET: ${{ matrix.target }}
         run: test "$(go env GOOS)/$(go env GOARCH)" = "$EXPECTED_TARGET"
       - name: Native source and event gate
+        if: github.event_name != 'workflow_dispatch'
         run: go run ./cmd/project quality --github-event
+      - name: Native source gate
+        if: github.event_name == 'workflow_dispatch'
+        run: go run ./cmd/project quality
   quality-required:
     if: always()
     needs: [quality]
