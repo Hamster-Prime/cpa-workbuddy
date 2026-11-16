@@ -29,7 +29,7 @@ import (
 const (
 	goVersion        = "go1.27.1"
 	goplsVersion     = "v0.23.0"
-	golangciVersion  = "2.12.2"
+	golangciVersion  = "2.13.2"
 	semverNumber     = `(0|[1-9][0-9]*)`
 	semverIdentifier = `(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)`
 )
@@ -284,7 +284,7 @@ func newController(root string, verbose bool) (*controller, error) {
 		return nil, err
 	}
 	maps.Copy(env, map[string]string{
-		"CGO_ENABLED": "1", "GOFLAGS": "-mod=readonly", "GOTOOLCHAIN": "local",
+		"CGO_ENABLED": "1", "GOFLAGS": "-mod=readonly -modcacherw", "GOTOOLCHAIN": "local",
 		"GOWORK": "off", "GOTELEMETRY": "off", "WORKBUDDY_TOOLS_ROOT": tools,
 	})
 	for _, key := range []string{"GOOS", "GOARCH", "GODEBUG", "CGO_CFLAGS", "CGO_CPPFLAGS", "CGO_CXXFLAGS"} {
@@ -995,14 +995,6 @@ func (c *controller) installHooks() error {
 		}
 	}
 	goBinary, err := c.executable("go")
-	if err != nil {
-		return err
-	}
-	goBinary, err = filepath.EvalSymlinks(goBinary)
-	if err != nil {
-		return err
-	}
-	goBinary, err = filepath.Abs(goBinary)
 	if err != nil {
 		return err
 	}

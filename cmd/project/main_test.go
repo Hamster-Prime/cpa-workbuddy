@@ -130,7 +130,7 @@ func configureTestEnvironment(out string) error {
 	for key, value := range map[string]string{
 		"CGO_ENABLED":         "1",
 		"GOENV":               "off",
-		"GOFLAGS":             "-mod=readonly",
+		"GOFLAGS":             "-mod=readonly -modcacherw",
 		"GOTOOLCHAIN":         "local",
 		"GOWORK":              "off",
 		"GOTELEMETRY":         "off",

@@ -67,6 +67,8 @@ xerj autoindex . --prefix cpawb --no-graph --code-analyzer code --yes
 
 CI 在 Windows amd64、Linux amd64 / arm64、macOS amd64 / arm64 原生 runner 上运行 lint 和 test。每项核对实际 GOOS / GOARCH，并编译测试所需的临时库、执行真实 ABI 加载测试。PR 和 main 推送执行检查，也可手动运行 CI。
 
+项目自有模块缓存目录保持可写，以支持各平台测试和临时工作树清理；Go 依赖清单仍按只读模式校验。检查工具由 `bootstrap` 按固定版本准备。
+
 发布准备：
 
 1. 更新根 `VERSION`，在 `.github/release-notes/` 编写对应版本的说明，例如 [v0.1.0](../.github/release-notes/v0.1.0.md)，文件名为 `v<VERSION>.md`，首行为 `# v<VERSION>`。
