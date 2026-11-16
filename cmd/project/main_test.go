@@ -201,13 +201,6 @@ func (f fixture) run(t *testing.T, executable string, arguments ...string) comma
 	return commandResult{stdout: stdout.String(), stderr: stderr.String(), code: code}
 }
 
-func (f fixture) git(t *testing.T, arguments ...string) string {
-	t.Helper()
-	result := f.run(t, "git", arguments...)
-	requireSuccess(t, result)
-	return result.stdout
-}
-
 func requireSuccess(t *testing.T, result commandResult) {
 	t.Helper()
 	if result.code != 0 {
