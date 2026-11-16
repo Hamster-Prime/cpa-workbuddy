@@ -48,12 +48,11 @@ CPA Manager 负责凭证保存、安装、刷新及一次 401 恢复；插件返
 优先运行覆盖改动的最窄检查，完成前运行一次完整 `quality`。CLI LSP 检查包含全部自有 Go 源码；新增测试关注消费者可见行为。验证使用命令行或隔离 headless，浏览器真实登录由用户操作。
 
 ```sh
-go run ./cmd/project install-hooks
-go run ./cmd/project quality --staged
+go run ./cmd/project quality
 go run ./cmd/project commit-msg --commit-range BASE..HEAD
 ```
 
-pre-commit 在 `out/tmp/` 的精确暂存副本执行完整检查，保护部分暂存内容；commit-msg 检查 Conventional Commits。安装 hooks 只修改仓库本地配置。质量命令不提交、推送或发布。
+质量门禁只检查，不修改源码，也不提交、推送或发布；提交前运行一次完整 `quality` 即可。推送到 GitHub 后由 Actions 在五个平台重新执行 lint 与 test，作为发布的正式依据。
 
 本仓库 XERJ 前缀为 `cpawb`。修改后执行：
 

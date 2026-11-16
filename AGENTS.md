@@ -8,7 +8,7 @@ cpa-workbuddy 是 Go/CGO 实现的 CLIProxyAPI WorkBuddy 动态库插件。应�
 - 测试：`go run ./cmd/project test`
 - 完整质量门禁：`go run ./cmd/project quality`
 - 本机交付包：`go run ./cmd/project package`
-- 工具安装、单阶段检查和 Git hooks 的准确用法见 `docs/development.md`。质量门禁只检查，工具安装单独执行。
+- 工具安装与单阶段检查的准确用法见 `docs/development.md`。质量门禁只检查，工具安装单独执行。
 - 插件由 CPA 加载，没有独立的服务进程生命周期。
 
 ## 范围与依据

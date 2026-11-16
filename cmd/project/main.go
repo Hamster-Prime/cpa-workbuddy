@@ -16,7 +16,6 @@ import (
 	"maps"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -48,7 +47,6 @@ type options struct {
 	tag         string
 	messageFile string
 	commitRange string
-	staged      bool
 	githubEvent bool
 	verbose     bool
 }
@@ -85,13 +83,13 @@ func main() {
 func parseOptions(args []string) (options, error) {
 	var result options
 	if len(args) == 0 {
-		return result, errors.New("usage: go run ./cmd/project <quality|build|test|package|bootstrap|install-hooks|commit-msg|version> [options]")
+		return result, errors.New("usage: go run ./cmd/project <quality|build|test|package|bootstrap|commit-msg|version> [options]")
 	}
 	result.command = args[0]
 	allowed := map[string]string{
-		"quality": "stage tag message-file commit-range staged github-event verbose",
+		"quality": "stage tag message-file commit-range github-event verbose",
 		"build":   "verbose", "test": "verbose", "package": "verbose",
-		"bootstrap": "verbose", "install-hooks": "verbose",
+		"bootstrap":  "verbose",
 		"commit-msg": "message-file commit-range github-event verbose", "version": "tag verbose",
 	}
 	permitted, ok := allowed[result.command]
@@ -104,7 +102,6 @@ func parseOptions(args []string) (options, error) {
 	flags.StringVar(&result.tag, "tag", "", "release tag matching VERSION")
 	flags.StringVar(&result.messageFile, "message-file", "", "commit message file")
 	flags.StringVar(&result.commitRange, "commit-range", "", "Git revision range")
-	flags.BoolVar(&result.staged, "staged", false, "check exact Git index contents")
 	flags.BoolVar(&result.githubEvent, "github-event", false, "validate GitHub event commits")
 	flags.BoolVar(&result.verbose, "verbose", false, "show successful tool output")
 	if err := flags.Parse(args[1:]); err != nil {
@@ -126,9 +123,6 @@ func parseOptions(args []string) (options, error) {
 		if !slices.Contains(stages, selected) {
 			return result, fmt.Errorf("unknown quality stage %q", selected)
 		}
-	}
-	if result.staged && (len(result.stages) != 0 || result.tag != "" || result.messageFile != "" || result.commitRange != "" || result.githubEvent) {
-		return result, errors.New("--staged requires the full source gate without extra event inputs")
 	}
 	if result.command == "commit-msg" && result.messageFile == "" && result.commitRange == "" && !result.githubEvent {
 		return result, errors.New("commit-msg requires --message-file, --commit-range or --github-event")
@@ -159,16 +153,12 @@ func dispatch(args []string) error {
 	}
 	switch settings.command {
 	case "quality":
-		if settings.staged {
-			err = c.stagedQuality()
-		} else {
-			err = c.quality(settings.stages, settings.tag)
-			if err == nil {
-				err = c.commitMessages(settings.messageFile, settings.commitRange)
-			}
-			if err == nil && settings.githubEvent {
-				err = c.githubEventMessages()
-			}
+		err = c.quality(settings.stages, settings.tag)
+		if err == nil {
+			err = c.commitMessages(settings.messageFile, settings.commitRange)
+		}
+		if err == nil && settings.githubEvent {
+			err = c.githubEventMessages()
 		}
 		if err == nil {
 			fmt.Println("quality passed")
@@ -183,8 +173,6 @@ func dispatch(args []string) error {
 		err = c.bundle()
 	case "bootstrap":
 		err = c.bootstrap()
-	case "install-hooks":
-		err = c.installHooks()
 	case "commit-msg":
 		err = c.commitMessages(settings.messageFile, settings.commitRange)
 		if err == nil && settings.githubEvent {
@@ -196,9 +184,9 @@ func dispatch(args []string) error {
 
 func printHelp() {
 	fmt.Println("Usage: go run ./cmd/project <command> [options]")
-	fmt.Println("Commands: quality, build, test, package, bootstrap, install-hooks, commit-msg, version")
+	fmt.Println("Commands: quality, build, test, package, bootstrap, commit-msg, version")
 	fmt.Println("Quality stages:", strings.Join(stages, ", "))
-	fmt.Println("Options: --stage NAME (repeatable), --tag TAG, --message-file PATH, --commit-range RANGE, --staged, --github-event, --verbose")
+	fmt.Println("Options: --stage NAME (repeatable), --tag TAG, --message-file PATH, --commit-range RANGE, --github-event, --verbose")
 }
 
 func repositoryRoot(command string) (string, error) {
@@ -207,7 +195,7 @@ func repositoryRoot(command string) (string, error) {
 		return "", err
 	}
 	for candidate := current; ; candidate = filepath.Dir(candidate) {
-		if regularFile(filepath.Join(candidate, "go.mod")) && (regularFile(filepath.Join(candidate, "VERSION")) || command == "commit-msg" || command == "install-hooks") {
+		if regularFile(filepath.Join(candidate, "go.mod")) && (regularFile(filepath.Join(candidate, "VERSION")) || command == "commit-msg") {
 			return candidate, nil
 		}
 		if filepath.Dir(candidate) == candidate {
@@ -215,7 +203,7 @@ func repositoryRoot(command string) (string, error) {
 		}
 	}
 	// Message hooks also work in an isolated Git fixture without product files.
-	if command == "commit-msg" || command == "install-hooks" {
+	if command == "commit-msg" {
 		probe := exec.Command("git", "rev-parse", "--show-toplevel")
 		probe.Dir = current
 		output, probeErr := probe.Output()
@@ -435,21 +423,6 @@ func (c *controller) checkTools() error {
 		return errors.New("gopls check severity option is unavailable")
 	}
 	return nil
-}
-
-func safeRelative(relative string) bool {
-	if relative == "" || strings.ContainsAny(relative, "\\:\x00") || path.IsAbs(relative) || path.Clean(relative) != relative || !filepath.IsLocal(filepath.FromSlash(relative)) {
-		return false
-	}
-	for component := range strings.SplitSeq(relative, "/") {
-		if runtime.GOOS == "windows" && strings.TrimRight(component, ". ") != component {
-			return false
-		}
-		if component == "." || component == ".." || strings.EqualFold(component, ".git") {
-			return false
-		}
-	}
-	return true
 }
 
 func (c *controller) version(tag string) (string, error) {
@@ -938,169 +911,6 @@ func (c *controller) bootstrap() error {
 		return err
 	}
 	return c.prepareLicenseSources()
-}
-
-func (c *controller) gitConfig(key string) (string, bool, error) {
-	args := []string{"git", "config", "--get", key}
-	stdout, stderr, err := c.capture(args)
-	if err != nil {
-		var exit *exec.ExitError
-		if errors.As(err, &exit) && exit.ExitCode() == 1 {
-			return "", false, nil
-		}
-		showCommand(args, stdout, stderr)
-		return "", false, fmt.Errorf("reading Git configuration %s: %w", key, err)
-	}
-	if c.verbose {
-		showCommand(args, stdout, stderr)
-	}
-	return strings.TrimSpace(string(stdout)), true, nil
-}
-
-func (c *controller) installHooks() error {
-	current, _, err := c.gitConfig("core.hooksPath")
-	if err != nil {
-		return err
-	}
-	hooks := filepath.Join(c.root, "scripts", "git-hooks")
-	if current != "" {
-		existing := current
-		if !filepath.IsAbs(existing) {
-			existing = filepath.Join(c.root, existing)
-		}
-		if filepath.Clean(existing) != filepath.Clean(hooks) {
-			return fmt.Errorf("existing hooksPath %q; preserve and integrate it explicitly", current)
-		}
-	} else {
-		output, err := c.execute([]string{"git", "rev-parse", "--git-path", "hooks"}, runPolicy{})
-		if err != nil {
-			return err
-		}
-		defaultHooks := strings.TrimSpace(string(output))
-		if !filepath.IsAbs(defaultHooks) {
-			defaultHooks = filepath.Join(c.root, defaultHooks)
-		}
-		entries, err := os.ReadDir(defaultHooks)
-		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return err
-		}
-		var active []string
-		for _, entry := range entries {
-			if !entry.IsDir() && !strings.HasSuffix(entry.Name(), ".sample") {
-				active = append(active, entry.Name())
-			}
-		}
-		if len(active) != 0 {
-			return fmt.Errorf("existing native hooks must be integrated first: %v", active)
-		}
-	}
-	goBinary, err := c.executable("go")
-	if err != nil {
-		return err
-	}
-	for _, name := range []string{"pre-commit", "commit-msg"} {
-		filename := filepath.Join(hooks, name)
-		info, err := os.Lstat(filename)
-		if err != nil {
-			return err
-		}
-		if !info.Mode().IsRegular() {
-			return fmt.Errorf("unsafe hook file: %s", filename)
-		}
-		if err := os.Chmod(filename, info.Mode()|0o111); err != nil {
-			return err
-		}
-	}
-	if _, err := c.execute([]string{"git", "config", "--local", "workbuddy.go", filepath.ToSlash(goBinary)}, runPolicy{}); err != nil {
-		return err
-	}
-	_, err = c.execute([]string{"git", "config", "--local", "core.hooksPath", filepath.ToSlash(hooks)}, runPolicy{})
-	return err
-}
-
-func (c *controller) stagedQuality() (resultErr error) {
-	directory, err := os.MkdirTemp(filepath.Join(c.out, "tmp"), "index-")
-	if err != nil {
-		return err
-	}
-	defer func() { resultErr = errors.Join(resultErr, os.RemoveAll(directory)) }()
-	listing, err := c.execute([]string{"git", "ls-files", "--stage", "-z"}, runPolicy{})
-	if err != nil {
-		return err
-	}
-	seen := make(map[string]bool)
-	for entry := range bytes.SplitSeq(listing, []byte{0}) {
-		if len(entry) == 0 {
-			continue
-		}
-		metadata, relative, found := strings.Cut(string(entry), "\t")
-		fields := strings.Fields(metadata)
-		if !found || len(fields) != 3 {
-			return errors.New("malformed Git index entry")
-		}
-		mode, oid, stage := fields[0], fields[1], fields[2]
-		if stage != "0" || (mode != "100644" && mode != "100755") {
-			return fmt.Errorf("unsupported/unmerged index entry: %s (%s, %s)", relative, mode, stage)
-		}
-		identity := relative
-		if runtime.GOOS == "windows" {
-			identity = strings.ToLower(relative)
-		}
-		if !safeRelative(relative) || !validObjectID(oid) || seen[identity] {
-			return fmt.Errorf("unsafe index path or object: %s", relative)
-		}
-		seen[identity] = true
-		target := filepath.Join(directory, filepath.FromSlash(relative))
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return err
-		}
-		content, err := c.execute([]string{"git", "cat-file", "blob", oid}, runPolicy{})
-		if err != nil {
-			return err
-		}
-		permissions := fs.FileMode(0o644)
-		if mode == "100755" {
-			permissions = 0o755
-		}
-		if err := os.WriteFile(target, content, permissions); err != nil {
-			return err
-		}
-	}
-	if !regularFile(filepath.Join(directory, "cmd", "project", "main.go")) {
-		return errors.New("stage cmd/project/main.go before running the index gate")
-	}
-	snapshot, err := newController(directory, c.verbose)
-	if err != nil {
-		return err
-	}
-	licenseCache := filepath.Join(c.out, "cache", "licenses")
-	if _, err := os.Stat(licenseCache); err == nil {
-		if err := os.CopyFS(filepath.Join(snapshot.out, "cache", "licenses"), os.DirFS(licenseCache)); err != nil {
-			return err
-		}
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return err
-	}
-	// Tools are shared, while all caches, temporary files and artifacts stay in the snapshot's out directory.
-	snapshot.tools = c.tools
-	for index, entry := range snapshot.env {
-		if strings.HasPrefix(entry, "WORKBUDDY_TOOLS_ROOT=") {
-			snapshot.env[index] = "WORKBUDDY_TOOLS_ROOT=" + c.tools
-		}
-	}
-	binary := filepath.Join(snapshot.out, "bin", "project"+executableSuffix())
-	if err := os.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
-		return err
-	}
-	if _, err := snapshot.tool("go", runPolicy{nonemptyFails: true}, "build", "-trimpath", "-o", binary, "./cmd/project"); err != nil {
-		return err
-	}
-	args := []string{binary, "quality"}
-	if c.verbose {
-		args = append(args, "--verbose")
-	}
-	_, err = snapshot.execute(args, runPolicy{})
-	return err
 }
 
 func (c *controller) quality(selected []string, tag string) error {

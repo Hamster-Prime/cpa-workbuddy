@@ -331,63 +331,6 @@ func TestVersionTagMismatchPreservesSource(t *testing.T) {
 	requireSuccess(t, f.execute(t, "version", "--tag", "v0.1.0"))
 }
 
-func TestIndexSnapshotPreservesPartialStaging(t *testing.T) {
-	f := newFixture(t)
-	f.git(t, "init", "-q")
-	controller := filepath.Join(f.root, "cmd", "project", "main.go")
-	// This staged program is a real source gate; the invoked CLI remains the
-	// independent binary built before any fixture was created.
-	writeFixtureFile(t, controller, `package main
-
-import (
-	"fmt"
-	"os"
-)
-
-func main() {
-	source, err := os.ReadFile("source.txt")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
-	}
-	fmt.Fprintln(os.Stderr, "index-content:"+string(source))
-	if string(source) == "bad" {
-		os.Exit(7)
-	}
-}
-`)
-	source := filepath.Join(f.root, "source.txt")
-	writeFixtureFile(t, source, "bad")
-	f.git(t, "add", "--", "go.mod", "VERSION", "cmd/project/main.go", "source.txt")
-	originalEntries := f.git(t, "ls-files", "--stage")
-	index := filepath.Join(f.root, ".git", "index")
-	originalIndex := readFixtureFile(t, index)
-	writeFixtureFile(t, source, "good")
-	copyFixtureFile(t, filepath.Join(repositoryRoot, "cmd", "project", "main.go"), controller)
-	workingController := readFixtureFile(t, controller)
-	result := f.execute(t, "quality", "--staged")
-	requireFailure(t, result, "index-content:bad")
-	if got := string(readFixtureFile(t, source)); got != "good" {
-		t.Fatalf("working source changed: %q", got)
-	}
-	if !bytes.Equal(readFixtureFile(t, controller), workingController) {
-		t.Fatal("working controller changed")
-	}
-	if !bytes.Equal(readFixtureFile(t, index), originalIndex) {
-		t.Fatal("Git index bytes changed")
-	}
-	if got := f.git(t, "ls-files", "--stage"); got != originalEntries {
-		t.Fatalf("staged entries changed:\n%s", got)
-	}
-	snapshots, err := filepath.Glob(filepath.Join(f.root, "out", "tmp", "index-*"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(snapshots) != 0 {
-		t.Fatalf("index snapshots were not removed: %v", snapshots)
-	}
-}
-
 func TestNativeSmokeRequiresABITest(t *testing.T) {
 	f := newFixture(t)
 	copyFixtureChecksumState(t, f.root)
@@ -437,21 +380,5 @@ func TestGeneratedGoSourcesStayOutsideModule(t *testing.T) {
 	result := f.execute(t, "quality", "--stage", "vet")
 	if result.code != 0 {
 		t.Fatalf("artifact sources entered the root Go scan: exit %d\n%s\n%s", result.code, result.stdout, result.stderr)
-	}
-}
-
-func TestHooksInstallationIsLocalAndPreservesManager(t *testing.T) {
-	f := newFixture(t)
-	f.git(t, "init", "-q")
-	copyFixtureTree(t, filepath.Join(repositoryRoot, "scripts", "git-hooks"), filepath.Join(f.root, "scripts", "git-hooks"))
-	requireSuccess(t, f.execute(t, "install-hooks"))
-	configured := strings.TrimSpace(f.git(t, "config", "--local", "--get", "core.hooksPath"))
-	if filepath.Clean(configured) != filepath.Join(f.root, "scripts", "git-hooks") {
-		t.Fatalf("unexpected local hooks path: %q", configured)
-	}
-	f.git(t, "config", "--local", "core.hooksPath", "another-manager")
-	requireFailure(t, f.execute(t, "install-hooks"), "preserve and integrate")
-	if got := strings.TrimSpace(f.git(t, "config", "--local", "--get", "core.hooksPath")); got != "another-manager" {
-		t.Fatalf("existing hooks manager changed: %q", got)
 	}
 }
