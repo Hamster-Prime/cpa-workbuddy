@@ -113,7 +113,7 @@ go run ./cmd/project quality
 go run ./cmd/project build
 ```
 
-动态库位于 `out/bin/`；`go run ./cmd/project package` 生成当前平台 ZIP 和 SHA256。开发约定与发布流程见 [开发指南](docs/development.md)，版本变更见 [Release notes](docs/release-notes.md)。
+动态库位于 `out/bin/`；`go run ./cmd/project package` 生成当前平台 ZIP 和 SHA256。开发约定与发布流程见 [开发指南](docs/development.md)，版本变更见 [Release notes](.github/release-notes/v0.1.0.md)。
 
 ## 许可证
 

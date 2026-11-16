@@ -20,10 +20,10 @@ import (
 
 func TestPackageContentsAndChecksums(t *testing.T) {
 	f := newFixture(t)
-	for _, relative := range []string{"go.mod", "go.sum", "version.go", "LICENSE", "README.md"} {
+	for _, relative := range []string{"go.mod", "go.sum", "version.go", "VERSION", "LICENSE", "README.md"} {
 		copyFixtureFile(t, filepath.Join(repositoryRoot, relative), filepath.Join(f.root, relative))
 	}
-	for _, relative := range []string{"cmd/cpa-workbuddy", "internal", "docs"} {
+	for _, relative := range []string{"cmd/cpa-workbuddy", "internal", "docs", ".github/release-notes"} {
 		copyFixtureTree(t, filepath.Join(repositoryRoot, filepath.FromSlash(relative)), filepath.Join(f.root, filepath.FromSlash(relative)))
 	}
 	for _, relative := range []string{"auth/account.json", "out/logs/private.log", "out/scratch/download.zip", "_ref/private.txt", "docs/credentials.json", "docs/local/sample.patch"} {
@@ -78,7 +78,7 @@ func TestPackageContentsAndChecksums(t *testing.T) {
 	for _, name := range []string{
 		"cpa-workbuddy" + extension, "cpa-workbuddy.h", "native.h", "VERSION", "LICENSE", "README.md",
 		"licenses/Go-LICENSE", "licenses/Go-PATENTS", "licenses/THIRD-PARTY.txt",
-		"docs/development.md", "docs/release-notes.md", "build-info.txt", "checksums.sha256",
+		"docs/development.md", ".github/release-notes/v" + version + ".md", "build-info.txt", "checksums.sha256",
 	} {
 		expected[name] = true
 	}

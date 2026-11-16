@@ -13,7 +13,7 @@ cpa-workbuddy 是 Go/CGO 实现的 CLIProxyAPI WorkBuddy 动态库插件。应�
 
 ## 范围与依据
 
-- 功能、安装与使用以 `README.md` 为入口；开发及发布流程见 `docs/development.md`，版本说明见 `docs/release-notes.md`。
+- 功能、安装与使用以 `README.md` 为入口；开发及发布流程见 `docs/development.md`，版本说明位于 `.github/release-notes/v<VERSION>.md`。
 - 首版任务与验收结论：`docs/tasks/workbuddy-plugin.md`。详细验证日志保留在忽略的 `out/`，七维审查报告在交付回复中提供。
 - WorkBuddy 协议参考固定 commit 的原始源码与测试；`_ref/` 为本地忽略的只读参考副本，不参与构建、测试、CI 或打包。
 - 依据实际代码、测试和用户验收维护当前契约；推论标记 `[INFERENCE]`，用户接受的验收范围与代理实测结果分别记录。
@@ -22,7 +22,7 @@ cpa-workbuddy 是 Go/CGO 实现的 CLIProxyAPI WorkBuddy 动态库插件。应�
 
 ## 目录与工程约束
 
-- 根 Markdown 仅 `README.md` 与 `AGENTS.md`；其他文档统一 `docs/`，源码快照内上游文档保留原位。
+- 根 Markdown 仅 `README.md` 与 `AGENTS.md`；开发文档统一 `docs/`，版本发布说明位于 `.github/release-notes/`，源码快照内上游文档保留原位。
 - 所有构建、工具安装、缓存、测试临时文件、覆盖率、日志及探索材料统一进入被忽略的 `out/`。不要在根或子包生成 `dist/`、`build/`、`target/`、`bin/`。
 - `cmd/cpa-workbuddy/` 为原生入口，业务与协议边界位于 `internal/`；`cmd/project/` 用 Go 标准库统一编排构建、质量检查和 Git 事件。
 - 不直接访问用户 auth 目录；网络与凭证保存使用 CPA 宿主契约。所有 C 缓冲区、回调、流及关闭动作必须有明确所有者。
