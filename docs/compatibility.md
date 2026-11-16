@@ -17,9 +17,35 @@
 | 账号模型快照 | 登录和原生刷新结果携带可恢复快照；普通发现更新内存，持久化不保证逐次即时完成 | `internal/workbuddy/lifecycle_snapshot_test.go`、上述完整宿主记录；首次失败不授予静态资格 |
 | 刷新/失效 | Manager 接管保存、安装和一次401恢复；300秒周期、60秒单飞结果；刷新拒绝与access仍有效分别处理，重启重新验证 | `internal/workbuddy/refresh.go`、`credentials.go`，官方 `sdk/cliproxy/auth/conductor_refresh.go`；保存失败可告警后继续内存凭证，存在重启风险 |
 | 工程质量 | 完整quality九阶段通过；5个变更Go文件gopls hint级0诊断；模型样本由测试自有testdata提供，包消费者验证许可生成、原始字节、摘要和缓存错误传播 | `out/logs/publication-cleanup-quality.log`、`publication-cleanup-lsp.log`、`publication-cleanup-package-test.log`；参考目录缺席、缓存已准备时测试完全离线 |
-| 平台与账号 | Windows/Linux amd64 已构建与加载；其他三平台及远程CI未运行，真实账号未验 | 平台构建成功、宿主加载与账号通过分别记证据 |
+| 平台与账号 | Windows/Linux amd64 已构建与加载；国际个人账号在本地 CPA v8.0.56 完成真实登录，hy4flash-free 四客户端协议的流式/非流式文本通过；其他三平台及远程CI未运行 | 真实工具、图片、多轮、其他账号/站点与权限仍待对应验收；当前账号记录见下节 |
 
 运行使用 `server.commercial-mode:true`、`observability.logs.request-log:false` 和 debug 关闭，完整输出经 fixture token/state/用户与企业标识扫描。单独关闭 request-log 仍会生成错误请求日志，已保留失败证据 `native-official-windows-source.json`；官方 `internal/api/server.go:185-196` 的 commercial-mode 禁用 request logger，Gin 日志仍启用。生产代理与容器日志同样不得捕获敏感正文。
+
+## 本地 WSL 真实账号验证与认证信息
+
+2026-11-16，用户在现有 Debian 容器 CPA `v8.0.56`（commit `585f97d`）的管理页面完成国际站个人账号登录。经宿主管理接口确认凭证已保存且 `label` 与 `display_name` 对应；用户截图证明管理列表已显示记录。该证据只覆盖一个国际个人账号，不能替代国内登录、WeCom、企业或四账号调度验收。
+
+原失败请求 `error-v1-chat-completions-2026-11-16T133907-7069cc04.log` 在插件解析阶段报 `WorkBuddy returned an invalid chat stream`；紧随的请求因冷却被拒绝。经 CPA `api-call` 重放其上游请求，实际返回 HTTP200 SSE：未完成分片使用 `finish_reason:""`，结束分片还包含 `function_call:{"name":"","arguments":""}`。解析器把空结束原因视为未完成，并接受无内容的旧式函数占位；非空旧式函数调用、错误类型、未知函数字段和缺少完成事件仍拒绝。对应消费者回归为 `TestExecutorResponseAcceptsWorkBuddyPendingAndTerminalPlaceholders` 与 `TestExecutorResponseRejectsIncompleteMalformedAndUnsupportedStreams`。
+
+修复后的 Linux SO 在该实际容器加载后，`wb-ai/hy4flash-free` 的 OpenAI Chat、Responses、Claude Messages 和 Gemini 客户端各完成流式与非流式文本调用，均 HTTP200 且有正文。Chat 非流式具有 usage/stop，流式具有 stop/[DONE]；Responses 非流式状态 completed、error 为 null。重启前后凭证 ID 相同，Chat 验证后状态 active、无错误提示且未冷却。原始账号与正文不纳入公开证据；脱敏记录为 `out/logs/real-account-diagnosis.json`、`real-account-chat-proof.json` 与 `real-account-protocol-proof.json`。这些证据不证明真实工具、图片、多轮、强制刷新或容器重建通过。
+
+账号标题修复采用用户批准的 CPAMC `v1.28.0` 本地补丁 `docs/patches/cpamc-auth-label.patch`：规范化链保留非空 `label`，标题按 `email → projectId → label → 文件名` 选择，凭证 ID/FileName 不变，不读取可能含 API key 的 `account` 字段。前端37项定向测试、typecheck、build及实际卡片的隔离headless DOM通过。初次构建的Windows版本探测命令产生路径错误，随后按官方Vite配置提供 `VERSION=v1.28.0` 重新构建，exit0且无路径错误；官方 `__dirname` 未来原生loader提示仍可见，未加抑制。最终构建原始输出见 `out/cpamc-auth-label/build.log`。
+
+实际 `/management.html` 已从官方文件 SHA256 `035cdd5340a5b9a76cb43d11e45444be1990ae1ecff413d6a92b7e8f03bc6373` 替换为补丁产物 `5649a5ae0df32cbac73a6bd2ef9538a5ac0596ce9765df27ed4ebaace7118d19`。经真实管理登录的隔离headless浏览器确认：当前账号label为主标题、非文件名、非等宽字体，页面错误0。补丁页面和MIT许可进入现有data持久卷，`MANAGEMENT_STATIC_PATH` 指向该HTML，`management.disable-auto-update-panel:true` 防止后台覆盖；更新CPAMC时需重新核验并合入补丁。
+
+在相同镜像ID上实际重建容器后，凭证ID和label保持，补丁页面仍可访问；最终SO SHA256 `cdd9c7a34c0f82ca6ccdadc72d105500a0f796f9ce1a88ac96bfbe0e40a50b95` 再次完成真实Chat流式/非流式HTTP200。证据为 `out/logs/real-account-frontend-deployment.json` 与 `real-account-final-deployment.json`。该重建证明现有健康凭证恢复，不证明强制刷新、失效重登或禁用状态恢复。
+
+认证信息只分析，不在本次增加解析或展示：实际凭证没有独立的 `info` 键，相关字段位于顶层及 `model_snapshot`。以下为可选优化候选。
+
+| 已有字段 | 可用信息与展示边界 |
+| --- | --- |
+| `display_name` / CPA `label` | 账号可读名称；稳定 ID/FileName 仍负责身份和持久化，不能随昵称改动 |
+| `site`、`enterprise_id` | 区分国内/国际与个人/企业作用域；公开展示名称或作用域，不暴露内部标识 |
+| `expires_at`、`refresh_expires_at`、`refresh_interval_seconds` | 解释令牌有效期和宿主刷新偏好；不能据到期时间承诺账号、配额或调用持续可用 |
+| `model_snapshot.captured_at`、`model_discovery_failure` | 展示模型权限快照的新鲜度和发现状态；空错误仅代表当次发现未记录错误 |
+| 模型 `free`、`credit_rate` | 免费标记及配置给出的计费倍率；不是余额、剩余次数、货币价格或实时额度 |
+| 模型 `context_length`、`max_output_tokens`、`images`、`efforts`、`default_effort` | 已解析的模型能力声明；当前账号23个模型、1个free标记、21个images声明，仅文本调用已实测，不能把声明当作图片/推理验收 |
+
 
 ## 来源与历史源码定位
 
@@ -70,7 +96,7 @@
 - Windows amd64、Linux amd64 的真实加载与协议证据见本文首表；Linux arm64、macOS amd64/arm64 及远程 CI 保持未验证。
 - 容器无需桌面；用户浏览器完成真实登录，服务端轮询。隔离协议验收与真人验收分别记录。
 - 公开 OAuth 入口 workbuddy/workbuddy-ai 分别选择站点，持久 provider 都是 workbuddy。官方前端直接展示两个入口，不要求外部前端改动。
-- 公开契约无法满足的业务差异先由用户决定；当前已接受 Windows 删除后目录迟留，调用必须立即阻断。不修改官方宿主或前端。
+- 公开契约无法满足的业务差异先由用户决定；当前已接受 Windows 删除后目录迟留，调用必须立即阻断。宿主保持官方实现；账号标题的本地 CPAMC label 回退补丁经用户单独批准，原始官方前端验收与本地补丁证据分别记录。
 
 ## 认证失效与重新登录的宿主边界
 

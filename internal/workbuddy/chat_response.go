@@ -142,6 +142,9 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, toolName
 					}
 					continue
 				}
+				if key == "function_call" && chatHasJSONValue(raw) && chatEmptyFunctionCall(raw) {
+					continue
+				}
 				if key != "role" && key != "content" && key != "refusal" {
 					if chatHasJSONValue(raw) && !bytes.Equal(raw, []byte(`""`)) && !bytes.Equal(raw, []byte("[]")) {
 						return failure("unsupported_upstream_response", "WorkBuddy returned an unsupported chat response", 502)
@@ -170,9 +173,9 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, toolName
 					}
 				}
 			}
-			if raw := wire["finish_reason"]; chatHasJSONValue(raw) {
+			if raw := wire["finish_reason"]; chatHasFinishReason(raw) {
 				var reason string
-				if json.Unmarshal(raw, &reason) != nil || reason == "" || choice.finished {
+				if json.Unmarshal(raw, &reason) != nil || choice.finished {
 					return malformed()
 				}
 				if reason == "function_call" {
@@ -193,7 +196,7 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, toolName
 			}
 			if emit == nil {
 				for key, value := range wire {
-					if key != "delta" && (key != "finish_reason" || chatHasJSONValue(value)) {
+					if key != "delta" && (key != "finish_reason" || chatHasFinishReason(value)) {
 						if _, exists := choice.fields[key]; !exists {
 							aggregateSize += len(key) + 64
 						}
@@ -322,6 +325,27 @@ func consumeChatStream(read func() ([]byte, bool, error), model string, toolName
 
 func chatHasJSONValue(raw json.RawMessage) bool {
 	return len(raw) != 0 && !bytes.Equal(bytes.TrimSpace(raw), []byte("null"))
+}
+
+func chatHasFinishReason(raw json.RawMessage) bool {
+	return chatHasJSONValue(raw) && !bytes.Equal(bytes.TrimSpace(raw), []byte(`""`))
+}
+
+func chatEmptyFunctionCall(raw json.RawMessage) bool {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil || fields == nil {
+		return false
+	}
+	for key, value := range fields {
+		if key != "name" && key != "arguments" {
+			return false
+		}
+		var text string
+		if json.Unmarshal(value, &text) != nil || text != "" {
+			return false
+		}
+	}
+	return true
 }
 
 func chatHasErrorCode(raw json.RawMessage) bool {

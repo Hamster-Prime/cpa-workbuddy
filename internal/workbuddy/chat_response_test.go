@@ -218,6 +218,44 @@ func TestExecutorResponseDoesNotInventUsage(t *testing.T) {
 	}
 }
 
+func TestExecutorResponseAcceptsWorkBuddyPendingAndTerminalPlaceholders(t *testing.T) {
+	const first = `{"id":"chat-placeholder","object":"chat.completion.chunk","created":123,"model":"custom:model|variant","choices":[{"index":0,"delta":{"role":"assistant","content":"Hel","reasoning_content":"","refusal":"","tool_calls":[],"function_call":null,"extra_fields":null},"finish_reason":"","logprobs":null}],"usage":null}`
+	const middle = `{"id":"chat-placeholder","object":"chat.completion.chunk","created":123,"model":"custom:model|variant","choices":[{"index":0,"delta":{"content":"lo","reasoning_content":"","refusal":"","tool_calls":[],"function_call":null,"extra_fields":null},"finish_reason":"","logprobs":null}],"usage":null}`
+	const last = `{"id":"chat-placeholder","object":"chat.completion.chunk","created":123,"model":"custom:model|variant","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning_content":"","refusal":"","tool_calls":[],"function_call":{"name":"","arguments":""},"extra_fields":null},"finish_reason":"stop","logprobs":null}],"usage":{"prompt_tokens":7,"completion_tokens":2,"total_tokens":9}}`
+	for _, streaming := range []bool{false, true} {
+		t.Run(fmt.Sprintf("stream=%v", streaming), func(t *testing.T) {
+			payload, host, err := responseExecute(t, responseChunks(responseFrame(first)+responseFrame(middle)+responseFrame(last)+responseFrame("[DONE]"), 17), streaming)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if streaming {
+				if host.streamError != "" {
+					t.Fatal(host.streamError)
+				}
+				if len(host.emitted) != 4 || string(host.emitted[3]) != "data: [DONE]\n\n" {
+					t.Fatalf("stream did not preserve the three chunks and terminal event: %q", host.emitted)
+				}
+				return
+			}
+			var response struct {
+				Choices []struct {
+					Message      struct{ Content string }
+					FinishReason string `json:"finish_reason"`
+				}
+				Usage struct {
+					TotalTokens int `json:"total_tokens"`
+				}
+			}
+			if err := json.Unmarshal(payload, &response); err != nil {
+				t.Fatal(err)
+			}
+			if len(response.Choices) != 1 || response.Choices[0].Message.Content != "Hello" || response.Choices[0].FinishReason != "stop" || response.Usage.TotalTokens != 9 {
+				t.Fatalf("unexpected aggregate: %s", payload)
+			}
+		})
+	}
+}
+
 func TestExecutorResponseRejectsIncompleteMalformedAndUnsupportedStreams(t *testing.T) {
 	cases := []struct{ name, text, code, safeMessage string }{
 		{"empty", "", "upstream_stream_incomplete", ""},
@@ -236,6 +274,11 @@ func TestExecutorResponseRejectsIncompleteMalformedAndUnsupportedStreams(t *test
 		{"version-error", responseFrame(`{"code":10085,"message":"private-stream-secret"}`), "upstream_client_version_rejected", "WorkBuddy client version rejected"},
 		{"nested-version-error", "event: error\n" + responseFrame(`{"error":{"code":"10085","message":"private-stream-secret"}}`), "upstream_client_version_rejected", "WorkBuddy client version rejected"},
 		{"nontext-content", responseFrame(`{"choices":[{"index":0,"delta":{"content":[{"type":"image_url"}]},"finish_reason":null}]}`), "upstream_stream_malformed", ""},
+		{"pending-empty-reason", responseFrame(`{"choices":[{"index":0,"delta":{"content":"hello"},"finish_reason":""}]}`) + responseFrame("[DONE]"), "upstream_stream_incomplete", ""},
+		{"invalid-reason-type", responseFrame(`{"choices":[{"index":0,"delta":{},"finish_reason":3}]}`), "upstream_stream_malformed", ""},
+		{"legacy-function-call", responseFrame(`{"choices":[{"index":0,"delta":{"function_call":{"name":"lookup","arguments":"{}"}},"finish_reason":"stop"}]}`), "unsupported_upstream_response", ""},
+		{"unknown-function-field", responseFrame(`{"choices":[{"index":0,"delta":{"function_call":{"name":"","arguments":"","other":""}},"finish_reason":"stop"}]}`), "unsupported_upstream_response", ""},
+		{"invalid-function-placeholder", responseFrame(`{"choices":[{"index":0,"delta":{"function_call":{"name":7,"arguments":""}},"finish_reason":"stop"}]}`), "unsupported_upstream_response", ""},
 	}
 	for _, tc := range cases {
 		for _, streaming := range []bool{false, true} {

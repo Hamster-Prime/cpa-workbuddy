@@ -320,6 +320,16 @@ MANAGEMENT_STATIC_PATH="$PWD/out/verification/cpa-official-release-rs9gn_e4/CPAM
 
 每次复现使用尚未包含凭证的新 proof 目录。当前 Linux 官方发布包与同包的 Debian 容器均62/62项通过；Windows官方源码构建61/62项，唯一目录迟留按已接受边界记录，不能重写成全部通过。重启检查只把实际推理命中视为禁用账号调度，模型验证/刷新与推理分开；轮换token不要求重启前后字节不变，必须检查有效期、代次、快照和管理字段。完整证据见 `out/logs/native-official-summary.json`。
 
+### CPAMC 账号标题 label 补丁
+
+CPAMC `v1.28.0` 的账号卡片标题只使用 email、projectId 或文件名；WorkBuddy已返回的label不会进入标题。源码仓库提供可选补丁 `docs/patches/cpamc-auth-label.patch`，包含规范化、类型、标题回退和消费者回归。补丁将标题选择改为 `email → projectId → label → 文件名`，不改插件凭证ID/FileName，不把昵称写入email/projectId，也不展示可能包含API key的account。
+
+在独立的官方CPAMC `v1.28.0` 源码副本应用该补丁后，使用其锁文件执行 `bun install --frozen-lockfile`，再执行 `bun test tests/authFileIdentity.test.ts tests/authFilesResponseNormalization.test.ts`、`bun run type-check` 与 `VERSION=v1.28.0 bun run build`（POSIX shell）。`VERSION` 是官方Vite配置的版本输入，避免Windows cmd.exe执行其POSIX版本探测命令。单文件产物为该前端构建的 `dist/index.html`，部署时命名为 `management.html`，同时保留CPAMC的MIT许可。该流程属于可选管理前端维护，插件本身的Go构建、测试、打包不依赖前端工具。
+
+将HTML与许可放入已有持久卷中的专用目录，设置容器环境 `MANAGEMENT_STATIC_PATH=/CLIProxyAPI/data/workbuddy-panel/management.html`，并设置 `management.disable-auto-update-panel:true`。启动时核对现有镜像ID和挂载不变；访问 `/management.html` 核对文件SHA256，使用隔离headless浏览器经管理登录检查账号label成为主标题。已有配置应只增加这两项，并保留原配置及原HTML备份。恢复官方前端时移除该环境覆盖、恢复原自动更新设置并重新创建容器。
+
+本地实际部署已完成同镜像容器重建、凭证ID/label保持、真实Chat流式/非流式HTTP200及标题DOM验证，见兼容性记录。补丁是本地管理前端分支，不改变官方基线验证结论；CPAMC升级需要重新应用或确认官方已覆盖此逻辑，不能把后续官方HTML自动覆盖当成补丁仍有效。
+
 ## 日志与隐私
 
 部署片段显式设置 `observability.logs.debug: false`、`logging-to-file: false`、`request-log: false`，并可设 `server.commercial-mode: true`。需要知道这两层的实际边界：

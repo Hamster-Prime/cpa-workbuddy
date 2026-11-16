@@ -1,0 +1,255 @@
+diff --git a/src/features/authFiles/identity.ts b/src/features/authFiles/identity.ts
+index aea74f3..4c2aff9 100644
+--- a/src/features/authFiles/identity.ts
++++ b/src/features/authFiles/identity.ts
+@@ -5,19 +5,21 @@
+  * 背景：真实文件名形如 codex-<hash8>-<email>-<plan>.json，email 在中段，
+  * 单行尾部省略保留下来的恰好是类型徽章已表达过的 provider 前缀。
+  *
+- * 两条红线：
+- * 1. 只读 email / projectId。后端还下发 account，但 api-key 类凭证的 account
++ * 三条红线：
++ * 1. 只读 email / projectId / label。后端还下发 account，但 api-key 类凭证的 account
+  *    就是 API key 本身（sdk/cliproxy/auth/types.go AccountInfo），一旦进入主行、
+  *    title 或搜索 haystack 就是密钥泄露；且 oauth 分支的 account 与 email 同源冗余。
+  * 2. 不从文件名正则抽 email。codex 以 '-' 分隔，而 '-' 在 local part 与域名里都合法，
+  *    codex-abc12345-first-last@example.com-team 无法被任何正则正确切分 —— 只会产出
+  *    貌似真实的错值。需要 email 的提供商后端都有 json:"email"，无 email 的 kimi
+  *    文件名里本来也没有 email 可抽。
++ * 3. label 是后端凭证注册表里的展示名（例如 WorkBuddy 的「WorkBuddy · 张三」），
++ *    只做原样展示：为空/非字符串即视为缺失，既不解析、也不用来伪造 email。
+  */
+ 
+ import type { AuthFileItem } from '@/types';
+ 
+-export type AuthFileIdentityKind = 'email' | 'projectId' | 'fileName';
++export type AuthFileIdentityKind = 'email' | 'projectId' | 'label' | 'fileName';
+ 
+ export type AuthFileIdentity = {
+   /** 卡片主行。无任何身份线索时为空串——不伪造占位符。 */
+@@ -42,18 +44,27 @@ export const stripJsonExtension = (name: string): string => {
+ };
+ 
+ /**
+- * 身份回落链：email → projectId → 文件名（去 .json）。
+- * 刻意与 provider 无关：runtime-only 虚拟凭证（name === email === 频道 ID）
+- * 由副行去重守卫结构性处理，比按 provider 白名单更稳。
++ * 身份回落链：email → projectId → label → 文件名（去 .json）。
++ * label 排在 projectId 之后，因为项目 ID 是结构化账号身份，而 label 可能只是
++ * 渠道级展示名；两者都缺失时才退回文件名。刻意与 provider 无关：
++ * runtime-only 虚拟凭证（name === email === 频道 ID）由副行去重守卫结构性处理，
++ * 比按 provider 白名单更稳。
+  */
+ export const deriveAuthFileIdentity = (file: AuthFileItem): AuthFileIdentity => {
+   const fullName = readIdentityText(file.name);
+   const base = stripJsonExtension(fullName);
+   const email = readIdentityText(file.email);
+   const projectId = readIdentityText(file.projectId);
++  const label = readIdentityText(file.label);
+ 
+-  const kind: AuthFileIdentityKind = email ? 'email' : projectId ? 'projectId' : 'fileName';
+-  const primary = email || projectId || base;
++  const kind: AuthFileIdentityKind = email
++    ? 'email'
++    : projectId
++      ? 'projectId'
++      : label
++        ? 'label'
++        : 'fileName';
++  const primary = email || projectId || label || base;
+ 
+   const secondary =
+     kind === 'fileName' || !base || base.toLowerCase() === primary.toLowerCase() ? null : base;
+diff --git a/src/services/api/authFiles.ts b/src/services/api/authFiles.ts
+index 5b320f5..dec3c18 100644
+--- a/src/services/api/authFiles.ts
++++ b/src/services/api/authFiles.ts
+@@ -277,6 +277,9 @@ const normalizeAuthFileEntry = (
+   const email = readTextField(entry, 'email');
+   // Never normalize account/account_type: API-key credentials expose secrets there.
+   const projectId = readTextField(entry, 'project_id');
++  // auth.Label is a display name only; absent/blank stays undefined so the identity
++  // chain never treats a whitespace label as an account.
++  const label = readTextField(entry, 'label');
+   const modified = readDateField(entry);
+   const priority = readIntegerField(entry['priority']);
+   const weight = readIntegerField(entry['weight']);
+@@ -308,6 +311,7 @@ const normalizeAuthFileEntry = (
+     ...(note ? { note } : {}),
+     ...(email ? { email } : {}),
+     ...(projectId ? { projectId } : {}),
++    label: label || undefined,
+   };
+ };
+ 
+diff --git a/src/types/authFile.ts b/src/types/authFile.ts
+index 847ddb7..f3b333a 100644
+--- a/src/types/authFile.ts
++++ b/src/types/authFile.ts
+@@ -55,6 +55,11 @@ export interface AuthFileItem {
+   email?: string;
+   /** GCP / Vertex project ID, used when account email is absent. */
+   projectId?: string;
++  /**
++   * Backend-supplied credential display label (auth.Label), used only after email
++   * and projectId. Never derived from the file name and never synthesized.
++   */
++  label?: string;
+   size?: number;
+   authIndex?: string | number | null;
+   /** Generic plugin quota capability advertised by CPA's auth-files API. */
+diff --git a/tests/authFileIdentity.test.ts b/tests/authFileIdentity.test.ts
+index 2df4ef4..5d6ef91 100644
+--- a/tests/authFileIdentity.test.ts
++++ b/tests/authFileIdentity.test.ts
+@@ -1,6 +1,7 @@
+ import { describe, expect, test } from 'bun:test';
+ import { deriveAuthFileIdentity, stripJsonExtension } from '../src/features/authFiles/identity';
+-import type { AuthFileItem } from '../src/types';
++import { normalizeAuthFilesResponse } from '../src/services/api/authFiles';
++import type { AuthFileItem, AuthFilesResponse } from '../src/types';
+ 
+ const authFile = (overrides: Partial<AuthFileItem> = {}): AuthFileItem => ({
+   name: 'credential.json',
+@@ -184,3 +185,98 @@ describe('deriveAuthFileIdentity', () => {
+     });
+   });
+ });
++
++const WORKBUDDY_HASH =
++  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
++const WORKBUDDY_FILE = `workbuddy-${WORKBUDDY_HASH}.json`;
++
++describe('deriveAuthFileIdentity with backend labels', () => {
++  test('uses the backend label for a WorkBuddy credential', () => {
++    expect(
++      deriveAuthFileIdentity(
++        authFile({
++          name: WORKBUDDY_FILE,
++          type: 'workbuddy',
++          provider: 'workbuddy',
++          label: 'WorkBuddy · 张三',
++        })
++      )
++    ).toEqual({
++      primary: 'WorkBuddy · 张三',
++      kind: 'label',
++      secondary: `workbuddy-${WORKBUDDY_HASH}`,
++      fullName: WORKBUDDY_FILE,
++    });
++  });
++
++  test('surfaces a normalized backend label through the full parse chain', () => {
++    const response = {
++      files: [
++        {
++          name: WORKBUDDY_FILE,
++          type: 'workbuddy',
++          provider: 'workbuddy',
++          label: '  WorkBuddy · 张三  ',
++        },
++      ],
++    } as unknown as AuthFilesResponse;
++    const [file] = normalizeAuthFilesResponse(response).files;
++
++    expect(file?.label).toBe('WorkBuddy · 张三');
++    expect(deriveAuthFileIdentity(file!).primary).toBe('WorkBuddy · 张三');
++    expect(deriveAuthFileIdentity(file!).kind).toBe('label');
++  });
++
++  test('keeps email above projectId above label above the file name', () => {
++    const all = deriveAuthFileIdentity(
++      authFile({
++        name: WORKBUDDY_FILE,
++        email: 'user@example.com',
++        projectId: 'proj-1',
++        label: 'WorkBuddy · 张三',
++      })
++    );
++    expect(all.kind).toBe('email');
++    expect(all.primary).toBe('user@example.com');
++
++    const project = deriveAuthFileIdentity(
++      authFile({ name: WORKBUDDY_FILE, projectId: 'proj-1', label: 'WorkBuddy · 张三' })
++    );
++    expect(project.kind).toBe('projectId');
++    expect(project.primary).toBe('proj-1');
++  });
++
++  test('shows a label that merely repeats the provider text verbatim', () => {
++    const identity = deriveAuthFileIdentity(
++      authFile({ name: WORKBUDDY_FILE, type: 'workbuddy', label: 'WorkBuddy' })
++    );
++    expect(identity.kind).toBe('label');
++    expect(identity.primary).toBe('WorkBuddy');
++    expect(identity.fullName).toBe(WORKBUDDY_FILE);
++    expect(identity).not.toHaveProperty('email');
++    expect(identity).not.toHaveProperty('projectId');
++  });
++
++  test('treats a whitespace-only label as absent', () => {
++    const identity = deriveAuthFileIdentity(authFile({ name: WORKBUDDY_FILE, label: '   ' }));
++    expect(identity.kind).toBe('fileName');
++    expect(identity.primary).toBe(`workbuddy-${WORKBUDDY_HASH}`);
++  });
++
++  test('treats a non-string label as absent (index signature guard)', () => {
++    const identity = deriveAuthFileIdentity(
++      authFile({ name: WORKBUDDY_FILE, label: 42 as unknown as string })
++    );
++    expect(identity.kind).toBe('fileName');
++    expect(identity.primary).toBe(`workbuddy-${WORKBUDDY_HASH}`);
++  });
++
++  test('drops the secondary row when the label equals the file base name', () => {
++    const identity = deriveAuthFileIdentity(
++      authFile({ name: 'kimi-1712345678901.json', label: 'kimi-1712345678901' })
++    );
++    expect(identity.primary).toBe('kimi-1712345678901');
++    expect(identity.kind).toBe('label');
++    expect(identity.secondary).toBeNull();
++  });
++});
+diff --git a/tests/authFilesResponseNormalization.test.ts b/tests/authFilesResponseNormalization.test.ts
+index d244dc8..85affb1 100644
+--- a/tests/authFilesResponseNormalization.test.ts
++++ b/tests/authFilesResponseNormalization.test.ts
+@@ -104,6 +104,38 @@ describe('auth-files response normalization', () => {
+     expect(result.files[0]?.email).toBe('fresh@example.com');
+   });
+ 
++  test('normalizes a trimmed backend label and drops a blank one', () => {
++    const result = normalizeAuthFilesResponse(
++      responseWithRawFiles([
++        { name: 'workbuddy-a.json', label: '  WorkBuddy · 张三  ' },
++        { name: 'workbuddy-b.json', label: '   ' },
++        { name: 'workbuddy-c.json', label: 42 },
++        { name: 'workbuddy-d.json' },
++      ])
++    );
++
++    const labels = Object.fromEntries(result.files.map((file) => [file.name, file.label]));
++
++    expect(labels).toEqual({
++      'workbuddy-a.json': 'WorkBuddy · 张三',
++      'workbuddy-b.json': undefined,
++      'workbuddy-c.json': undefined,
++      'workbuddy-d.json': undefined,
++    });
++  });
++
++  test('recovers a non-empty label from the lower-priority duplicate entry', () => {
++    const result = normalizeAuthFilesResponse(
++      responseWithRawFiles([
++        { name: 'workbuddy-a.json', source: 'file', path: '/auths/workbuddy-a.json', label: '' },
++        { name: 'workbuddy-a.json', source: 'memory', label: 'WorkBuddy · 张三' },
++      ])
++    );
++
++    expect(result.files).toHaveLength(1);
++    expect(result.files[0]?.label).toBe('WorkBuddy · 张三');
++  });
++
+   test('passes account through raw without deriving a camelCase field', () => {
+     const result = normalizeAuthFilesResponse(
+       responseWithRawFiles([
