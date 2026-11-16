@@ -8,7 +8,43 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  package:
+  lint-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            target: windows/amd64
+          - os: ubuntu-24.04
+            target: linux/amd64
+          - os: ubuntu-24.04-arm
+            target: linux/arm64
+          - os: macos-15-intel
+            target: darwin/amd64
+          - os: macos-15
+            target: darwin/arm64
+    runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          set-safe-directory: false
+      - uses: ./.github/actions/toolchain
+      - name: Verify native target
+        shell: bash
+        env:
+          EXPECTED_TARGET: ${{ matrix.target }}
+        run: test "$(go env GOOS)/$(go env GOARCH)" = "$EXPECTED_TARGET"
+      - name: Lint and test
+        run: >-
+          go run ./cmd/project quality
+          --stage tools --stage version --stage format --stage modules
+          --stage vet --stage lsp --stage lint --stage test
+  build:
+    needs: [lint-test]
     strategy:
       fail-fast: false
       matrix:
@@ -34,7 +70,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
           set-safe-directory: false
       - uses: ./.github/actions/toolchain
@@ -43,9 +78,7 @@ jobs:
         env:
           EXPECTED_TARGET: ${{ matrix.target }}
         run: test "$(go env GOOS)/$(go env GOARCH)" = "$EXPECTED_TARGET"
-      - name: Version and full native quality gate
-        run: go run ./cmd/project quality
-      - name: Package allowlisted library artifact
+      - name: Build and package allowlisted library
         run: go run ./cmd/project package
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -57,7 +90,7 @@ jobs:
           retention-days: 7
           overwrite: true
   publish:
-    needs: [package]
+    needs: [build]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -89,10 +122,10 @@ jobs:
         run: |
           set -euo pipefail
           version="$(tr -d '[:space:]' < VERSION)"
-          targets=(windows-amd64 linux-amd64 linux-arm64 darwin-amd64 darwin-arm64)
+          targets=(windows_amd64 linux_amd64 linux_arm64 darwin_amd64 darwin_arm64)
           expected=""
           for target in "${targets[@]}"; do
-            base="cpa-workbuddy-v${version}-${target}.zip"
+            base="cpa-workbuddy_${version}_${target}.zip"
             expected="${expected}${base}"$'\n'
             expected="${expected}${base}.sha256"$'\n'
           done
@@ -107,7 +140,11 @@ jobs:
             exit 1
           fi
           for target in "${targets[@]}"; do
-            (cd artifacts && sha256sum --check --strict "cpa-workbuddy-v${version}-${target}.zip.sha256")
+            (cd artifacts && sha256sum --check --strict "cpa-workbuddy_${version}_${target}.zip.sha256")
+          done
+          : > artifacts/checksums.txt
+          for target in "${targets[@]}"; do
+            cat "artifacts/cpa-workbuddy_${version}_${target}.zip.sha256" >> artifacts/checksums.txt
           done
       - name: Create GitHub Release
         shell: bash
@@ -119,13 +156,13 @@ jobs:
           set -euo pipefail
           version="$(tr -d '[:space:]' < VERSION)"
           assets=()
-          for target in windows-amd64 linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
-            base="cpa-workbuddy-v${version}-${target}.zip"
-            assets+=("artifacts/$base" "artifacts/$base.sha256")
+          for target in windows_amd64 linux_amd64 linux_arm64 darwin_amd64 darwin_arm64; do
+            base="cpa-workbuddy_${version}_${target}.zip"
+            assets+=("artifacts/$base")
           done
           gh release create "$TAG" \
             --repo "$REPOSITORY" \
             --verify-tag \
             --title "$TAG" \
             --notes-file ".github/release-notes/$TAG.md" \
-            "${assets[@]}"
+            artifacts/checksums.txt "${assets[@]}"

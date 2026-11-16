@@ -40,10 +40,16 @@ jobs:
         run: test "$(go env GOOS)/$(go env GOARCH)" = "$EXPECTED_TARGET"
       - name: Native source and event gate
         if: github.event_name != 'workflow_dispatch'
-        run: go run ./cmd/project quality --github-event
+        run: >-
+          go run ./cmd/project quality --github-event
+          --stage tools --stage version --stage format --stage modules
+          --stage vet --stage lsp --stage lint --stage test
       - name: Native source gate
         if: github.event_name == 'workflow_dispatch'
-        run: go run ./cmd/project quality
+        run: >-
+          go run ./cmd/project quality
+          --stage tools --stage version --stage format --stage modules
+          --stage vet --stage lsp --stage lint --stage test
   quality-required:
     if: always()
     needs: [quality]

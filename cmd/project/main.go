@@ -694,7 +694,7 @@ func (c *controller) bundle() (resultErr error) {
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return err
 	}
-	archive := filepath.Join(directory, fmt.Sprintf("cpa-workbuddy-v%s-%s-%s.zip", value, runtime.GOOS, runtime.GOARCH))
+	archive := filepath.Join(directory, fmt.Sprintf("cpa-workbuddy_%s_%s_%s.zip", value, runtime.GOOS, runtime.GOARCH))
 	file, err := os.Create(archive)
 	if err != nil {
 		return err

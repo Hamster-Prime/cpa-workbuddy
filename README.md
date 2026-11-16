@@ -35,18 +35,46 @@
 
 使用支持原生插件及 JSON schema 10 的官方 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)；推荐 CPA `v8.0.69` 或更新版本。管理页面使用官方 CPAMC。
 
-1. 从 [Releases](https://github.com/ygq-future/cpa-workbuddy/releases) 下载与 **CPA 运行平台和架构**一致的 ZIP 及其 `.sha256` 文件。
-2. 核对 ZIP 的 SHA256 后解压，将动态库放入 CPA 的插件目录，保留文件名。
+### 通过插件商店安装
+
+官方 CPA 插件商店支持追加第三方来源。本项目的注册表地址固定为：
+
+```text
+https://raw.githubusercontent.com/ygq-future/cpa-workbuddy/main/registry.json
+```
+
+1. 在 CPA 配置的 `plugins.store-sources` 中加入该地址；它与内置官方来源并存，公开仓库不需要 `store-auth`：
+
+```yaml
+plugins:
+  enabled: true
+  dir: "plugins"
+  store-sources:
+    - "https://raw.githubusercontent.com/ygq-future/cpa-workbuddy/main/registry.json"
+```
+
+2. 重启 CPA，在管理页面打开插件商店。来源列表会多出一项，名称为地址主机名 `raw.githubusercontent.com`。
+3. 在商店中找到 **CPA WorkBuddy** 并安装。商店按当前 CPA 的平台和架构选择发布包，核对发布摘要后将动态库写入 `plugins/<goos>/<goarch>/cpa-workbuddy-v<版本>.<扩展名>`，并把 `cpa-workbuddy` 写入配置启用。按页面提示重启 CPA 后生效。
+4. 商店以本仓库最新 GitHub Release 的 tag 作为版本来源；更新版本时在商店中重新安装即可。
+
+商店通过 `raw.githubusercontent.com` 读取注册表、通过 `api.github.com` 读取 Release 元数据，再从 GitHub Release 下载 ZIP 和 `checksums.txt`。CPA 的网络需允许这些请求及资产下载的重定向地址；网络受限时配置 CPA 代理，或改用手动安装。
+
+### 手动安装
+
+1. 从 [Releases](https://github.com/ygq-future/cpa-workbuddy/releases) 下载与 **CPA 运行平台和架构**一致的 `cpa-workbuddy_<版本>_<平台>_<架构>.zip` 及 `checksums.txt`。
+2. 对照 `checksums.txt` 中对应文件的 SHA256 核对 ZIP，解压后将动态库放入 CPA 的插件目录，保留文件名。
 
 | CPA 运行环境 | 发布包后缀 | 动态库安装路径示例 |
 | --- | --- | --- |
-| Windows x64 | `windows-amd64.zip` | `plugins/windows/amd64/cpa-workbuddy.dll` |
-| Linux x64 | `linux-amd64.zip` | `plugins/linux/amd64/cpa-workbuddy.so` |
-| Linux ARM64 | `linux-arm64.zip` | `plugins/linux/arm64/cpa-workbuddy.so` |
-| macOS Intel | `darwin-amd64.zip` | `plugins/darwin/amd64/cpa-workbuddy.dylib` |
-| macOS Apple Silicon | `darwin-arm64.zip` | `plugins/darwin/arm64/cpa-workbuddy.dylib` |
+| Windows x64 | `windows_amd64.zip` | `plugins/windows/amd64/cpa-workbuddy.dll` |
+| Linux x64 | `linux_amd64.zip` | `plugins/linux/amd64/cpa-workbuddy.so` |
+| Linux ARM64 | `linux_arm64.zip` | `plugins/linux/arm64/cpa-workbuddy.so` |
+| macOS Intel | `darwin_amd64.zip` | `plugins/darwin/amd64/cpa-workbuddy.dylib` |
+| macOS Apple Silicon | `darwin_arm64.zip` | `plugins/darwin/arm64/cpa-workbuddy.dylib` |
 
-3. 在 CPA 的配置文件中启用插件：
+### 启用插件
+
+在 CPA 的配置文件中启用插件：
 
 ```yaml
 plugins:
@@ -57,7 +85,7 @@ plugins:
       enabled: true
 ```
 
-4. 重启 CPA，在管理页面的插件列表确认 `cpa-workbuddy` 已加载并启用。
+重启 CPA，在管理页面的插件列表确认 `cpa-workbuddy` 已加载并启用。
 
 插件复用 CPA 的网络代理、凭证目录及管理鉴权。管理密钥与客户端 API key 分别由 CPA 配置。
 
@@ -96,6 +124,8 @@ Linux amd64 容器对应的宿主文件为 `./plugins/linux/amd64/cpa-workbuddy.
 ## 常见问题
 
 **插件未加载？** 检查动态库的平台、架构、文件名和目录，确认 `plugins.enabled` 与 `plugins.configs.cpa-workbuddy.enabled` 均为 `true`，再查看 CPA 启动日志。Windows 如提示缺少 DLL，检查构建工具链所需的运行库。
+
+**插件商店里看不到 `cpa-workbuddy`？** 确认 `plugins.store-sources` 已写入上述注册表地址并重启过 CPA，且 CPA 能访问注册表和 GitHub API。来源错误会显示在插件商店页面的来源列表中。若能看到插件但安装下载失败，检查代理是否允许 GitHub Release 资产及其重定向地址，或改用手动安装。
 
 **看不到登录入口？** 确认插件已启用，更新官方 CPA 和管理页面后刷新。
 

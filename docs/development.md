@@ -16,7 +16,7 @@ go run ./cmd/project package
 - `quality`：依次执行 tools、version、format、modules、vet、lsp、lint、build、test。检查不修改源码；warning、info、hint 同样阻断。
 - `build`：为当前系统和架构构建 CGO 动态库及生成头，输出到 `out/bin/`。
 - `test`：构建动态库并运行 Go 行为测试、工程命令测试及实际 C ABI 加载测试。
-- `package`：生成 `out/dist/cpa-workbuddy-v<VERSION>-<goos>-<goarch>.zip` 和 `.zip.sha256`。
+- `package`：生成 `out/dist/cpa-workbuddy_<VERSION>_<goos>_<goarch>.zip` 和 `.zip.sha256`。发布时汇总五个平台的摘要为 `checksums.txt`。
 
 定向检查与帮助：
 
@@ -65,14 +65,14 @@ xerj autoindex . --prefix cpawb --no-graph --code-analyzer code --yes
 
 ## CI 与发布
 
-CI 在 Windows amd64、Linux amd64 / arm64、macOS amd64 / arm64 原生 runner 上执行统一质量入口。每项核对实际 GOOS / GOARCH，并运行真实动态库加载测试。PR 和 main 推送执行检查，也可手动运行 CI。
+CI 在 Windows amd64、Linux amd64 / arm64、macOS amd64 / arm64 原生 runner 上运行 lint 和 test。每项核对实际 GOOS / GOARCH，并编译测试所需的临时库、执行真实 ABI 加载测试。PR 和 main 推送执行检查，也可手动运行 CI。
 
 发布准备：
 
 1. 更新根 `VERSION`，在 `.github/release-notes/` 编写对应版本的说明，例如 [v0.1.0](../.github/release-notes/v0.1.0.md)，文件名为 `v<VERSION>.md`，首行为 `# v<VERSION>`。
 2. 完成代码、文档和验收收尾，运行本地质量检查。
 3. 得到发布指令后，推送提交及与 VERSION 一致的 tag。
-4. tag workflow 在五个平台检查、构建和打包；全部成功后校验包及摘要，使用 Release notes 创建 GitHub Release 并上传产物。
+4. tag workflow 先运行五个平台的 lint 和 test；全部成功后才启动五个平台的发布构建和打包；全部构建成功后才校验包及摘要，使用 Release notes 创建 GitHub Release 并上传产物。
 
 发布工作流的远程执行结果以 GitHub Actions 为准。Release 发布前可在 Actions 检查各平台日志；失败任务必须修复后重新执行。CLI 先创建草稿并上传附件，全部上传成功后公开发布；上传失败遗留的草稿需确认后删除，再重跑发布任务。已发布的版本不覆盖。
 

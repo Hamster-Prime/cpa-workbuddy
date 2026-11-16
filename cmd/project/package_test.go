@@ -47,7 +47,7 @@ func TestPackageContentsAndChecksums(t *testing.T) {
 		}
 	}
 	version := strings.TrimSpace(string(readFixtureFile(t, filepath.Join(f.root, "VERSION"))))
-	base := fmt.Sprintf("cpa-workbuddy-v%s-%s-%s.zip", version, runtime.GOOS, runtime.GOARCH)
+	base := fmt.Sprintf("cpa-workbuddy_%s_%s_%s.zip", version, runtime.GOOS, runtime.GOARCH)
 	archivePath := filepath.Join(f.root, "out", "dist", base)
 	archive, err := os.Open(archivePath)
 	if err != nil {
@@ -129,6 +129,7 @@ func TestPackageContentsAndChecksums(t *testing.T) {
 			t.Errorf("package member has no checksum: %q", name)
 		}
 	}
+	verifyStoreInstallation(t, f, archivePath, version, actual["cpa-workbuddy"+extension])
 	if strings.TrimSpace(text["VERSION"]) != version {
 		t.Fatal("packaged version differs from root VERSION")
 	}

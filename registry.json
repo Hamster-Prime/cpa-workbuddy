@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "plugins": [
+    {
+      "id": "cpa-workbuddy",
+      "name": "CPA WorkBuddy",
+      "description": "WorkBuddy provider plugin for CLIProxyAPI with China and international site login, multi-account and enterprise identities, dynamic model discovery, and OpenAI, Responses, Claude and Gemini protocol support.",
+      "author": "ygq-future",
+      "repository": "https://github.com/ygq-future/cpa-workbuddy",
+      "homepage": "https://github.com/ygq-future/cpa-workbuddy",
+      "license": "MIT",
+      "tags": ["workbuddy", "provider", "oauth", "cliproxyapi"],
+      "install": {
+        "type": "github-release"
+      }
+    }
+  ]
+}
