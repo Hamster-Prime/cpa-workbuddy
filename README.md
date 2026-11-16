@@ -25,7 +25,7 @@ OpenAI Chat、Responses、Claude Messages 与 Gemini 客户端按已选站点和
 
 官方 Linux amd64 发布包与同一插件 SO 在 WSL 及 Debian 容器分别通过62/62项检查；各包含四身份、24个跨协议流模式场景及12个工具结果闭环。Windows官方源码构建通过61/62项，唯一目录迟留已接受：删除立即移除凭证并阻断调用，独占模型可能暂留在全局目录（实测请求HTTP503）。官方Windows发布包加载与管理页验证通过，专用测试CA条件下的完整协议未验。
 
-原版CPAMC v1.28.0已在隔离headless Chromium中实际点击国内/国际两入口，完成合成上游登录、轮询、保存及双凭证列表，控制台错误为0。证据集中于 [兼容性记录](docs/compatibility.md) 和 `out/logs/native-official-summary.json`、`native-official-headless-ui.json`；真实WorkBuddy网页、WeCom及账号模型能力仍未验证。
+原版CPAMC v1.28.0已在隔离headless Chromium中实际点击国内/国际两入口，完成合成上游登录、轮询、保存及双凭证列表，控制台错误为0。证据集中于 [兼容性记录](docs/compatibility.md)；真实WorkBuddy网页、WeCom及账号模型能力仍未验证。
 
 - 尚未验证：真实账号与 WeCom 网页登录、Linux arm64、macOS amd64/arm64、远程 CI。
 
@@ -48,7 +48,7 @@ OpenAI Chat、Responses、Claude Messages 与 Gemini 客户端按已选站点和
 
 ## 安装与文档索引
 
-安装输入是官方 CPA v8.0.69 发布包与官方 CPAMC v1.28.0 页面；插件交付包包含动态库、生成头、版本、契约文档、CPA MIT、实际链接 Go 依赖完整许可及打包工具链 Go LICENSE/PATENTS。`build-info.txt` 记录实际模块版本，`checksums.sha256` 覆盖其余成员。库放入 CPA 的 `plugins.dir`，两个 `enabled` 由宿主管理，启动与凭证操作由宿主负责。完整步骤见 [部署说明](docs/deployment.md)。
+安装输入是官方 CPA v8.0.69 发布包与官方 CPAMC v1.28.0 页面；插件交付包包含动态库、生成头、版本、契约文档、`licenses/THIRD-PARTY.txt`（打包时按实际链接模块从 Go 模块缓存生成）、`licenses/Go-LICENSE` 与 `licenses/Go-PATENTS`。`build-info.txt` 记录实际模块版本，`checksums.sha256` 覆盖其余成员。库放入 CPA 的 `plugins.dir`，两个 `enabled` 由宿主管理，启动与凭证操作由宿主负责。完整步骤见 [部署说明](docs/deployment.md)。
 
 | 文档 | 内容 |
 | --- | --- |
@@ -56,9 +56,8 @@ OpenAI Chat、Responses、Claude Messages 与 Gemini 客户端按已选站点和
 | [架构](docs/architecture.md) | 宿主/插件边界、身份与资源所有权 |
 | [兼容性](docs/compatibility.md) | 固定来源、逐平台实际构建/加载证据及未验证限制 |
 | [部署](docs/deployment.md) | 官方包校验、v8 配置、双入口登录、管理、容器、故障与真人验收 |
-| [质量契约](docs/quality.md) | 统一工程命令、工具、CI、原生测试与包白名单 |
+| [质量契约](docs/quality.md) | 统一工程命令、工具、CI、原生测试、包白名单与许可生成 |
 | [任务表](docs/tasks/workbuddy-plugin.md) | 14 片状态、依赖及实际勾选的 AC |
-| [版权与许可](docs/third-party-notices.md) | 协议移植、CPA SDK 与 Go runtime 的完整许可位置 |
 
 ## 工程入口
 
@@ -78,26 +77,7 @@ go run ./cmd/project package
 
 `package` 输出 `out/dist/cpa-workbuddy-v<VERSION>-<goos>-<goarch>.zip` 与 `.zip.sha256`。库的文件名固定为 `cpa-workbuddy` + 平台扩展名（`.dll`/`.so`/`.dylib`）。
 
-## 首版目标
+## 许可
 
-通过 WorkBuddy 浏览器登录接入 CPA 凭证保存、列表、刷新、禁用和删除。按账号 `/v3/config` 发现 CLI 与企业 `custom:` 对话模型；发现临时失败仅沿用同账号最近成功快照，无快照不获得静态模型路由资格。
+本项目采用 [MIT](LICENSE) 许可。
 
-| 站点 | 凭证 site | CPA 模型 ID | WorkBuddy 上游路由 |
-| --- | --- | --- | --- |
-| 国内 | `workbuddy` | `wb/<上游 ID>` | Claude 为 `/v1/messages`，其他为 `/v2/chat/completions` |
-| 国际 | `workbuddy-ai` | `wb-ai/<上游 ID>` | 全部为 `/v2/chat/completions` |
-
-`AuthData.Prefix` 留空，前缀由插件生成；只在支持模型的同站点凭证间调度。全局模型按 ID 合并不代表各账号权限、能力或配额相同，完整解释见需求第五项问答。国际目标是 WorkBuddy AI，独立 CodeBuddy 服务不在范围内；首版不读取桌面凭证、不导入 API key、不交付独立管理页，也不包含用量、积分、签到或其他非对话 API。
-
-## 文档与来源
-
-- [需求](docs/requirements.md)：唯一需求正文、完整首版范围、协议契约、验收矩阵与五项问答。
-- [架构](docs/architecture.md)：代码布局、宿主责任、身份/站点/协议与资源边界。
-- [兼容性](docs/compatibility.md)：事实、固定源码引用、上游函数/测试对应、风险、待核验项及实际运行证据。
-- [部署与人工验收](docs/deployment.md)：官方包安装、CPAMC v1.28.0、双入口登录、v8 管理接口、容器卷、代理和真实账号清单。
-- [工程质量](docs/quality.md)：固定工具安装、统一门禁、Git hooks、CI 与验证证据。
-- [14 片任务](docs/tasks/workbuddy-plugin.md)：精确依赖、实施内容和可观察 AC；状态按验证证据更新。
-
-WorkBuddy 行为参考固定 [Magpie WorkBuddy commit](https://github.com/magpie-community/plugins/tree/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy)。源码仓库的 `_ref/` 保留原始源码、测试、样本和上游根许可证，文件来源与摘要由 `_ref/UPSTREAM.json` 固定。官方契约以 `out/verification/cpa-official-gVOq3z`（v8.0.69）与 `out/verification/cpamc-official-hdYiKj`（v1.28.0）的源码为准。项目采用 MIT，移植代码保留必要版权及许可证声明，完整来源见 [版权与许可](docs/third-party-notices.md)。
-
-提交、推送与发布需用户明确授权；作者 `sheepyu`，计划仓库 `ygq-future/cpa-workbuddy`（远程尚未创建）。

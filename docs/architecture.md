@@ -51,8 +51,8 @@ cpa-workbuddy/
   internal/workbuddy/        # 双站点浏览器认证、凭证；后续模型与执行协议
   cmd/project/              # Go 标准库工程命令与 CLI 行为测试
   testdata/                  # 按需加入脱敏协议样本
-  docs/                      # 需求、架构、兼容证据、任务、ADR
-  _ref/                      # 固定上游原始快照，只读，不打包
+  docs/                      # 需求、架构、兼容证据与任务
+  _ref/                      # 本地忽略的只读上游参考，不参与构建/测试/CI/打包
   out/                       # 全部构建物、缓存、临时文件、日志及探索材料
     scratch/                 # 本地探索材料与下载归档
 ```
@@ -104,6 +104,6 @@ HTTP 回调 ID、C buffer、宿主上游 stream ID 与下游 stream ID 分别记
 
 ## 文档与完成契约
 
-需求只在 `requirements.md` 维护，技术边界在本文维护，源码证据和兼容状态在 `compatibility.md` 维护，执行依赖与可观察 AC 在 `tasks/workbuddy-plugin.md` 维护。`docs/adr/` 用于后续真实决策；初始化只保留目录，不创建虚构 ADR。
+需求只在 `requirements.md` 维护，技术边界在本文维护，源码证据和兼容状态在 `compatibility.md` 维护，执行依赖与可观察 AC 在 `tasks/workbuddy-plugin.md` 维护。
 
 每片必须保留上游函数/行号、上游测试、CPA 适配位置与本地验证结果的对应记录。所有并行修改结束后统一完成所需构建、行为测试、真实原生 smoke、静态/LSP 检查、XERJ 索引同步及 `post-impl`，再按证据更新任务状态。仅通过构建不能勾选 CPA 加载或真实账号 AC。验证不启动可见窗口，不操作用户桌面；真实网页登录由用户完成。所有变更保持未提交，commit、push、发布需用户明确指示。

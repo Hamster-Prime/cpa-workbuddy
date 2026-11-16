@@ -26,11 +26,13 @@ func TestPackageContentsAndChecksums(t *testing.T) {
 	for _, relative := range []string{"cmd/cpa-workbuddy", "internal", "docs"} {
 		copyFixtureTree(t, filepath.Join(repositoryRoot, filepath.FromSlash(relative)), filepath.Join(f.root, filepath.FromSlash(relative)))
 	}
-	for _, relative := range []string{"auth/account.json", "out/logs/private.log", "out/scratch/download.zip", "_ref/private.txt", "docs/credentials.json", "docs/patches/cpa-v7.3.15.patch", "docs/licenses/private.txt"} {
+	for _, relative := range []string{"auth/account.json", "out/logs/private.log", "out/scratch/download.zip", "_ref/private.txt", "docs/credentials.json", "docs/local/sample.patch"} {
 		writeFixtureFile(t, filepath.Join(f.root, filepath.FromSlash(relative)), "private-package-fixture")
 	}
 	checksumCache := filepath.Join("out", "cache", "go-mod", "cache", "download", "sumdb")
 	copyFixtureTree(t, filepath.Join(repositoryRoot, checksumCache), filepath.Join(f.root, checksumCache))
+	licenseCache := filepath.Join("out", "cache", "licenses")
+	copyFixtureTree(t, filepath.Join(repositoryRoot, licenseCache), filepath.Join(f.root, licenseCache))
 	moduleFiles := map[string][]byte{}
 	for _, name := range []string{"go.mod", "go.sum"} {
 		moduleFiles[name] = readFixtureFile(t, filepath.Join(f.root, name))
@@ -73,9 +75,8 @@ func TestPackageContentsAndChecksums(t *testing.T) {
 	expected := map[string]bool{}
 	for _, name := range []string{
 		"cpa-workbuddy" + extension, "cpa-workbuddy.h", "native.h", "VERSION", "LICENSE", "README.md",
-		"licenses/Go-LICENSE", "licenses/Go-PATENTS", "docs/licenses/CLIProxyAPI-MIT.txt",
-		"docs/licenses/Go-DEPENDENCIES.txt", "docs/licenses/Apache-2.0.txt", "docs/requirements.md", "docs/architecture.md",
-		"docs/compatibility.md", "docs/quality.md", "docs/deployment.md", "docs/third-party-notices.md",
+		"licenses/Go-LICENSE", "licenses/Go-PATENTS", "licenses/THIRD-PARTY.txt",
+		"docs/requirements.md", "docs/architecture.md", "docs/compatibility.md", "docs/quality.md", "docs/deployment.md",
 		"docs/tasks/workbuddy-plugin.md", "build-info.txt", "checksums.sha256",
 	} {
 		expected[name] = true
@@ -152,25 +153,14 @@ func TestPackageContentsAndChecksums(t *testing.T) {
 	requireSuccess(t, goEnvironment)
 	toolchainRoot := strings.TrimSpace(goEnvironment.stdout)
 	for name, source := range map[string]string{
-		"licenses/Go-LICENSE":               filepath.Join(toolchainRoot, "LICENSE"),
-		"licenses/Go-PATENTS":               filepath.Join(toolchainRoot, "PATENTS"),
-		"docs/licenses/CLIProxyAPI-MIT.txt": filepath.Join(repositoryRoot, "docs", "licenses", "CLIProxyAPI-MIT.txt"),
-		"docs/licenses/Go-DEPENDENCIES.txt": filepath.Join(repositoryRoot, "docs", "licenses", "Go-DEPENDENCIES.txt"),
-		"docs/licenses/Apache-2.0.txt":      filepath.Join(repositoryRoot, "docs", "licenses", "Apache-2.0.txt"),
+		"licenses/Go-LICENSE": filepath.Join(toolchainRoot, "LICENSE"),
+		"licenses/Go-PATENTS": filepath.Join(toolchainRoot, "PATENTS"),
 	} {
 		if want := fmt.Sprintf("%x", sha256.Sum256(readFixtureFile(t, source))); actual[name] != want {
 			t.Errorf("license text changed in %q", name)
 		}
 	}
-	for name, want := range map[string]string{
-		"docs/licenses/CLIProxyAPI-MIT.txt": "879792e89cf1bdd6a8d446033ec87e30496f97dcafc4656dc53f641509b346a6",
-		"docs/licenses/Apache-2.0.txt":      "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
-	} {
-		if actual[name] != want {
-			t.Errorf("fixed upstream license bytes differ in %s", name)
-		}
-	}
-	verifyDependencyLicenses(t, f, text["docs/licenses/Go-DEPENDENCIES.txt"], extension)
+	verifyDependencyLicenses(t, f, text["licenses/THIRD-PARTY.txt"], extension)
 	links := regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
 	for name, contents := range text {
 		if !strings.HasSuffix(name, ".md") {
@@ -190,6 +180,15 @@ func TestPackageContentsAndChecksums(t *testing.T) {
 			}
 		}
 	}
+	cachePath := filepath.Join(f.root, licenseCache, "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30")
+	cacheBytes := readFixtureFile(t, cachePath)
+	writeFixtureFile(t, cachePath, "corrupt license material")
+	requireFailure(t, f.execute(t, "package"), "does not match SHA256")
+	writeFixtureFile(t, cachePath, string(cacheBytes))
+	if err := os.Remove(cachePath); err != nil {
+		t.Fatal(err)
+	}
+	requireFailure(t, f.execute(t, "package"), "run go run ./cmd/project bootstrap")
 }
 
 func verifyDependencyLicenses(t *testing.T, f fixture, notices, extension string) {

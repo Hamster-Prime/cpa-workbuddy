@@ -161,8 +161,8 @@ func TestModelCatalogReasoningAndSiteImageRules(t *testing.T) {
 	}
 }
 
-func TestModelCatalogImmutableConfigurationFixtures(t *testing.T) {
-	fixture, err := os.ReadFile("../../_ref/testdata/config-561.json")
+func TestModelCatalogConfigurationFixtures(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/config-561.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestModelCatalogImmutableConfigurationFixtures(t *testing.T) {
 			}
 		}
 	}
-	fixture, err = os.ReadFile("../../_ref/testdata/config-efforts.json")
+	fixture, err = os.ReadFile("testdata/config-efforts.json")
 	if err != nil {
 		t.Fatal(err)
 	}

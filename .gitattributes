@@ -7,6 +7,3 @@
 *.webp binary
 *.ico binary
 *.woff2 binary
-
-# Preserve the pinned upstream snapshot byte for byte.
-_ref/** -text

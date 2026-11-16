@@ -1,5 +1,6 @@
 # Build artifacts, tool installations, caches, reports, and local exploration.
 /out/
+/_ref/
 
 # Go dependencies.
 vendor/

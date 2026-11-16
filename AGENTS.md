@@ -16,7 +16,7 @@ cpa-workbuddy 是 Go/CGO 实现的 CLIProxyAPI WorkBuddy 动态库插件。应�
 - 需求唯一正文：`docs/requirements.md`；任务与状态：`docs/tasks/workbuddy-plugin.md`。
 - 架构边界：`docs/architecture.md`；宿主兼容及移植证据：`docs/compatibility.md`。
 - 任务文档仅维护状态、依赖、实施内容和验收项；验证证据归质量与兼容性文档，七维审查报告在交付回复中提供。
-- WorkBuddy 协议以 `_ref/UPSTREAM.json` 固定的原始源码和测试为依据。`_ref/` 保持原始字节，禁止格式化、自动修复或更改其逻辑以适配本项目。
+- WorkBuddy 协议参考固定 commit 的原始源码与测试；`_ref/` 为本地忽略的只读参考副本，不参与构建、测试、CI 或打包。
 - 每项功能记录上游函数/测试、CPA 适配位置和验证证据。推论标记 `[INFERENCE]`；实际账号、宿主和平台未验证时如实记录。
 - 单 provider `workbuddy`，两站点模型分别为 `wb/*` 与 `wb-ai/*`；`AuthData.Prefix` 留空。本站点、用户及企业作用域贯穿认证、缓存和调度。
 - 只实现当前任务批准的切片；认证、模型及执行能力完成前不得声明对应 capability。
@@ -37,7 +37,7 @@ cpa-workbuddy 是 Go/CGO 实现的 CLIProxyAPI WorkBuddy 动态库插件。应�
 XERJ prefix: "cpawb"
 
 - 优先 LSP 查询定义、引用和重构；无可用 LSP 时使用 XERJ。已知文件使用定点读取。
-- 索引排除规则由 `.xerjignore` 管理；`_ref/` 纳入检索，`out/` 排除。
+- 索引排除规则由 `.xerjignore` 与 `.gitignore` 管理；`out/` 和本地参考目录排除，自有源码与文档纳入索引。
 - 未启用 watch。代码或文档修改后、最终审查前运行：
   `xerj autoindex . --prefix cpawb --no-graph --code-analyzer code --yes`
 - 同步须 exit 0 或 3 且 `code_files_indexed > 0`。索引错误先按项目要求 remove 同前缀并完整重建，不能跳过。

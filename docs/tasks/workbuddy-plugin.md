@@ -4,7 +4,7 @@
 
 每片依据可复现验证证据逐项勾选 AC，全部满足后将状态更新为 `completed`；其余保持 `pending`。依赖按编号表示。缺少实际宿主、账号或平台证据的验收明确记录为未验证。
 
-统一入口：`go run ./cmd/project quality/build/test/package`（斜线表示四个独立子命令）。库由 CPA 加载，没有独立 start/stop。全部产物、缓存、临时文件和日志写入 `out/`。`_ref/` 原始文件与 `UPSTREAM.json` 不修改，原探索材料保留于 `out/scratch/`，不作为实现或协议证据。
+统一入口：`go run ./cmd/project quality/build/test/package`（斜线表示四个独立子命令）。库由 CPA 加载，没有独立 start/stop。全部产物、缓存、临时文件和日志写入 `out/`；`_ref/` 是本地忽略的只读参考，不参与工程入口和 CI。
 
 所有切片的完成契约：在公共边界验证消费者可见行为；记录固定上游函数/行号、对应测试、CPA 适配位置与本地结果；并行修改结束后统一执行适用构建、测试、静态/LSP、真实 smoke、XERJ 索引同步和 `post-impl`，涉及公开契约或生命周期时先完成 code-review，再更新状态。默认保留未提交工作树；commit、push、发布须用户明确授权。验证不启动 GUI，真实浏览器登录由用户完成。测试针对公开行为，已声明能力必须有完整实现。
 
@@ -24,7 +24,7 @@ Acceptance criteria:
 - [x] `VERSION` 为产品版本 `0.1.0` 的唯一来源，根 `version.go` 和注册身份读取同一版本；代码入口位于 `cmd/cpa-workbuddy/`，wire 与分派位于 `internal/plugin/`。
 - [x] 真实测试宿主动态加载实际构建库、查询 ABI/身份、调用注册并校验插件 ID/版本/schema；释放每次返回的成功及错误缓冲区，完成 shutdown/卸载，加载闭环可重复且无占用遗留。
 - [x] 原生 smoke 覆盖不兼容 ABI/结构、无效或缺失参数、坏 JSON、错误 schema、未知方法等实际契约错误边界；返回可解析错误或 ABI 约定错误结果，进程不崩溃且缓冲区仍可释放。
-- [x] 以宿主要求的 Name/Version/Author/GitHubRepository 非空身份注册，作者 `sheepyu`、计划仓库 `ygq-future/cpa-workbuddy`（尚未创建远程）；声明真实只读 `management_api`，`GET /v0/management/plugins/cpa-workbuddy/status` 返回身份/版本/ABI/schema，复用 CPA 管理鉴权且无独立页面；不声明未实现 AuthProvider、ModelProvider、Executor、协议格式、模型或其他占位能力，原生 smoke 验证状态路由及方法边界。
+- [x] 以宿主要求的 Name/Version/Author/GitHubRepository 非空身份注册，作者 `sheepyu`、仓库标识 `ygq-future/cpa-workbuddy`；声明真实只读 `management_api`，`GET /v0/management/plugins/cpa-workbuddy/status` 返回身份/版本/ABI/schema，复用 CPA 管理鉴权且无独立页面；原生 smoke 验证状态路由及方法边界。
 - [x] `go run ./cmd/project quality`、`build`、`test`、`package` 是统一入口且帮助准确，库无 start/stop；构建物、缓存、临时文件、日志及探索材料统一位于 `out/`，探索材料原样保留。
 - [x] 统一完成真实动态加载 smoke、适用 Go 行为测试、静态检查、LSP 与 CGO 构建，记录命令/退出结果和 `out/` 证据；工具缺失或检查失败明确处理，不静默跳过。
 - [x] `compatibility.md` 分开记录实际 CPA 版本/二进制/架构/加载证据与原生测试宿主结果；未运行实际 CPA、前端扩展、状态通道或账号场景明确标未验证及后续验收位置。
@@ -340,12 +340,12 @@ Acceptance criteria:
 - [x] 发布包包含所需 MIT 及移植代码版权/许可证声明、版本与 checksums，校验和可用于安装核对。
 - [x] 打包排除凭证/token/state/日志缓存、`_ref/` 原始快照、`out/scratch/` 探索材料和临时工具，产物仅写入 out。
 - [ ] README 安装/登录/容器/故障说明、实际兼容版本与文档契约索引对应最终实现；14 片 AC 证据齐备且真实账号未验证项未被勾选。
-- [x] 当前迁移完整质量入口十阶段通过，25个变更Go文件hint级LSP为0诊断，XERJ同步93个代码文件且exit0；code-review双轴及post-impl七维审查完成，Retry-After日期编码缺陷已修复并通过回归，无剩余代码待修项。真实账号及未运行平台继续待验。
+- [x] 统一执行完整工程质量入口、hint级LSP、XERJ同步及所需审查；验证结果按实际范围记录于兼容性文档。真实账号及未运行平台继续待验。
 - [x] 交付只生成本地可审查包；commit、push、发布和自动发布启用均等待用户明确授权，不把 CI 构建配置等同发布授权。
 
 Implementation:
 
 - build/test/package 保持当前 Go/C 原生目标，Windows amd64、Linux amd64/arm64、macOS amd64/arm64 分别选择实际扩展名；CI 与 tag 交付配置覆盖五条原生 runner 并核对 OS/arch，运行权限仅 contents:read。
-- 包保留文档相对路径，含实际库/头/VERSION、根MIT、Go LICENSE/PATENTS、CPA SDK MIT、全部实际链接依赖完整许可及Apache全文。实际库生成build-info.txt，流式计算ZIP与成员摘要；包不含宿主补丁，消费者测试验证许可原文、私有材料排除和文档链接。
+- 包保留文档相对路径，含实际库/头/VERSION、根MIT与Go LICENSE/PATENTS；打包根据实际链接模块生成 `licenses/THIRD-PARTY.txt`，保留所需原始许可与声明。实际库生成build-info.txt，流式计算ZIP与成员摘要；消费者测试验证许可原文、私有材料排除和文档链接。
 - Windows amd64 和 Linux amd64 已实际构建与宿主加载；另外三个原生目标没有运行环境/远程 CI 证据，第一项 AC 保持未勾选，切片状态保持 in_progress。真实账号/浏览器人工验收仍在 Slice 13 保留，不以平台交付替代。
 

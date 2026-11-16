@@ -4,7 +4,6 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	"crypto/sha1"
 	"crypto/sha256"
 	"debug/buildinfo"
 	"encoding/hex"
@@ -36,7 +35,7 @@ const (
 )
 
 var (
-	stages        = []string{"tools", "upstream", "version", "format", "modules", "vet", "lsp", "lint", "build", "test"}
+	stages        = []string{"tools", "version", "format", "modules", "vet", "lsp", "lint", "build", "test"}
 	semverPattern = regexp.MustCompile(`^` + semverNumber + `\.` + semverNumber + `\.` + semverNumber + `(-` + semverIdentifier + `(\.` + semverIdentifier + `)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$`)
 	commitPattern = regexp.MustCompile(`^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9][a-z0-9_./-]*\))?!?: [^\s].*$`)
 	mergePattern  = regexp.MustCompile(`^Merge (branch |remote-tracking branch |pull request |tag ).+$`)
@@ -438,13 +437,6 @@ func (c *controller) checkTools() error {
 	return nil
 }
 
-type upstreamRecord struct {
-	Path   string `json:"path"`
-	Size   int64  `json:"size"`
-	SHA256 string `json:"sha256"`
-	SHA1   string `json:"git_blob_sha1"`
-}
-
 func safeRelative(relative string) bool {
 	if relative == "" || strings.ContainsAny(relative, "\\:\x00") || path.IsAbs(relative) || path.Clean(relative) != relative || !filepath.IsLocal(filepath.FromSlash(relative)) {
 		return false
@@ -458,107 +450,6 @@ func safeRelative(relative string) bool {
 		}
 	}
 	return true
-}
-
-func (c *controller) upstream() error {
-	base := filepath.Join(c.root, "_ref")
-	if err := rejectSymlinkPath(base, "UPSTREAM.json"); err != nil {
-		return fmt.Errorf("unsafe upstream manifest: %w", err)
-	}
-	data, err := os.ReadFile(filepath.Join(base, "UPSTREAM.json"))
-	if err != nil {
-		return err
-	}
-	var manifest struct {
-		Files []upstreamRecord `json:"files"`
-	}
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		return err
-	}
-	if len(manifest.Files) != 45 {
-		return errors.New("upstream manifest must declare exactly 45 files")
-	}
-	expected := map[string]bool{"UPSTREAM.json": true}
-	for _, record := range manifest.Files {
-		if !safeRelative(record.Path) {
-			return fmt.Errorf("unsafe upstream path: %s", record.Path)
-		}
-		if expected[record.Path] {
-			return fmt.Errorf("duplicate upstream path: %s", record.Path)
-		}
-		expected[record.Path] = true
-		name := filepath.Join(base, filepath.FromSlash(record.Path))
-		if err := rejectSymlinkPath(base, record.Path); err != nil {
-			return fmt.Errorf("unsafe upstream path %s: %w", record.Path, err)
-		}
-		content, err := os.ReadFile(name)
-		if err != nil {
-			return err
-		}
-		sha := sha256.Sum256(content)
-		blob := sha1.New()
-		if _, err := fmt.Fprintf(blob, "blob %d\x00", len(content)); err != nil {
-			return err
-		}
-		if _, err := blob.Write(content); err != nil {
-			return err
-		}
-		if int64(len(content)) != record.Size || hex.EncodeToString(sha[:]) != record.SHA256 || hex.EncodeToString(blob.Sum(nil)) != record.SHA1 {
-			return fmt.Errorf("upstream bytes differ: _ref/%s", record.Path)
-		}
-	}
-	actual := make(map[string]bool)
-	err = filepath.WalkDir(base, func(name string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if entry.Type()&os.ModeSymlink != 0 {
-			return fmt.Errorf("unsafe upstream symlink: %s", name)
-		}
-		if !entry.IsDir() {
-			relative, err := filepath.Rel(base, name)
-			if err != nil {
-				return err
-			}
-			actual[filepath.ToSlash(relative)] = true
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	var difference []string
-	for name := range actual {
-		if !expected[name] {
-			difference = append(difference, name)
-		}
-	}
-	for name := range expected {
-		if !actual[name] {
-			difference = append(difference, name)
-		}
-	}
-	if len(difference) != 0 {
-		sort.Strings(difference)
-		return fmt.Errorf("upstream inventory differs: %v", difference)
-	}
-	return nil
-}
-
-func rejectSymlinkPath(base, relative string) error {
-	current := base
-	components := append([]string{""}, strings.Split(relative, "/")...)
-	for _, component := range components {
-		current = filepath.Join(current, component)
-		info, err := os.Lstat(current)
-		if err != nil {
-			return err
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("symlink: %s", current)
-		}
-	}
-	return nil
 }
 
 func (c *controller) version(tag string) (string, error) {
@@ -786,18 +677,9 @@ func (c *controller) bundle() (resultErr error) {
 	if err != nil {
 		return err
 	}
-	dependencyLicenses, err := os.ReadFile(filepath.Join(c.root, "docs", "licenses", "Go-DEPENDENCIES.txt"))
+	dependencyLicenses, err := c.dependencyNotices(info)
 	if err != nil {
 		return err
-	}
-	for _, dependency := range info.Deps {
-		source := dependency
-		if source.Replace != nil {
-			source = source.Replace
-		}
-		if !bytes.Contains(dependencyLicenses, fmt.Appendf(nil, "\nModule: %s@%s\n", source.Path, source.Version)) {
-			return fmt.Errorf("missing third-party license inventory for %s@%s", source.Path, source.Version)
-		}
 	}
 	buildInfo := fmt.Appendf(nil, "product\tcpa-workbuddy\nversion\t%s\n%s", value, info.String())
 	goRoot, err := c.tool("go", runPolicy{stderrFails: true}, "env", "GOROOT")
@@ -830,9 +712,7 @@ func (c *controller) bundle() (resultErr error) {
 	for _, relative := range []string{
 		"VERSION", "LICENSE", "README.md",
 		"docs/requirements.md", "docs/architecture.md", "docs/compatibility.md",
-		"docs/quality.md", "docs/deployment.md", "docs/third-party-notices.md",
-		"docs/tasks/workbuddy-plugin.md", "docs/licenses/CLIProxyAPI-MIT.txt",
-		"docs/licenses/Go-DEPENDENCIES.txt", "docs/licenses/Apache-2.0.txt",
+		"docs/quality.md", "docs/deployment.md", "docs/tasks/workbuddy-plugin.md",
 	} {
 		files = append(files, [2]string{filepath.Join(c.root, filepath.FromSlash(relative)), relative})
 	}
@@ -844,14 +724,22 @@ func (c *controller) bundle() (resultErr error) {
 		}
 		checksums = fmt.Appendf(checksums, "%x  %s\n", digest, member[1])
 	}
-	metadata, err := writer.Create("build-info.txt")
-	if err != nil {
-		return errors.Join(err, writer.Close())
+	for _, item := range []struct {
+		name string
+		data []byte
+	}{
+		{"licenses/THIRD-PARTY.txt", dependencyLicenses},
+		{"build-info.txt", buildInfo},
+	} {
+		member, err := writer.Create(item.name)
+		if err != nil {
+			return errors.Join(err, writer.Close())
+		}
+		if _, err := member.Write(item.data); err != nil {
+			return errors.Join(err, writer.Close())
+		}
+		checksums = fmt.Appendf(checksums, "%x  %s\n", sha256.Sum256(item.data), item.name)
 	}
-	if _, err := metadata.Write(buildInfo); err != nil {
-		return errors.Join(err, writer.Close())
-	}
-	checksums = fmt.Appendf(checksums, "%x  build-info.txt\n", sha256.Sum256(buildInfo))
 	manifest, err := writer.Create("checksums.sha256")
 	if err != nil {
 		return errors.Join(err, writer.Close())
@@ -1047,7 +935,10 @@ func (c *controller) bootstrap() error {
 			return err
 		}
 	}
-	return c.checkTools()
+	if err := c.checkTools(); err != nil {
+		return err
+	}
+	return c.prepareLicenseSources()
 }
 
 func (c *controller) gitConfig(key string) (string, bool, error) {
@@ -1191,6 +1082,14 @@ func (c *controller) stagedQuality() (resultErr error) {
 	if err != nil {
 		return err
 	}
+	licenseCache := filepath.Join(c.out, "cache", "licenses")
+	if _, err := os.Stat(licenseCache); err == nil {
+		if err := os.CopyFS(filepath.Join(snapshot.out, "cache", "licenses"), os.DirFS(licenseCache)); err != nil {
+			return err
+		}
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
 	// Tools are shared, while all caches, temporary files and artifacts stay in the snapshot's out directory.
 	snapshot.tools = c.tools
 	for index, entry := range snapshot.env {
@@ -1215,7 +1114,7 @@ func (c *controller) stagedQuality() (resultErr error) {
 
 func (c *controller) quality(selected []string, tag string) error {
 	actions := map[string]func() error{
-		"tools": c.checkTools, "upstream": c.upstream,
+		"tools":   c.checkTools,
 		"version": func() error { _, err := c.version(tag); return err },
 		"format":  c.formatCheck, "modules": c.modules, "vet": c.vet,
 		"lsp": c.lsp, "lint": c.lint, "build": c.build,

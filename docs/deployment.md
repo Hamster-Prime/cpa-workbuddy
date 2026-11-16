@@ -31,10 +31,10 @@
 
 插件包为 `out/dist/cpa-workbuddy-v<VERSION>-<goos>-<goarch>.zip`，同目录 `.zip.sha256` 记录完整 ZIP 摘要；先用 SHA256 工具核对 ZIP，再按包内 `checksums.sha256` 核对每个成员。
 
-包内成员为：动态库、C 生成头、`native.h`、`VERSION`、根 MIT `LICENSE` 与 `README.md`、需求/架构/兼容/质量/部署/许可/任务文档、`docs/licenses/CLIProxyAPI-MIT.txt`（官方 `sdk/translator` 的 MIT 原文）、`docs/licenses/Go-DEPENDENCIES.txt`（实际链接模块的完整许可汇总）、`docs/licenses/Apache-2.0.txt`、`licenses/Go-LICENSE`、`licenses/Go-PATENTS`。
+包内成员为：动态库、C 生成头、`native.h`、`VERSION`、根 MIT `LICENSE` 与 `README.md`、需求/架构/兼容/质量/部署/任务文档、`licenses/THIRD-PARTY.txt`（实际链接模块的完整许可汇总，打包时从 Go 模块缓存生成）、`licenses/Go-LICENSE`、`licenses/Go-PATENTS`。所需补充许可原文按固定 SHA256 从官方源下载并缓存于 `out/cache/licenses/`，不在仓库内保留许可副本。
 
 - **包内不含任何 CPA 补丁**：安装不需要 `git apply`、不需要修补宿主源码或前端源码。
-- `build-info.txt` 由实际库读取，记录 Go 工具链、模块与实际 GOOS/GOARCH/CGO 设置；打包入口逐项要求每个链接模块在许可汇总中有条目。
+- `build-info.txt` 由实际库读取，记录 Go 工具链、模块与实际 GOOS/GOARCH/CGO 设置；打包入口按实际链接模块生成 `licenses/THIRD-PARTY.txt`，每个模块版本都必须有对应许可原文。
 - 凭证、账号响应、登录 URL/state、运行日志与参考快照不属于包内容。
 - 动态库文件名必须为 `cpa-workbuddy` + 平台扩展名（`.dll`、`.so`、`.dylib`）；`-v<版本>` 后缀会被宿主识别为插件版本，首次部署不建议使用。
 

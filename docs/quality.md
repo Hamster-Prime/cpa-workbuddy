@@ -16,7 +16,7 @@ go run ./cmd/project package
 go run ./cmd/project --help
 ```
 
-`bootstrap` 是显式安装动作，只管理既有固定 Go 分析器：gopls **v0.23.0** 和以 Go1.27.1 编译的 golangci-lint **2.12.2**。优先使用 `out/tools/bin` 中匹配版本的工具，其次复用 PATH；需要安装时通过固定 `@version` 的 `go install` 写入项目工具目录。质量检查不安装工具，不修改全局 Go/Git 配置，不接受缺工具时静默跳过。
+`bootstrap` 显式准备固定工具与打包素材：gopls **v0.23.0**、以 Go1.27.1 编译的 golangci-lint **2.12.2**，以及按 SHA256 固定的补充许可原文。优先使用 `out/tools/bin` 中匹配版本的工具，其次复用 PATH；需要安装时通过固定 `@version` 的 `go install` 写入项目工具目录。许可原文缓存于 `out/cache/licenses/`，首次准备需要网络；缓存损坏明确失败。质量检查不安装工具，不修改全局 Go/Git 配置。
 
 编排器启动后的全部子进程使用项目局部 GOCACHE、GOMODCACHE、GOPATH、GOBIN、GOTMPDIR、GOENV、GOLANGCI_LINT_CACHE、GOPLSCACHE、XDG 与临时目录，统一位于 `out/`。关闭 Go telemetry、自动工具链下载和工作区自动发现，原生门禁清除继承的 GOOS/GOARCH。`WORKBUDDY_TOOLS_ROOT` 允许 index 隔离副本复用已安装的工具。
 
@@ -46,12 +46,11 @@ export GOTMPDIR="$PWD/out/tmp/go"
 
 ## 门禁与诊断
 
-默认 `quality` 顺序执行 **tools、upstream、version、format、modules、vet、lsp、lint、build、test** 共 10 个阶段。`--stage` 可重复，仍按默认顺序执行；定向阶段不能替代完整门禁。检查不格式化、不修复、不改依赖清单、不自动暂存。成功只显示阶段和摘要；失败输出子进程完整 stdout/stderr 并返回非零，`--verbose` 展示成功命令详情。
+默认 `quality` 顺序执行 **tools、version、format、modules、vet、lsp、lint、build、test** 共 9 个阶段。`--stage` 可重复，仍按默认顺序执行；定向阶段不能替代完整门禁。检查不格式化、不修复、不改依赖清单、不自动暂存。成功只显示阶段和摘要；失败输出子进程完整 stdout/stderr 并返回非零，`--verbose` 展示成功命令详情。
 
 | 能力 | 提供者与范围 | 阻断规则 |
 | --- | --- | --- |
 | 工具与配置 | 固定 Go SDK、gopls、golangci-lint；golangci config verify | 缺失、版本漂移、无效配置失败 |
-| 原始快照 | `_ref/UPSTREAM.json` 的 45 文件，大小/Git blob SHA1/SHA256 和完整清单 | 字节不符、缺失、多余、重复或越界路径失败 |
 | 格式 | gofmt；全部自有 Go 源与测试，包含工程命令 | `gofmt -l` 非空也失败 |
 | 语法与类型 | Go compiler、go vet；根模块 `./...` | 编译或类型错误失败 |
 | LSP | gopls 默认分析器，全部自有 Go 源与测试 | `check -severity=hint` 的任何输出阻断，即使子工具 exit 0 |
@@ -65,7 +64,7 @@ export GOTMPDIR="$PWD/out/tmp/go"
 | 本地 hooks | 真实 index 副本与消息文件 | 保护部分暂存，保留已有 hook manager |
 | CI / 交付流水线 | 五条原生 OS/arch runner，同一 Go 根入口 | 聚合拒绝失败、取消及意外 skipped；tag 必须匹配版本 |
 
-分析只覆盖自有源码；`_ref/` 保持原始字节，仅执行完整性校验，`out/` 是产物目录。gopls 默认关闭的可选分析器不在覆盖声明内。目前没有 clangd、clang-tidy 或 clang-format，C 覆盖由严格编译及实际加载测试承担，不声称覆盖 clang 专属检查或自动格式检查。
+分析只覆盖自有源码；`out/` 是产物目录。gopls 默认关闭的可选分析器不在覆盖声明内。目前没有 clangd、clang-tidy 或 clang-format，C 覆盖由严格编译及实际加载测试承担，不声称覆盖 clang 专属检查或自动格式检查。
 
 [gopls v0.23.0 的 filecache 实现](https://go.googlesource.com/tools/+/refs/tags/gopls/v0.23.0/gopls/internal/filecache/filecache.go) 优先读取 GOPLSCACHE，再追加 `gopls/`；本项目指向 `out/cache`，Windows 持久索引因此也位于 `out/cache/gopls/`。
 
@@ -91,13 +90,13 @@ commit-msg 读取真实消息文件，约定 `<type>[(scope)][!]: <subject>`，t
 
 `build` 在当前主机 Go/C 工具链上构建 `out/bin/cpa-workbuddy.dll`、`.so` 或 `.dylib`，支持的原生目标为 Windows amd64、Linux amd64/arm64、macOS amd64/arm64；检查生成头导出。`test` 构建该库并以绝对路径 WORKBUDDY_TEST_LIBRARY 交给真实原生 smoke；完整质量门禁复用 build 阶段产物。控制器清除继承的 GOOS/GOARCH，跨平台验证需在目标原生 runner 或对应实际环境执行。
 
-`package` 重新构建当前源码，生成 `out/dist/cpa-workbuddy-v<VERSION>-<goos>-<goarch>.zip` 和外部 `.zip.sha256`。严格白名单为库、Go 生成头、native.h、VERSION、根 MIT LICENSE/README、需求/架构/兼容/质量/部署/许可/任务文档，以及 CPA SDK MIT、实际 Go 依赖完整许可汇总、Apache-2.0 全文和构建工具链的 Go LICENSE/PATENTS；文档保留相对路径。`build-info.txt` 从实际库读取 Go 版本、模块与 GOOS/GOARCH/CGO 构建设置，不记录本机产物路径；打包入口逐项要求链接模块的实际来源版本具有许可汇总条目。包内 `checksums.sha256` 覆盖其他所有成员，外部摘要在压缩写入时计算。白名单以外的参考快照、凭证、账号响应、缓存、日志和探索工具均不收录。产品版本与 ABI/schema/上游包/工具版本各自独立。
+`package` 重新构建当前源码，生成 `out/dist/cpa-workbuddy-v<VERSION>-<goos>-<goarch>.zip` 和外部 `.zip.sha256`。严格白名单为库、Go 生成头、native.h、VERSION、根 MIT LICENSE/README、需求/架构/兼容/质量/部署/任务文档、`licenses/THIRD-PARTY.txt` 以及构建工具链的 `licenses/Go-LICENSE`、`licenses/Go-PATENTS`；文档保留相对路径。`build-info.txt` 从实际库读取 Go 版本、模块与 GOOS/GOARCH/CGO 构建设置，不记录本机产物路径。打包入口按实际链接模块从 Go 模块缓存生成 `licenses/THIRD-PARTY.txt`，补充许可原文读取 `bootstrap` 准备的 SHA256 缓存；缺失或校验不符即失败。包内 `checksums.sha256` 覆盖其他所有成员，外部摘要在压缩写入时计算。白名单以外的参考快照、凭证、账号响应、缓存、日志和探索工具均不收录。产品版本与 ABI/schema/上游包/工具版本各自独立。
 
 CI 与 tag 的 release-artifacts 工作流采用五条原生矩阵：`windows-2025`、`ubuntu-24.04`、`ubuntu-24.04-arm`、`macos-15-intel`、`macos-15`，对应上述五个 OS/arch，每项先核对 `go env GOOS/GOARCH`。两工作流都执行完整原生质量门禁；tag 工作流另核对 VERSION、打包并上传 workflow artifact，权限仅 `contents: read`，不创建 GitHub Release。官方 runner 标签依据及实际平台运行情况在兼容性记录中单列；配置存在不等于远程 CI 已运行。
 
 ## 固定工具依据
 
-工具基线保持下表版本。工程命令使用 Go 标准库；插件的客户端协议转换使用公开 CPA SDK，实际链接模块、版本与完整许可由 [版权与许可](third-party-notices.md) 记录。
+工具基线保持下表版本。工程命令使用 Go 标准库；插件的客户端协议转换使用公开 CPA SDK，实际链接模块、版本与完整许可在打包时生成到 `licenses/THIRD-PARTY.txt`，补充原文按固定 SHA256 缓存于 `out/cache/licenses/`。
 
 | 工具 | 官方依据 | 本项目选择 |
 | --- | --- | --- |
@@ -109,13 +108,13 @@ CI 与 tag 的 release-artifacts 工作流采用五条原生矩阵：`windows-20
 
 Windows amd64 工具基线为 Go1.27.1、MinGW GCC14.2.0、gopls0.23.0、golangci-lint2.12.2。完整 `quality` 包含工程 CLI 行为测试、原生/生命周期测试和独立 C 动态加载。当前实现的完整运行结果与官方宿主加载证据以 [兼容性记录](compatibility.md) 为准。
 
-官方宿主迁移后的完整十阶段 `go run ./cmd/project quality` 已通过，记录 `out/logs/native-migration-quality.log`；25个变更Go文件的真实 `gopls check -severity=hint` 无warning/info/hint，完整命令和结果在 `native-migration-incremental-lsp.json`。独立两轴审查修复HTTP日期/前导零Retry-After编码，公共Runtime回归通过；索引同步及七维结果见当前兼容性首表与交付回复。
+完整九阶段 `go run ./cmd/project quality` 在阻断外网代理、根目录不存在参考副本的环境下通过，记录 `out/logs/publication-cleanup-quality.log`；5个变更Go文件的 `gopls check -severity=hint` 无warning/info/hint，记录 `publication-cleanup-lsp.log`。模型配置样本位于测试自有 `testdata/`；包消费者验证自动生成的许可原文、完整成员与摘要、文档链接，以及缺失或损坏许可缓存时的失败行为，记录 `publication-cleanup-package-test.log`。
 
 `go run ./cmd/project --help`、`bootstrap`、`install-hooks`、`package` 均 exit 0。真实 commit-msg hook 的合法消息 exit 0、非法消息 exit 1；部分暂存测试确认工作树与 index 原始字节不变、隔离副本退出清理。仓库 local hook 使用实际 Go 路径。
 
 隔离 Go 工程副本分别注入格式、类型、LSP 语义、弃用 API SA1019 和失败测试，全部使同一根入口阻断；源码字节保持不变，副本已清理。额外验证了项目本地已无已迁移的脚本、配置、解释器或相关工具缓存。证据见 `out/logs/go-gate-probes.json`。
 
-包消费者测试实际调用 `package`，核对完整白名单、构建信息、外层与逐成员 SHA256、依赖许可来源原始字节、私有材料排除和文档链接。七维审查在交付回复中提供，XERJ 前缀为 `cpawb`。质量命令不执行 Git 提交、推送或发布；这些动作由用户授权后单独执行。
+包消费者测试实际调用 `package`，核对完整白名单、构建信息、外层与逐成员 SHA256、依赖许可生成结果与固定来源摘要、私有材料排除和文档链接。七维审查在交付回复中提供，XERJ 前缀为 `cpawb`。质量命令不执行 Git 提交、推送或发布；这些动作由用户授权后单独执行。
 
 规格/行为轴由主代理核对 CLI 分派、诊断传播、来源清单、实际测试事件、ZIP 成员和精确 index 快照，并结合上述运行证据完成审查；未发现待修缺陷。独立架构审查收敛为 0 项硬性违规、0 项设计待修项。测试环境的 GOPLSCACHE 与正式入口一致，使用 gopls 自带的子目录规则。
 

@@ -16,7 +16,7 @@
 | Windows 删除边界 | 删除后列表移除，调用 HTTP503；独占模型在 `/v1/models` 残留至少 25 秒 | 用户接受目录迟留；`out/logs/native-official-deletion-boundary.json`；需要清理时先禁用再删除或重启，并核对结果 |
 | 账号模型快照 | 登录和原生刷新结果携带可恢复快照；普通发现更新内存，持久化不保证逐次即时完成 | `internal/workbuddy/lifecycle_snapshot_test.go`、上述完整宿主记录；首次失败不授予静态资格 |
 | 刷新/失效 | Manager 接管保存、安装和一次401恢复；300秒周期、60秒单飞结果；刷新拒绝与access仍有效分别处理，重启重新验证 | `internal/workbuddy/refresh.go`、`credentials.go`，官方 `sdk/cliproxy/auth/conductor_refresh.go`；保存失败可告警后继续内存凭证，存在重启风险 |
-| 工程质量与审查 | 完整quality十阶段通过，25个变更Go文件gopls hint级0诊断，code-review两轴及post-impl七维无剩余待修项 | `out/logs/native-migration-quality.log`、`native-migration-incremental-lsp.json`、`out/review/native-migration-post-impl.md`；索引分类漂移已按规则重建，最终同步93个代码文件exit0 |
+| 工程质量 | 完整quality九阶段通过；5个变更Go文件gopls hint级0诊断；模型样本由测试自有testdata提供，包消费者验证许可生成、原始字节、摘要和缓存错误传播 | `out/logs/publication-cleanup-quality.log`、`publication-cleanup-lsp.log`、`publication-cleanup-package-test.log`；参考目录缺席、缓存已准备时测试完全离线 |
 | 平台与账号 | Windows/Linux amd64 已构建与加载；其他三平台及远程CI未运行，真实账号未验 | 平台构建成功、宿主加载与账号通过分别记证据 |
 
 运行使用 `server.commercial-mode:true`、`observability.logs.request-log:false` 和 debug 关闭，完整输出经 fixture token/state/用户与企业标识扫描。单独关闭 request-log 仍会生成错误请求日志，已保留失败证据 `native-official-windows-source.json`；官方 `internal/api/server.go:185-196` 的 commercial-mode 禁用 request logger，Gin 日志仍启用。生产代理与容器日志同样不得捕获敏感正文。
@@ -27,14 +27,14 @@
 
 | 来源 | 用途与边界 |
 |---|---|
-| `../.cpa-upstream-src/` | CPA ABI、宿主回调、认证、模型注册与执行契约；只读参考 |
+| `../.cpa-upstream-src/` | CPA `v8.0.69`（commit `f7ae8feeb3710319f524730849fbe32fde1751e4`）的本地只读参考副本；CPA ABI、宿主回调、认证、模型注册与执行契约 |
 | `../cpa-secret-manager/` | 现有 CGO 插件桥接样例；具体接口仍以目标 CPA 源码为准 |
 | `https://github.com/magpie-community/plugins/tree/0135b7b0ea979c94033a7712a0c6ca1be8dafb70/packages/workbuddy` | 固定 commit 的 WorkBuddy 协议、行为与测试基线 |
-| `_ref/` | 完整 WorkBuddy 包源码、33 个测试文件及 5 个 testdata 样本；包版本 `0.2.31`；附上游根许可证，不进入插件发布包 |
-| `_ref/UPSTREAM.json` | 来源仓库、commit、文件清单、Git blob SHA-1、SHA-256 与大小；下载后逐文件核验 |
+| `_ref/` | 按固定 Magpie commit 取得的本地忽略只读副本：完整 WorkBuddy 包源码、33 个测试文件及 5 个 testdata 样本；包版本 `0.2.31`；附上游根许可证，不随仓库分发，也不进入插件发布包 |
+| `_ref/UPSTREAM.json` | 本地副本的来源仓库、commit、文件清单、Git blob SHA-1、SHA-256 与大小；下载后逐文件核验 |
 | `out/scratch/workbuddy-go-spike/` | 本地 Go 探索材料，不属于 Magpie 源码，不作为协议依据或已完成实现 |
 
-`_ref/` 的上游文件保持原文并纳入项目版本控制，修改业务行为不能直接改写参考源码来使其“匹配”。当前固定 commit 为 `0135b7b0ea979c94033a7712a0c6ca1be8dafb70`，文件清单及校验记录见 `UPSTREAM.json`。上游更新时显式调整基线并重新检查行为差异，不静默追踪 main。
+`_ref/` 与 `../.cpa-upstream-src/` 是本地只读参考副本，不是构建、测试、CI 或打包输入；两者都按上表固定 commit 从上游公开仓库取得，可按需重新下载。`_ref/` 的上游文件保持原文，修改业务行为不能直接改写参考源码来使其“匹配”。当前固定 commit 为 `0135b7b0ea979c94033a7712a0c6ca1be8dafb70`，本地文件清单及校验记录见 `_ref/UPSTREAM.json`。上游更新时显式调整基线并重新检查行为差异，不静默追踪 main。
 
 行号均指当前固定参考快照，源码更新后应同时更新证据。参考实现中的实测结论是其快照记录，不代表本项目已经对真实账号完成实测。
 
