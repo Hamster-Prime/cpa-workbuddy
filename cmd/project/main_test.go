@@ -271,6 +271,16 @@ func copyFixtureTree(t *testing.T, source, destination string) {
 	}
 }
 
+func copyFixtureChecksumState(t *testing.T, root string) {
+	t.Helper()
+	for _, relative := range []string{
+		filepath.Join("out", "cache", "go-mod", "cache", "download", "sumdb"),
+		filepath.Join("out", "cache", "gopath", "pkg", "sumdb"),
+	} {
+		copyFixtureTree(t, filepath.Join(repositoryRoot, relative), filepath.Join(root, relative))
+	}
+}
+
 func TestCommitMessageFile(t *testing.T) {
 	f := newFixture(t)
 	message := filepath.Join(f.root, "message")
@@ -380,8 +390,7 @@ func main() {
 
 func TestNativeSmokeRequiresABITest(t *testing.T) {
 	f := newFixture(t)
-	checksumCache := filepath.Join("out", "cache", "go-mod", "cache", "download", "sumdb")
-	copyFixtureTree(t, filepath.Join(repositoryRoot, checksumCache), filepath.Join(f.root, checksumCache))
+	copyFixtureChecksumState(t, f.root)
 	// Deliberately omit native_integration_test.go and this CLI test package.
 	for _, relative := range []string{
 		"version.go",

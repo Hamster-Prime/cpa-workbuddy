@@ -22,7 +22,7 @@ go run ./cmd/project --help
 
 工程入口在 `out/go.mod` 建立产物模块边界，使根 `./...` 扫描排除依赖缓存及其他生成的 Go 源码；该文件属于忽略的本地产物，不是产品依赖模块。隔离测试同样通过工程入口创建此边界。
 
-模块检查先将 go.mod/go.sum 复制到 `out/tmp`，通过 `go mod download -modfile=<临时清单> all` 准备完整固定模块图，再对根清单静默执行 `go mod tidy -diff`；临时清单及下载新增校验项在阶段结束后清理。单独原生编译使用 `go mod download` 准备已声明模块。下载与编译分别检查错误，编译阶段继续拒绝诊断输出。工程消费者测试复制实际 go.mod/go.sum，将测试进程 GOPROXY 指向本仓库已准备的模块归档缓存；隔离副本使用自己的 GOMODCACHE，仅预置已有的 sumdb 签名校验证明，保留 Go 的正常验证。从模块归档冷缓存实际运行 modules 与 package，断言源码模块文件字节不变，测试不依赖外网下载。
+模块检查先将 go.mod/go.sum 复制到 `out/tmp`，通过 `go mod download -modfile=<临时清单> all` 准备完整固定模块图，再对根清单静默执行 `go mod tidy -diff`；临时清单及下载新增校验项在阶段结束后清理。单独原生编译使用 `go mod download` 准备已声明模块。下载与编译分别检查错误，编译阶段继续拒绝诊断输出。工程消费者测试复制实际 go.mod/go.sum，将测试进程 GOPROXY 指向本仓库已准备的模块归档缓存；隔离副本使用自己的 GOMODCACHE/GOPATH，预置两部分校验状态：`GOMODCACHE/cache/download/sumdb` 的 lookup/tile 和 `GOPATH/pkg/sumdb` 的已验证签名树检查点，保留 Go 的正常签名与模块校验。只复制 lookup/tile 会在不同检查点之间缺少历史一致性证明；冷缓存探针对比记录为 `out/logs/sumdb-checkpoint-probe.json`。包消费者显式阻断HTTP/HTTPS代理，在模块归档冷缓存下实际运行modules与package，断言源码清单字节不变；验证不依赖外网补取证明。
 
 独立 `test` 入口在构建前执行模块检查与缓存准备；完整 `quality` 在前置 modules 阶段完成该步骤，测试阶段复用已有准备结果。
 

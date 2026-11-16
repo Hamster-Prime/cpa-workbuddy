@@ -29,8 +29,10 @@ func TestPackageContentsAndChecksums(t *testing.T) {
 	for _, relative := range []string{"auth/account.json", "out/logs/private.log", "out/scratch/download.zip", "_ref/private.txt", "docs/credentials.json", "docs/local/sample.patch"} {
 		writeFixtureFile(t, filepath.Join(f.root, filepath.FromSlash(relative)), "private-package-fixture")
 	}
-	checksumCache := filepath.Join("out", "cache", "go-mod", "cache", "download", "sumdb")
-	copyFixtureTree(t, filepath.Join(repositoryRoot, checksumCache), filepath.Join(f.root, checksumCache))
+	copyFixtureChecksumState(t, f.root)
+	t.Setenv("HTTP_PROXY", "http://127.0.0.1:1")
+	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:1")
+	t.Setenv("NO_PROXY", "")
 	licenseCache := filepath.Join("out", "cache", "licenses")
 	copyFixtureTree(t, filepath.Join(repositoryRoot, licenseCache), filepath.Join(f.root, licenseCache))
 	moduleFiles := map[string][]byte{}

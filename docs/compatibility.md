@@ -17,7 +17,7 @@
 | 账号模型快照 | 登录和原生刷新结果携带可恢复快照；普通发现更新内存，持久化不保证逐次即时完成 | `internal/workbuddy/lifecycle_snapshot_test.go`、上述完整宿主记录；首次失败不授予静态资格 |
 | 刷新/失效 | Manager 接管保存、安装和一次401恢复；300秒周期、60秒单飞结果；刷新拒绝与access仍有效分别处理，重启重新验证 | `internal/workbuddy/refresh.go`、`credentials.go`，官方 `sdk/cliproxy/auth/conductor_refresh.go`；保存失败可告警后继续内存凭证，存在重启风险 |
 | 工程质量 | 完整quality九阶段通过；5个变更Go文件gopls hint级0诊断；模型样本由测试自有testdata提供，包消费者验证许可生成、原始字节、摘要和缓存错误传播 | `out/logs/publication-cleanup-quality.log`、`publication-cleanup-lsp.log`、`publication-cleanup-package-test.log`；参考目录缺席、缓存已准备时测试完全离线 |
-| 平台与账号 | Windows/Linux amd64 已构建与加载；国际个人账号在本地 CPA v8.0.56 完成真实登录，hy4flash-free 四客户端协议的流式/非流式文本通过；其他三平台及远程CI未运行 | 真实工具、图片、多轮、其他账号/站点与权限仍待对应验收；当前账号记录见下节 |
+| 平台与账号 | Windows/Linux amd64 已构建与加载；国际个人账号在本地 CPA v8.0.56 完成真实登录；hy4flash-free 四协议文本、多轮、工具、图片和reasoning，以及手动/周期刷新和刷新后重启恢复已实测 | 本节下表分列流模式、场景和证据；其他账号/站点、永久失效重登、三个原生平台与远程CI仍待验 |
 
 运行使用 `server.commercial-mode:true`、`observability.logs.request-log:false` 和 debug 关闭，完整输出经 fixture token/state/用户与企业标识扫描。单独关闭 request-log 仍会生成错误请求日志，已保留失败证据 `native-official-windows-source.json`；官方 `internal/api/server.go:185-196` 的 commercial-mode 禁用 request logger，Gin 日志仍启用。生产代理与容器日志同样不得捕获敏感正文。
 
@@ -27,13 +27,35 @@
 
 原失败请求 `error-v1-chat-completions-2026-11-16T133907-7069cc04.log` 在插件解析阶段报 `WorkBuddy returned an invalid chat stream`；紧随的请求因冷却被拒绝。经 CPA `api-call` 重放其上游请求，实际返回 HTTP200 SSE：未完成分片使用 `finish_reason:""`，结束分片还包含 `function_call:{"name":"","arguments":""}`。解析器把空结束原因视为未完成，并接受无内容的旧式函数占位；非空旧式函数调用、错误类型、未知函数字段和缺少完成事件仍拒绝。对应消费者回归为 `TestExecutorResponseAcceptsWorkBuddyPendingAndTerminalPlaceholders` 与 `TestExecutorResponseRejectsIncompleteMalformedAndUnsupportedStreams`。
 
-修复后的 Linux SO 在该实际容器加载后，`wb-ai/hy4flash-free` 的 OpenAI Chat、Responses、Claude Messages 和 Gemini 客户端各完成流式与非流式文本调用，均 HTTP200 且有正文。Chat 非流式具有 usage/stop，流式具有 stop/[DONE]；Responses 非流式状态 completed、error 为 null。重启前后凭证 ID 相同，Chat 验证后状态 active、无错误提示且未冷却。原始账号与正文不纳入公开证据；脱敏记录为 `out/logs/real-account-diagnosis.json`、`real-account-chat-proof.json` 与 `real-account-protocol-proof.json`。这些证据不证明真实工具、图片、多轮、强制刷新或容器重建通过。
+修复后的 Linux SO 在该实际容器加载后，`wb-ai/hy4flash-free` 的 OpenAI Chat、Responses、Claude Messages 和 Gemini 客户端各完成流式与非流式文本调用，均 HTTP200 且有正文。Chat 非流式具有 usage/stop，流式具有 stop/[DONE]；Responses 非流式状态 completed、error 为 null。重启前后凭证 ID 相同，Chat 验证后状态 active、无错误提示且未冷却。原始账号与正文不纳入公开证据；文本记录为 `out/logs/real-account-diagnosis.json`、`real-account-chat-proof.json` 与 `real-account-protocol-proof.json`。能力与刷新补验见下表。
 
 账号标题修复采用用户批准的 CPAMC `v1.28.0` 本地补丁 `docs/patches/cpamc-auth-label.patch`：规范化链保留非空 `label`，标题按 `email → projectId → label → 文件名` 选择，凭证 ID/FileName 不变，不读取可能含 API key 的 `account` 字段。前端37项定向测试、typecheck、build及实际卡片的隔离headless DOM通过。初次构建的Windows版本探测命令产生路径错误，随后按官方Vite配置提供 `VERSION=v1.28.0` 重新构建，exit0且无路径错误；官方 `__dirname` 未来原生loader提示仍可见，未加抑制。最终构建原始输出见 `out/cpamc-auth-label/build.log`。
 
 实际 `/management.html` 已从官方文件 SHA256 `035cdd5340a5b9a76cb43d11e45444be1990ae1ecff413d6a92b7e8f03bc6373` 替换为补丁产物 `5649a5ae0df32cbac73a6bd2ef9538a5ac0596ce9765df27ed4ebaace7118d19`。经真实管理登录的隔离headless浏览器确认：当前账号label为主标题、非文件名、非等宽字体，页面错误0。补丁页面和MIT许可进入现有data持久卷，`MANAGEMENT_STATIC_PATH` 指向该HTML，`management.disable-auto-update-panel:true` 防止后台覆盖；更新CPAMC时需重新核验并合入补丁。
 
 在相同镜像ID上实际重建容器后，凭证ID和label保持，补丁页面仍可访问；最终SO SHA256 `cdd9c7a34c0f82ca6ccdadc72d105500a0f796f9ce1a88ac96bfbe0e40a50b95` 再次完成真实Chat流式/非流式HTTP200。证据为 `out/logs/real-account-frontend-deployment.json` 与 `real-account-final-deployment.json`。该重建证明现有健康凭证恢复，不证明强制刷新、失效重登或禁用状态恢复。
+
+### 真实能力与刷新补验
+
+同一国际个人账号、同一 `wb-ai/hy4flash-free` 免费模型共补验26项，均通过；模型免费标记经当前凭证快照确认。以下每项均走实际CPA客户端入口及真实WorkBuddy上游，工具结果由客户端计算并回传，图片为隔离生成的64×64四色PNG。`out/logs/real-account-capabilities.json` 包含22项，`real-account-stream-tools.json` 包含4项；证据只记录安全断言，不保存账号标识、凭证、完整正文或reasoning内容。
+
+| 场景 | 客户端/流模式 | 项数 | 通过依据 |
+| --- | --- | --- | --- |
+| 多轮上下文 | 四协议，非流式 | 4 | 首轮记录随机code，第二轮正确返回该code |
+| 工具闭环 | 四协议，非流式首轮与续轮 | 4 | echo_probe名称/参数正确，续轮回答使用客户端随机结果 |
+| 流式工具闭环 | 四协议，流式首轮、非流式续轮 | 4 | 从实际delta/结构化事件取得参数，正确回传工具结果并用于回答 |
+| 图片输入 | 四协议，非流式 | 4 | 正确按指定顺序识别四个色块；图片SHA256为5defbf005193f316590586b5a8f327e87ab6e4516c4140729e669bfc171a3151 |
+| high effort reasoning | 四协议，非流式 | 4 | 算式结果2562，协议对应reasoning字段非空 |
+| high effort reasoning | 四协议，流式 | 4 | reasoning事件/片段非空，最终文本包含正确算式结果 |
+| 手动刷新 | CPA Manager单凭证刷新 | 1 | access/refresh及有效期变化，ID/label/site/企业作用域保持，刷新后Chat成功 |
+| 刷新后重启恢复 | 现有持久卷与实际容器 | 1 | 登录代次、ID/label、模型快照保持；启动后宿主再次刷新成功，真实Chat HTTP200 |
+
+`out/logs/real-account-refresh-schedule.json` 记录当前账号的官方 `refreshed workbuddy, …, <nil>` 成功事件，连续五个自动刷新间隔为305、306、304、305、306秒。手动刷新使用 `POST /v0/management/auth-files/refresh`，仅指定当前凭证，未操作其他账号。
+
+目录内容未变时，`internal/workbuddy/models.go:102-106` 保留既有快照及captured_at；因此本次以快照身份、作用域与模型内容有效作为刷新检查。宿主重启后按原生生命周期再次轮换token，验收依据为稳定身份、有效期、模型资格和实际请求，不要求刷新后的token字节在重启前后相同。
+
+当前记录仅覆盖一个国际个人账号及一个模型；国内登录/WeCom、国内Claude原生Messages端点、多账号/企业权限隔离、首次401恢复、永久撤销及真实浏览器重登，仍需对应证据。其他原生平台和远程CI状态不因本次账号验证改变。
+
 
 认证信息只分析，不在本次增加解析或展示：实际凭证没有独立的 `info` 键，相关字段位于顶层及 `model_snapshot`。以下为可选优化候选。
 
@@ -44,7 +66,7 @@
 | `expires_at`、`refresh_expires_at`、`refresh_interval_seconds` | 解释令牌有效期和宿主刷新偏好；不能据到期时间承诺账号、配额或调用持续可用 |
 | `model_snapshot.captured_at`、`model_discovery_failure` | 展示模型权限快照的新鲜度和发现状态；空错误仅代表当次发现未记录错误 |
 | 模型 `free`、`credit_rate` | 免费标记及配置给出的计费倍率；不是余额、剩余次数、货币价格或实时额度 |
-| 模型 `context_length`、`max_output_tokens`、`images`、`efforts`、`default_effort` | 已解析的模型能力声明；当前账号23个模型、1个free标记、21个images声明，仅文本调用已实测，不能把声明当作图片/推理验收 |
+| 模型 `context_length`、`max_output_tokens`、`images`、`efforts`、`default_effort` | 已解析的模型能力声明；当前账号23个模型、1个free标记、21个images声明；hy4flash-free的图片及high effort已实测，不能推广为其他模型均通过 |
 
 
 ## 来源与历史源码定位
