@@ -70,7 +70,7 @@ CI 在 Windows amd64、Linux amd64 / arm64、macOS amd64 / arm64 原生 runner �
 
 发布准备：
 
-1. 更新根 `VERSION`，在 `.github/release-notes/` 编写对应版本的说明，例如 [v0.1.0](../.github/release-notes/v0.1.0.md)，文件名为 `v<VERSION>.md`，首行为 `# v<VERSION>`。
+1. 更新根 `VERSION`，在 `.github/release-notes/` 编写对应版本的说明，文件名为 `v<VERSION>.md`，首行为 `# v<VERSION>`。
 2. 完成代码、文档和验收收尾，运行本地质量检查。
 3. 得到发布指令后，推送提交及与 VERSION 一致的 tag。
 4. tag workflow 先运行五个平台的 lint 和 test；全部成功后才启动五个平台的发布构建和打包；全部构建成功后才校验包及摘要，使用 Release notes 创建 GitHub Release 并上传产物。
