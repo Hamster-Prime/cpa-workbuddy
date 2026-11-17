@@ -302,7 +302,31 @@ func TestCNCheckinGlobalDailyBonusAndQuotaRPC(t *testing.T) {
 	if len(quotaResp.Summary) == 0 || quotaResp.Summary[0].Value != 500 {
 		t.Fatalf("expected 500 remaining credits (400 plan + 100 bonus), got %+v", quotaResp.Summary)
 	}
+	if len(quotaResp.Groups) != 1 || len(quotaResp.Groups[0].Buckets) != 2 {
+		t.Fatalf("expected exactly 2 quota buckets (standard + extra, no total), got %+v", quotaResp.Groups)
+	}
+	if quotaResp.Groups[0].Buckets[0].Window != "标准额度" || quotaResp.Groups[0].Buckets[1].Window != "额外额度" {
+		t.Fatalf("unexpected bucket windows: %+v", quotaResp.Groups[0].Buckets)
+	}
+	if !strings.HasPrefix(quotaResp.Groups[0].Buckets[0].Description, "标准 ") || !strings.HasPrefix(quotaResp.Groups[0].Buckets[1].Description, "额外 ") {
+		t.Fatalf("expected title-first bucket descriptions, got %+v", quotaResp.Groups[0].Buckets)
+	}
 
+	// 3b. Global account with plan_base group only and extra package in summary/detail must show both; without extra must show 1 bucket.
+	intlQuotaReq, _ := json.Marshal(map[string]any{
+		"auth_index":       "workbuddy-ai-b",
+		"auth_id":          intlAuth.ID,
+		"provider":         "workbuddy",
+		"host_callback_id": "cb-quota-intl",
+	})
+	rawIntlQuota, err := s.Handle(context.Background(), "quota.fetch", intlQuotaReq, h.call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	intlQuotaResp := rawIntlQuota.(workbuddy.QuotaFetchResponse)
+	if len(intlQuotaResp.Groups) != 1 || len(intlQuotaResp.Groups[0].Buckets) != 2 {
+		t.Fatalf("expected 2 buckets for Global account with extra package, got %+v", intlQuotaResp.Groups)
+	}
 	// 4. Control panel /panel and /dashboard routes
 	panelRes, err := s.HandleManagement(context.Background(), "cb-panel", h.call, http.MethodGet, "/v0/resource/plugins/cpa-workbuddy/panel", url.Values{}, nil, "0.2.4")
 	if err != nil || panelRes.StatusCode != 200 || !strings.Contains(string(panelRes.Body), "WorkBuddy 控制面板") {

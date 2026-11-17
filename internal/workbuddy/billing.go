@@ -534,7 +534,7 @@ func buildPersonalQuotaSnapshot(rec hostAuthRecord, sum resourceSummaryDTO, pack
 		return !isIntl && code == freeMonPackageCode
 	}
 	isExtraCode := func(code string) bool {
-		if extraPackageCodes[code] {
+		if extraPackageCodes[code] || code == dailyPackageCode {
 			return true
 		}
 		return isIntl && extraAIPackageCodes[code]
@@ -542,15 +542,19 @@ func buildPersonalQuotaSnapshot(rec hostAuthRecord, sum resourceSummaryDTO, pack
 
 	var planTotal, planUsed, extraTotal, extraUsed float64
 	hasGroups := false
+	hasPlanGroup := false
+	hasExtraGroup := false
 	for _, g := range sum.CreditGroups {
 		if g.CycleTotalCapacity <= 0 && g.CycleUsedCapacity <= 0 && g.CycleRemainCapacity <= 0 {
 			continue
 		}
 		hasGroups = true
 		if g.Kind == "plan_base" {
+			hasPlanGroup = true
 			planTotal += float64(g.CycleTotalCapacity)
 			planUsed += float64(g.CycleUsedCapacity)
 		} else {
+			hasExtraGroup = true
 			extraTotal += float64(g.CycleTotalCapacity)
 			extraUsed += float64(g.CycleUsedCapacity)
 		}
@@ -559,18 +563,22 @@ func buildPersonalQuotaSnapshot(rec hostAuthRecord, sum resourceSummaryDTO, pack
 	summedCodes := make(map[string]bool, len(sum.Packages))
 	var prepaidRemain float64
 	for _, p := range sum.Packages {
-		if p.PackageCode != "" {
-			summedCodes[p.PackageCode] = true
-		}
 		if p.CycleTotalCapacity > 0 {
-			if !hasGroups {
-				if isPlanCode(p.PackageCode) {
-					planTotal += float64(p.CycleTotalCapacity)
-					planUsed += float64(p.CycleUsedCapacity)
-				} else {
-					extraTotal += float64(p.CycleTotalCapacity)
-					extraUsed += float64(p.CycleUsedCapacity)
+			isPlan := isPlanCode(p.PackageCode)
+			if isPlan && (!hasGroups || !hasPlanGroup) {
+				planTotal += float64(p.CycleTotalCapacity)
+				planUsed += float64(p.CycleUsedCapacity)
+				if p.PackageCode != "" {
+					summedCodes[p.PackageCode] = true
 				}
+			} else if !isPlan && (!hasGroups || !hasExtraGroup) {
+				extraTotal += float64(p.CycleTotalCapacity)
+				extraUsed += float64(p.CycleUsedCapacity)
+				if p.PackageCode != "" {
+					summedCodes[p.PackageCode] = true
+				}
+			} else if p.PackageCode != "" && hasGroups {
+				summedCodes[p.PackageCode] = true
 			}
 		} else if p.CycleRemainCapacity > 0 {
 			prepaidRemain += float64(p.CycleRemainCapacity)
@@ -725,28 +733,20 @@ func quotaSnapshotToRPC(snap QuotaSnapshot) QuotaFetchResponse {
 	}
 
 	var buckets []QuotaBucket
-	if snap.Total > 0 {
-		buckets = append(buckets, QuotaBucket{
-			Window:            "Total Credits",
-			RemainingFraction: clampFraction(snap.Remaining / snap.Total),
-			ResetTime:         snap.ResetsAt,
-			Description:       fmt.Sprintf("%.2f / %.2f credits remaining", snap.Remaining, snap.Total),
-		})
-	}
 	if snap.PlanTotal > 0 {
 		buckets = append(buckets, QuotaBucket{
-			Window:            "Plan Base",
+			Window:            "标准额度",
 			RemainingFraction: clampFraction(snap.PlanRemain / snap.PlanTotal),
 			ResetTime:         snap.ResetsAt,
-			Description:       fmt.Sprintf("%.2f / %.2f plan credits remaining", snap.PlanRemain, snap.PlanTotal),
+			Description:       fmt.Sprintf("标准 %.2f / %.2f", snap.PlanRemain, snap.PlanTotal),
 		})
 	}
 	if snap.ExtraTotal > 0 {
 		buckets = append(buckets, QuotaBucket{
-			Window:            "Bonus / Check-in",
+			Window:            "额外额度",
 			RemainingFraction: clampFraction(snap.ExtraRemain / snap.ExtraTotal),
 			ResetTime:         snap.ExpiringAt,
-			Description:       fmt.Sprintf("%.2f / %.2f extra credits remaining", snap.ExtraRemain, snap.ExtraTotal),
+			Description:       fmt.Sprintf("额外 %.2f / %.2f", snap.ExtraRemain, snap.ExtraTotal),
 		})
 	}
 	if len(buckets) > 0 {

@@ -2141,33 +2141,43 @@
         meter.className = "meter-container " + (acc.error && !acc.quota ? "meter-error" : acc.site === "workbuddy-ai" ? "meter-intl" : "");
 
         if (acc.quota) {
-          const pct = acc.quota.total > 0 ? Math.max(0, Math.min(100, (acc.quota.remaining / acc.quota.total) * 100)) : 0;
-          const lblRow = document.createElement("div");
-          lblRow.className = "meter-label-row";
-          const titleEl = document.createElement("span");
-          titleEl.textContent = "剩余积分";
-          const valWrap = document.createElement("span");
-          const credStrong = document.createElement("span");
-          credStrong.className = "meter-credits";
-          credStrong.textContent = `${formatCredits(acc.quota.remaining)} / ${formatCredits(acc.quota.total)}`;
-          const pctEl = document.createElement("span");
-          pctEl.className = "meter-pct";
-          pctEl.textContent = `(${pct.toFixed(0)}%)`;
-          valWrap.append(credStrong, pctEl);
-          lblRow.append(titleEl, valWrap);
+          const appendQuotaMeter = (label, remain, total) => {
+            const pct = total > 0 ? Math.max(0, Math.min(100, (remain / total) * 100)) : 0;
+            const lblRow = document.createElement("div");
+            lblRow.className = "meter-label-row";
+            const titleEl = document.createElement("span");
+            titleEl.textContent = label;
+            const valWrap = document.createElement("span");
+            const credStrong = document.createElement("span");
+            credStrong.className = "meter-credits";
+            credStrong.textContent = `${formatCredits(remain)} / ${formatCredits(total)}`;
+            const pctEl = document.createElement("span");
+            pctEl.className = "meter-pct";
+            pctEl.textContent = `(${pct.toFixed(0)}%)`;
+            valWrap.append(credStrong, pctEl);
+            lblRow.append(titleEl, valWrap);
 
-          const track = document.createElement("div");
-          track.className = "meter-track";
-          const fill = document.createElement("div");
-          fill.className = "meter-fill " + (pct <= 10 ? "meter-fill-danger" : pct <= 30 ? "meter-fill-warning" : "meter-fill-healthy");
-          fill.style.width = pct.toFixed(1) + "%";
-          track.appendChild(fill);
+            const track = document.createElement("div");
+            track.className = "meter-track";
+            const fill = document.createElement("div");
+            fill.className = "meter-fill " + (pct <= 10 ? "meter-fill-danger" : pct <= 30 ? "meter-fill-warning" : "meter-fill-healthy");
+            fill.style.width = pct.toFixed(1) + "%";
+            track.appendChild(fill);
+
+            meter.append(lblRow, track);
+          };
+
+          if (acc.quota.plan_total > 0 || acc.quota.extra_total <= 0) {
+            appendQuotaMeter("标准额度", acc.quota.plan_remain, acc.quota.plan_total);
+          }
+          if (acc.quota.extra_total > 0) {
+            appendQuotaMeter("额外额度", acc.quota.extra_remain, acc.quota.extra_total);
+          }
 
           const subRow = document.createElement("div");
           subRow.className = "meter-sub-row";
           const leftMeta = document.createElement("span");
           const parts = [];
-          if (acc.quota.extra_remain > 0) parts.push("奖励 " + formatCredits(acc.quota.extra_remain));
           if (acc.quota.expiring_amount > 0 && acc.quota.expiring_at) {
             parts.push(`近期到期 ${formatCredits(acc.quota.expiring_amount)} (${formatTime(acc.quota.expiring_at)})`);
           } else if (acc.quota.resets_at) {
@@ -2179,7 +2189,7 @@
           rightMeta.textContent = acc.expires_at ? ("Access " + formatTime(acc.expires_at)) : (acc.status_message || "");
           subRow.append(leftMeta, rightMeta);
 
-          meter.append(lblRow, track, subRow);
+          meter.appendChild(subRow);
         } else {
           const emptyRow = document.createElement("div");
           emptyRow.className = "meter-sub-row";
