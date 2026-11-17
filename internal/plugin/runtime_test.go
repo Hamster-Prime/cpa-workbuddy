@@ -2,6 +2,7 @@ package plugin_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	workbuddy "cpa-workbuddy"
@@ -52,7 +53,7 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	if string(response["ok"]) != "true" || result.SchemaVersion != 10 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != workbuddy.Version() {
 		t.Fatalf("unexpected registration: %s", response)
 	}
-	if result.Metadata.Author == "" || result.Metadata.GitHubRepository == "" || len(result.Metadata.ConfigFields) != 4 {
+	if result.Metadata.Author == "" || !strings.HasPrefix(result.Metadata.GitHubRepository, "https://github.com/") || len(result.Metadata.ConfigFields) != 4 {
 		t.Fatalf("metadata must meet CPA validPlugin with 4 ConfigFields: %+v", result.Metadata)
 	}
 	if len(result.Capabilities) != 8 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["quota_provider"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai","openai-response","claude","gemini"]` || string(result.Capabilities["executor_output_formats"]) != `["openai","openai-response","claude","gemini"]` {

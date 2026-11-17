@@ -187,7 +187,7 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 			Metadata: metadata{
 				Name: Name, Version: workbuddy.Version(),
 				Author:           "sheepyu",
-				GitHubRepository: "ygq-future/cpa-workbuddy",
+				GitHubRepository: "https://github.com/ygq-future/cpa-workbuddy",
 				ConfigFields:     protocol.ConfigFields(),
 			},
 			Capabilities: capabilities{
