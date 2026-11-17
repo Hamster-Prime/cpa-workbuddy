@@ -2,7 +2,10 @@ module cpa-workbuddy
 
 go 1.27.1
 
-require github.com/router-for-me/CLIProxyAPI/v8 v8.0.69
+require (
+	github.com/router-for-me/CLIProxyAPI/v8 v8.0.69
+	gopkg.in/yaml.v3 v3.0.1
+)
 
 require (
 	github.com/MoeForge/moego v0.1.0-alpha.1 // indirect
@@ -38,7 +41,6 @@ require (
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/MoeForge/moego v0.1.0-alpha.1 => github.com/router-for-me/moego v0.1.2

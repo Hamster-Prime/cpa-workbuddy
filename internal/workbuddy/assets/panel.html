@@ -1,0 +1,2526 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WorkBuddy 控制面板</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-primary: #f8fafc;
+      --bg-secondary: #f1f5f9;
+      --bg-tertiary: #e2e8f0;
+      --bg-surface: #ffffff;
+      --bg-card: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --bg-hover: #e2e8f0;
+      --bg-overlay: rgba(15, 23, 42, 0.45);
+      --border-color: #e2e8f0;
+      --border-subtle: #f1f5f9;
+      --border-focus: #3b82f6;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --text-inverse: #ffffff;
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-contrast: #ffffff;
+      --accent-blue: #2563eb;
+      --accent-blue-hover: #1d4ed8;
+      --accent-blue-subtle: #eff6ff;
+      --accent-blue-text: #1d4ed8;
+      --accent-green: #10b981;
+      --accent-green-subtle: #ecfdf5;
+      --accent-green-text: #047857;
+      --accent-yellow: #f59e0b;
+      --accent-yellow-subtle: #fffbeb;
+      --accent-yellow-text: #b45309;
+      --accent-red: #ef4444;
+      --accent-red-subtle: #fef2f2;
+      --accent-red-text: #b91c1c;
+      --accent-purple: #7c3aed;
+      --accent-purple-subtle: #faf5ff;
+      --accent-purple-text: #6d28d9;
+      --meter-bg: #e2e8f0;
+      --meter-track-bg: #e2e8f0;
+      --meter-track-border: #cbd5e1;
+      --meter-fill: #10b981;
+      --meter-warn: #f59e0b;
+      --meter-danger: #ef4444;
+      --badge-cn-bg: #eff6ff;
+      --badge-cn-border: #bfdbfe;
+      --badge-cn-text: #1d4ed8;
+      --badge-intl-bg: #faf5ff;
+      --badge-intl-border: #e9d5ff;
+      --badge-intl-text: #6d28d9;
+      --badge-plan-pro-bg: #ede9fe;
+      --badge-plan-pro-border: #c4b5fd;
+      --badge-plan-pro-text: #6d28d9;
+      --badge-plan-free-bg: #f1f5f9;
+      --badge-plan-free-border: #cbd5e1;
+      --badge-plan-free-text: #475569;
+      --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Consolas, Menlo, monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]):not([data-theme="white"]) {
+        --bg-primary: #121214;
+        --bg-secondary: #18181b;
+        --bg-tertiary: #27272a;
+        --bg-surface: #18181b;
+        --bg-card: #1f1f23;
+        --bg-subtle: #27272a;
+        --bg-hover: #3f3f46;
+        --bg-overlay: rgba(0, 0, 0, 0.7);
+        --border-color: #27272a;
+        --border-subtle: #27272a;
+        --border-focus: #a1a1aa;
+        --text-primary: #f4f4f5;
+        --text-secondary: #a1a1aa;
+        --text-muted: #71717a;
+        --text-inverse: #0f172a;
+        --primary-color: #3b82f6;
+        --primary-hover: #60a5fa;
+        --primary-contrast: #ffffff;
+        --accent-blue: #3b82f6;
+        --accent-blue-hover: #60a5fa;
+        --accent-blue-subtle: #1e293b;
+        --accent-blue-text: #60a5fa;
+        --accent-green: #22c55e;
+        --accent-green-subtle: rgba(20, 83, 45, 0.25);
+        --accent-green-text: #4ade80;
+        --accent-yellow: #f59e0b;
+        --accent-yellow-subtle: rgba(120, 53, 15, 0.25);
+        --accent-yellow-text: #fbbf24;
+        --accent-red: #ef4444;
+        --accent-red-subtle: rgba(127, 29, 29, 0.25);
+        --accent-red-text: #f87171;
+        --accent-purple: #a855f7;
+        --accent-purple-subtle: rgba(88, 28, 135, 0.25);
+        --accent-purple-text: #c084fc;
+        --meter-bg: #27272a;
+        --meter-track-bg: #3f3f46;
+        --meter-track-border: #52525b;
+        --meter-fill: #22c55e;
+        --meter-warn: #f59e0b;
+        --meter-danger: #ef4444;
+        --badge-cn-bg: rgba(30, 58, 138, 0.35);
+        --badge-cn-border: rgba(59, 130, 246, 0.45);
+        --badge-cn-text: #93c5fd;
+        --badge-intl-bg: rgba(88, 28, 135, 0.35);
+        --badge-intl-border: rgba(168, 85, 247, 0.45);
+        --badge-intl-text: #d8b4fe;
+        --badge-plan-pro-bg: rgba(109, 40, 217, 0.35);
+        --badge-plan-pro-border: #7c3aed;
+        --badge-plan-pro-text: #ddd6fe;
+        --badge-plan-free-bg: rgba(71, 85, 105, 0.35);
+        --badge-plan-free-border: #475569;
+        --badge-plan-free-text: #94a3b8;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 10px 18px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg-primary: #121214;
+      --bg-secondary: #18181b;
+      --bg-tertiary: #27272a;
+      --bg-surface: #18181b;
+      --bg-card: #1f1f23;
+      --bg-subtle: #27272a;
+      --bg-hover: #3f3f46;
+      --bg-overlay: rgba(0, 0, 0, 0.7);
+      --border-color: #27272a;
+      --border-subtle: #27272a;
+      --border-focus: #a1a1aa;
+      --text-primary: #f4f4f5;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --text-inverse: #0f172a;
+      --primary-color: #3b82f6;
+      --primary-hover: #60a5fa;
+      --primary-contrast: #ffffff;
+      --accent-blue: #3b82f6;
+      --accent-blue-hover: #60a5fa;
+      --accent-blue-subtle: #1e293b;
+      --accent-blue-text: #60a5fa;
+      --accent-green: #22c55e;
+      --accent-green-subtle: rgba(20, 83, 45, 0.25);
+      --accent-green-text: #4ade80;
+      --accent-yellow: #f59e0b;
+      --accent-yellow-subtle: rgba(120, 53, 15, 0.25);
+      --accent-yellow-text: #fbbf24;
+      --accent-red: #ef4444;
+      --accent-red-subtle: rgba(127, 29, 29, 0.25);
+      --accent-red-text: #f87171;
+      --accent-purple: #a855f7;
+      --accent-purple-subtle: rgba(88, 28, 135, 0.25);
+      --accent-purple-text: #c084fc;
+      --meter-bg: #27272a;
+      --meter-track-bg: #3f3f46;
+      --meter-track-border: #52525b;
+      --meter-fill: #22c55e;
+      --meter-warn: #f59e0b;
+      --meter-danger: #ef4444;
+      --badge-cn-bg: rgba(30, 58, 138, 0.35);
+      --badge-cn-border: rgba(59, 130, 246, 0.45);
+      --badge-cn-text: #93c5fd;
+      --badge-intl-bg: rgba(88, 28, 135, 0.35);
+      --badge-intl-border: rgba(168, 85, 247, 0.45);
+      --badge-intl-text: #d8b4fe;
+      --badge-plan-pro-bg: rgba(109, 40, 217, 0.35);
+      --badge-plan-pro-border: #7c3aed;
+      --badge-plan-pro-text: #ddd6fe;
+      --badge-plan-free-bg: rgba(71, 85, 105, 0.35);
+      --badge-plan-free-border: #475569;
+      --badge-plan-free-text: #94a3b8;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 10px 18px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1320px;
+      height: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle, var(--border-color));
+      flex-shrink: 0;
+    }
+
+    .brand-zone {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-primary);
+    }
+
+    .version-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--accent-blue-subtle);
+      color: var(--accent-blue-text);
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 3px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-subtle, var(--border-color));
+      border-radius: 10px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    .tab {
+      flex: 1;
+      min-height: 34px;
+      background: transparent;
+      color: var(--text-secondary);
+      border: 0;
+      border-radius: 7px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .tab:hover { color: var(--text-primary); }
+
+    .tab.active {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    section[id^="panel"] {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      justify-content: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .kpi-title {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .kpi-value {
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      line-height: 1.25;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpi-value-sm {
+      font-size: 15px;
+      font-weight: 750;
+      line-height: 1.4;
+    }
+
+    .kpi-desc {
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .control-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .control-bar button,
+    .control-bar .custom-select-trigger,
+    .control-bar .schedule-status {
+      height: 34px;
+      min-height: 34px;
+      padding: 0 12px;
+      font-size: 12.5px;
+      font-weight: 650;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .control-bar .custom-select-trigger {
+      justify-content: space-between;
+      text-align: left;
+    }
+
+    .control-spacer {
+      flex: 1 1 auto;
+    }
+
+    button {
+      min-height: 34px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      padding: 6px 12px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 650;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--primary-color, var(--accent-blue));
+      color: var(--primary-contrast, var(--text-inverse));
+      border-color: transparent;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover, var(--accent-blue-hover));
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      border-color: var(--border-color);
+      color: var(--text-primary);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--bg-hover, var(--bg-subtle));
+      border-color: var(--border-hover, var(--border-focus));
+    }
+
+    .btn-danger {
+      background: var(--accent-red-subtle);
+      color: var(--accent-red-text);
+      border-color: rgba(239, 68, 68, 0.25);
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.18);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed !important;
+    }
+
+    input[type="password"], input[type="text"] {
+      min-height: 34px;
+      height: 34px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font: inherit;
+      font-size: 13px;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    input[type="password"]:focus, input[type="text"]:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+
+    /* Custom Select (no native <select>) */
+    .custom-select-wrapper {
+      position: relative;
+      user-select: none;
+      min-width: 190px;
+    }
+
+    .custom-select-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+    }
+    .custom-select-trigger:hover {
+      border-color: var(--border-hover, var(--border-focus));
+      background: var(--bg-subtle);
+    }
+    .custom-select-wrapper.open .custom-select-trigger {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+    }
+    .custom-select-arrow {
+      display: inline-flex;
+      align-items: center;
+      color: var(--text-muted);
+      transition: transform 0.2s ease;
+    }
+    .custom-select-wrapper.open .custom-select-arrow {
+      transform: rotate(180deg);
+    }
+    .custom-select-options {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      min-width: 100%;
+      width: max-content;
+      z-index: 60;
+      background: var(--floating-surface, var(--bg-card));
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 4px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .custom-select-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+    .custom-select-option:hover {
+      background: var(--bg-hover, var(--bg-subtle));
+      color: var(--text-primary);
+    }
+    .custom-select-option.selected {
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      font-weight: 700;
+    }
+    .custom-select-check {
+      display: none;
+      color: var(--accent-blue);
+    }
+    .custom-select-option.selected .custom-select-check {
+      display: inline-flex;
+    }
+
+    .schedule-status {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-subtle, var(--border-color));
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+    }
+    .schedule-status:hover { background: var(--bg-hover); }
+    .schedule-status.active { color: var(--accent-green-text); }
+    .schedule-status.paused { color: var(--accent-yellow-text); }
+
+    .inline-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+      background: var(--accent-yellow-subtle);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: var(--accent-yellow-text);
+    }
+
+    /* Credentials Grid & Cards */
+    .credentials-wrapper {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .scroll-container {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-color) transparent;
+      padding-right: 2px;
+      padding-bottom: 12px;
+    }
+    .scroll-container::-webkit-scrollbar { width: 5px; }
+    .scroll-container::-webkit-scrollbar-track { background: transparent; }
+    .scroll-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 999px; }
+
+    .credentials-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      grid-auto-rows: max-content;
+      align-content: start;
+      gap: 12px;
+    }
+
+    .cred-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: var(--shadow-sm);
+      height: fit-content;
+      align-self: start;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .cred-card:hover {
+      border-color: var(--border-hover, var(--border-focus));
+      box-shadow: var(--shadow-md);
+    }
+    .cred-card-disabled {
+      opacity: 0.72;
+      filter: grayscale(0.25);
+    }
+
+    .cred-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .cred-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .cred-email {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .cred-badge-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.3;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-cn {
+      background: var(--badge-cn-bg);
+      border: 1px solid var(--badge-cn-border);
+      color: var(--badge-cn-text);
+    }
+    .badge-intl {
+      background: var(--badge-intl-bg);
+      border: 1px solid var(--badge-intl-border);
+      color: var(--badge-intl-text);
+    }
+    .badge-plan-pro {
+      background: var(--badge-plan-pro-bg);
+      border: 1px solid var(--badge-plan-pro-border);
+      color: var(--badge-plan-pro-text);
+    }
+    .badge-plan-free {
+      background: var(--badge-plan-free-bg);
+      border: 1px solid var(--badge-plan-free-border);
+      color: var(--badge-plan-free-text);
+    }
+    .badge-success {
+      background: var(--accent-green-subtle);
+      color: var(--accent-green-text);
+    }
+    .badge-warning {
+      background: var(--accent-yellow-subtle);
+      color: var(--accent-yellow-text);
+    }
+    .badge-danger {
+      background: var(--accent-red-subtle);
+      color: var(--accent-red-text);
+    }
+    .badge-subtle {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-subtle, var(--border-color));
+      color: var(--text-secondary);
+    }
+
+    .meter-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+      border-left: 3px solid var(--accent-blue);
+      background: var(--bg-subtle);
+      padding: 7px 9px;
+      border-radius: 6px;
+    }
+    .meter-container.meter-intl {
+      border-left-color: var(--accent-purple);
+    }
+    .meter-container.meter-error {
+      border-left-color: var(--accent-red);
+    }
+
+    .meter-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      line-height: 1.35;
+      color: var(--text-primary);
+    }
+
+    .meter-credits {
+      font-family: var(--font-mono);
+      font-weight: 750;
+      font-size: 12.5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .meter-pct {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-left: 4px;
+    }
+
+    .meter-track {
+      height: 6px;
+      min-height: 6px;
+      background: var(--meter-track-bg);
+      border: 1px solid var(--meter-track-border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease;
+    }
+    .meter-fill-healthy { background: var(--meter-fill, var(--accent-green)); }
+    .meter-fill-warning { background: var(--meter-warn, var(--accent-yellow)); }
+    .meter-fill-danger  { background: var(--meter-danger, var(--accent-red)); }
+
+    .meter-sub-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      flex-wrap: wrap;
+    }
+
+    .cred-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 2px;
+      padding-top: 7px;
+      border-top: 1px solid var(--border-subtle, var(--border-color));
+    }
+
+    .cred-reason {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .cred-reason-msg {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .cred-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex: 0 0 auto;
+    }
+
+    .btn-card-action {
+      min-height: 24px;
+      height: 24px;
+      padding: 0 8px;
+      font-size: 11px;
+      border-radius: 6px;
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-muted);
+      font-size: 13.5px;
+      background: var(--bg-card);
+      border: 1px dashed var(--border-color);
+      border-radius: 12px;
+    }
+
+    /* Config Tab (matching antigravity-priority) */
+    .config-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-bottom: 68px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-color) transparent;
+    }
+
+    .config-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .config-card-title {
+      margin: 0 0 4px 0;
+      font-size: 14px;
+      font-weight: 750;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .config-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 24px;
+    }
+
+    .form-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-subtle, var(--border-color));
+    }
+    .form-row.full-width {
+      grid-column: 1 / -1;
+      border-bottom: 0;
+      padding-bottom: 2px;
+    }
+
+    .form-label-box {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .form-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .form-hint {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .form-input-group {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .config-time-input {
+      width: 84px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-weight: 700;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: var(--meter-bg);
+      border-radius: 22px;
+      transition: background-color 0.2s ease;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #ffffff;
+      border-radius: 50%;
+      transition: transform 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background-color: var(--accent-green);
+    }
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(18px);
+    }
+
+    .config-floating-actions {
+      position: absolute;
+      bottom: 16px;
+      right: 20px;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .config-floating-actions button {
+      height: 38px;
+      min-height: 38px;
+      padding: 0 18px;
+      border-radius: 999px;
+      box-shadow: var(--shadow-md);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    /* Modals & Toasts */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: var(--bg-overlay);
+      padding: 20px;
+      z-index: 100;
+    }
+    .modal {
+      width: min(460px, 100%);
+      background: var(--floating-surface, var(--bg-card));
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .modal.modal-wide {
+      width: min(760px, 100%);
+      max-height: 85vh;
+    }
+    .models-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .models-filter-pills {
+      display: inline-flex;
+      gap: 4px;
+      padding: 3px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-subtle, var(--border-color));
+      border-radius: 8px;
+    }
+    .pill-btn {
+      min-height: 26px;
+      height: 26px;
+      padding: 0 10px;
+      font-size: 11.5px;
+      font-weight: 650;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-secondary);
+      border: 0;
+    }
+    .pill-btn:hover { color: var(--text-primary); }
+    .pill-btn.active {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
+    }
+    .models-search {
+      flex: 1 1 180px;
+      max-width: 260px;
+      min-height: 30px !important;
+      height: 30px !important;
+      font-size: 12px !important;
+    }
+    .models-list {
+      flex: 1;
+      min-height: 140px;
+      max-height: 55vh;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background: var(--bg-primary);
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-color) transparent;
+    }
+    .model-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-subtle, var(--border-color));
+      background: var(--bg-card);
+    }
+    .model-row:last-child { border-bottom: 0; }
+    .model-row:hover { background: var(--bg-subtle); }
+    .model-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .model-id-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .model-id {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .model-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .model-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .rate-was {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-decoration: line-through;
+    }
+    .rate-badge {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 750;
+      padding: 2px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+    .rate-free {
+      background: var(--accent-green-subtle);
+      color: var(--accent-green-text);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .rate-paid {
+      background: var(--accent-blue-subtle);
+      color: var(--accent-blue-text);
+      border: 1px solid rgba(37, 99, 235, 0.22);
+    }
+    .rate-unknown {
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+    }
+    .models-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 750;
+      color: var(--text-primary);
+    }
+    .modal-error {
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--accent-red-subtle);
+      color: var(--accent-red-text);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    .toast-root {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 360px;
+      pointer-events: none;
+    }
+    .toast {
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--accent-blue);
+      background: var(--floating-surface, var(--bg-card));
+      color: var(--text-primary);
+      pointer-events: auto;
+      animation: toastIn 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .toast-success { border-left-color: var(--accent-green); }
+    .toast-error { border-left-color: var(--accent-red); }
+    .toast-info { border-left-color: var(--accent-blue); }
+    .toast.toast-exit { animation: toastOut 180ms ease forwards; }
+
+    @keyframes toastIn {
+      from { transform: translateX(24px) scale(0.96); opacity: 0; }
+      to { transform: translateX(0) scale(1); opacity: 1; }
+    }
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-6px); }
+    }
+
+    [hidden] { display: none !important; }
+
+    @media (max-width: 960px) {
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .config-form-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .container { padding: 10px; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .credentials-grid { grid-template-columns: 1fr; }
+      .topbar { gap: 10px; }
+      .topbar-actions { width: 100%; justify-content: flex-end; }
+    }
+  </style>
+</head>
+<body>
+  <div id="toastRoot" class="toast-root" aria-live="polite"></div>
+
+  <div class="container">
+    <header class="topbar">
+      <div class="brand-zone">
+        <h1>
+          <span>WorkBuddy 控制面板</span>
+          <span id="pluginVersion" class="version-badge">v--</span>
+        </h1>
+      </div>
+      <div class="topbar-actions">
+        <button type="button" class="btn-secondary" onclick="openKeyModal()">
+          <span>🔑 密钥</span>
+        </button>
+        <button type="button" id="btnAccountMask" class="btn-secondary" onclick="toggleAccountMasking()" aria-pressed="true">
+          <span>🙈 脱敏显示</span>
+        </button>
+        <button type="button" id="btnThemeToggle" class="btn-secondary" onclick="toggleTheme()" title="切换明暗主题">
+          <span id="themeLabel">🌓 主题</span>
+        </button>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="控制台导航">
+      <button type="button" class="tab active" data-tab="overview" onclick="switchTab('overview')">概览与凭证</button>
+      <button type="button" class="tab" data-tab="config" onclick="switchTab('config')">⚙️ 模型与调度配置</button>
+    </nav>
+
+    <section id="panelOverview">
+      <div class="summary-grid">
+        <div class="kpi-card">
+          <p class="kpi-title">总凭证数</p>
+          <div id="valTotalCreds" class="kpi-value">--</div>
+          <div id="valTotalDesc" class="kpi-desc">等待加载</div>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-title">剩余总积分</p>
+          <div id="valTotalCredits" class="kpi-value">--</div>
+          <div id="valCreditsDesc" class="kpi-desc">总额度 --</div>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-title">今日签到 / 点亮</p>
+          <div id="valDailyDone" class="kpi-value">--</div>
+          <div id="valDailyDesc" class="kpi-desc">待检测</div>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-title">每日自动调度 (±3h)</p>
+          <div id="valNextRun" class="kpi-value kpi-value-sm">--</div>
+          <div id="valLastRun" class="kpi-desc">尚无执行记录</div>
+        </div>
+      </div>
+
+      <div id="prefixWarningBanner" class="inline-banner" hidden>
+        <span>⚠️ 当前国内 wb/ 与国际 wb-ai/ 模型前缀均已关闭，同名模型将在两端账号间共同调度。</span>
+      </div>
+
+      <div class="control-bar">
+        <div id="siteSelectWrapper" class="custom-select-wrapper">
+          <button type="button" class="custom-select-trigger" onclick="toggleSiteMenu(event)" aria-haspopup="listbox" aria-expanded="false">
+            <span id="siteSelectLabel">全部站点</span>
+            <span class="custom-select-arrow">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"></path></svg>
+            </span>
+          </button>
+          <div id="siteSelectMenu" class="custom-select-options" hidden role="listbox">
+            <div class="custom-select-option selected" data-value="all" onclick="selectSiteFilter('all', event)">
+              <span>全部站点</span>
+              <span class="custom-select-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+            </div>
+            <div class="custom-select-option" data-value="workbuddy" onclick="selectSiteFilter('workbuddy', event)">
+              <span>国内 WorkBuddy (CN)</span>
+              <span class="custom-select-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+            </div>
+            <div class="custom-select-option" data-value="workbuddy-ai" onclick="selectSiteFilter('workbuddy-ai', event)">
+              <span>国际 WorkBuddy AI (Global)</span>
+              <span class="custom-select-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" id="btnRefreshAll" class="btn-secondary" onclick="refreshAllAccounts()">
+          <span>🔄 刷新配额</span>
+        </button>
+        <button type="button" id="btnCheckinAll" class="btn-primary" onclick="runBatch('/checkin', 'btnCheckinAll', '国内一键签到')">
+          <span>✨ 国内一键签到</span>
+        </button>
+        <button type="button" id="btnBonusAll" class="btn-secondary" onclick="runBatch('/daily-bonus', 'btnBonusAll', '国际一键点亮')">
+          <span>⚡ 国际一键点亮</span>
+        </button>
+
+        <div class="control-spacer"></div>
+
+        <span id="scheduleStatusBadge" class="schedule-status active" onclick="switchTab('config')" title="点击进入配置中心">
+          <span id="scheduleStatusText">🟢 自动调度运行中</span>
+        </span>
+      </div>
+
+      <div class="credentials-wrapper">
+        <div id="credentialsContainer" class="credentials-grid scroll-container">
+          <div class="empty-state">加载中...</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="panelConfig" hidden>
+      <div class="config-scroll">
+        <div class="config-card">
+          <h3 class="config-card-title">模型前缀路由 (Option A 向后兼容)</h3>
+          <div class="config-form-grid">
+            <div class="form-row">
+              <div class="form-label-box">
+                <span class="form-title">国内模型前缀 (wb/)</span>
+                <span class="form-hint">关闭后国内列表返回无前缀模型名，请求仍兼容 wb/ 路由</span>
+              </div>
+              <div class="form-input-group">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="cfgCnPrefix" checked onchange="onConfigFormInput()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-label-box">
+                <span class="form-title">国际模型前缀 (wb-ai/)</span>
+                <span class="form-hint">关闭后国际列表返回无前缀模型名，请求仍兼容 wb-ai/ 路由</span>
+              </div>
+              <div class="form-input-group">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="cfgIntlPrefix" checked onchange="onConfigFormInput()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div id="configPrefixWarning" class="inline-banner" style="margin:4px 0 0;" hidden>
+            <span>⚠️ 两侧前缀同时关闭时，同名模型将在国内与国际账号之间自动混用调度。</span>
+          </div>
+        </div>
+
+        <div class="config-card">
+          <h3 class="config-card-title">每日自动签到与点亮调度</h3>
+          <div class="config-form-grid">
+            <div class="form-row">
+              <div class="form-label-box">
+                <span class="form-title">开启每日自动执行</span>
+                <span class="form-hint">国内自动签到 +100 积分，国际自动上报热力图点亮 (+30/50)</span>
+              </div>
+              <div class="form-input-group">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="cfgAutoEnabled" checked onchange="onConfigFormInput()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-label-box">
+                <span class="form-title">每日基准时间 (24h ±3h 浮动)</span>
+                <span class="form-hint" id="windowPreview">浮动触发窗口：06:00 ~ 12:00</span>
+              </div>
+              <div class="form-input-group">
+                <input type="text" id="cfgAnchorTime" class="config-time-input" value="09:00" maxlength="5" placeholder="09:00" oninput="onConfigFormInput()">
+              </div>
+            </div>
+            <div class="form-row full-width">
+              <div class="form-label-box">
+                <span class="form-title">调度器状态</span>
+                <span class="form-hint" id="cfgSchedulerDetail">下次运行：-- · 上次运行：--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="config-floating-actions">
+        <button type="button" id="btnResetConfig" class="btn-secondary" onclick="resetConfigForm()" disabled>重置更改</button>
+        <button type="button" id="btnSaveConfig" class="btn-primary" onclick="saveConfig()" disabled>保存并生效</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Management Key Modal -->
+  <div id="keyModal" class="modal-backdrop" hidden onclick="if (event.target === this) closeKeyModal()">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="keyModalTitle">
+      <div class="modal-header">
+        <h2 id="keyModalTitle" class="modal-title">CPA 管理密钥认证</h2>
+        <button type="button" class="btn-secondary" onclick="closeKeyModal()" style="min-height:28px; padding:2px 8px;">✕</button>
+      </div>
+      <p style="font-size:12.5px; color:var(--text-secondary); margin:0; line-height:1.5;">
+        未检测到可用的 CPA 登录态或密钥已失效，请输入 CLIProxyAPI 的 Management Key（优先自动从父页面及本地缓存读取）。
+      </p>
+      <input type="password" id="manualKeyInput" placeholder="Management Key (Bearer)" autocomplete="current-password">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <span style="font-size:12px; color:var(--text-secondary);">在本浏览器记住密钥</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="rememberKeyToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div id="keyModalError" class="modal-error" hidden></div>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+        <button type="button" class="btn-secondary" onclick="closeKeyModal()">取消</button>
+        <button type="button" id="btnSaveKey" class="btn-primary" onclick="submitManualKey()">保存并验证</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Account Models Modal -->
+  <div id="modelsModal" class="modal-backdrop" hidden onclick="if (event.target === this) closeModelsModal()">
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="modelsModalTitle">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px; min-width:0; flex-wrap:wrap;">
+          <h2 id="modelsModalTitle" class="modal-title" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">账号模型列表</h2>
+          <span id="modelsSiteBadge" class="badge badge-subtle"></span>
+          <span id="modelsPrefixBadge" class="badge badge-subtle"></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+          <button type="button" id="btnRefreshModels" class="btn-secondary" onclick="refreshCurrentAccountModels()" style="min-height:28px; padding:2px 10px; font-size:12px;">🔄 刷新</button>
+          <button type="button" class="btn-secondary" onclick="closeModelsModal()" style="min-height:28px; padding:2px 8px;">✕</button>
+        </div>
+      </div>
+      <div class="models-toolbar">
+        <div class="models-filter-pills" role="group" aria-label="模型筛选">
+          <button type="button" class="pill-btn active" data-model-filter="all" onclick="setModelsFilter('all')">全部 <span id="cntModelsAll">0</span></button>
+          <button type="button" class="pill-btn" data-model-filter="free" onclick="setModelsFilter('free')">FREE <span id="cntModelsFree">0</span></button>
+          <button type="button" class="pill-btn" data-model-filter="paid" onclick="setModelsFilter('paid')">付费倍率 <span id="cntModelsPaid">0</span></button>
+        </div>
+        <input type="text" id="modelsSearchInput" class="models-search" placeholder="搜索模型 ID 或名称..." oninput="renderModelsList()">
+      </div>
+      <div id="modelsListBody" class="models-list">
+        <div class="empty-state" style="border:0; background:transparent;">加载中...</div>
+      </div>
+      <div class="models-footer">
+        <span id="modelsSourceInfo">--</span>
+        <span>点击模型 ID 可复制</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MGMT_BASE = "/v0/management/plugins/cpa-workbuddy";
+    const LOCAL_KEY_STORAGE = "cpa_workbuddy_mgmt_key";
+    const SESSION_KEY_STORAGE = "cpa_workbuddy_mgmt_key_session";
+    const MASK_STORAGE_KEY = "cpa_workbuddy_account_masking";
+    const THEME_STORAGE_KEY = "cpa_workbuddy_theme";
+
+    const CPA_VAR_NAMES = [
+      "--bg-primary", "--bg-secondary", "--bg-tertiary", "--bg-quinary", "--bg-hover",
+      "--text-primary", "--text-secondary", "--text-tertiary", "--text-muted",
+      "--border-color", "--border-primary", "--border-secondary", "--border-hover",
+      "--primary-color", "--primary-hover", "--primary-active", "--primary-contrast",
+      "--success-color", "--warning-color", "--error-color", "--danger-color",
+      "--amber-color", "--quota-medium-color", "--floating-surface", "--floating-shadow"
+    ];
+
+    let siteFilter = "all";
+    let dashboardData = null;
+    let accountMaskingEnabled = true;
+    try {
+      if (localStorage.getItem(MASK_STORAGE_KEY) === "0") accountMaskingEnabled = false;
+    } catch (_) {}
+
+    let currentModelsData = null;
+    let modelsFilter = "all";
+    const busyKeys = new Set();
+
+    function el(id) { return document.getElementById(id); }
+
+    function showToast(msg, type) {
+      const root = el("toastRoot");
+      if (!root || !msg) return;
+      const toast = document.createElement("div");
+      toast.className = "toast " + (type === "error" ? "toast-error" : type === "info" ? "toast-info" : "toast-success");
+      toast.textContent = msg;
+      root.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add("toast-exit");
+        setTimeout(() => toast.remove(), 180);
+      }, 2800);
+    }
+
+    // ---- Theme extraction & CPA parent sync ----
+    function clearInjectedCPAVars() {
+      const root = document.documentElement;
+      for (const name of CPA_VAR_NAMES) root.style.removeProperty(name);
+      [
+        "--bg-surface", "--bg-card", "--bg-subtle", "--meter-bg", "--meter-track-bg",
+        "--meter-track-border", "--meter-fill", "--meter-warn", "--meter-danger",
+        "--accent-green", "--accent-yellow", "--accent-red", "--shadow-md", "--shadow-lg"
+      ].forEach(n => root.style.removeProperty(n));
+    }
+
+    function syncThemeFromParent() {
+      try {
+        if (window.parent && window.parent !== window && window.parent.document && window.parent.document.documentElement) {
+          const pDoc = window.parent.document.documentElement;
+          const pBody = window.parent.document.body;
+          const pTheme = pDoc.getAttribute("data-theme") || (pBody && pBody.getAttribute("data-theme"));
+          const isDark = (pDoc.classList && pDoc.classList.contains("dark")) ||
+                         (pBody && pBody.classList && pBody.classList.contains("dark")) ||
+                         pTheme === "dark";
+          const resolvedTheme = isDark ? "dark" : (pTheme === "white" ? "white" : "light");
+          document.documentElement.setAttribute("data-theme", resolvedTheme);
+
+          clearInjectedCPAVars();
+          const pStyle = window.parent.getComputedStyle(pDoc);
+          const rootStyle = document.documentElement.style;
+          for (const name of CPA_VAR_NAMES) {
+            const val = pStyle.getPropertyValue(name);
+            if (val && val.trim()) rootStyle.setProperty(name, val.trim());
+          }
+          const sec = (pStyle.getPropertyValue("--bg-secondary") || pStyle.getPropertyValue("--bg-primary") || "").trim();
+          const tert = (pStyle.getPropertyValue("--bg-tertiary") || "").trim();
+          const border = (pStyle.getPropertyValue("--border-color") || pStyle.getPropertyValue("--border-primary") || "").trim();
+          const okColor = (pStyle.getPropertyValue("--success-color") || "").trim();
+          const warnColor = (pStyle.getPropertyValue("--quota-medium-color") || pStyle.getPropertyValue("--amber-color") || "").trim();
+          const errColor = (pStyle.getPropertyValue("--error-color") || pStyle.getPropertyValue("--danger-color") || "").trim();
+
+          if (sec) {
+            rootStyle.setProperty("--bg-surface", sec);
+            rootStyle.setProperty("--bg-card", sec);
+          }
+          if (tert) {
+            rootStyle.setProperty("--bg-subtle", tert);
+            rootStyle.setProperty("--meter-bg", tert);
+            rootStyle.setProperty("--meter-track-bg", tert);
+          }
+          if (border) rootStyle.setProperty("--meter-track-border", border);
+          if (okColor) {
+            rootStyle.setProperty("--accent-green", okColor);
+            rootStyle.setProperty("--meter-fill", okColor);
+          }
+          if (warnColor) {
+            rootStyle.setProperty("--accent-yellow", warnColor);
+            rootStyle.setProperty("--meter-warn", warnColor);
+          }
+          if (errColor) {
+            rootStyle.setProperty("--accent-red", errColor);
+            rootStyle.setProperty("--meter-danger", errColor);
+          }
+          updateThemeButtonLabel();
+          return;
+        }
+      } catch (_) {}
+
+      try {
+        const saved = localStorage.getItem(THEME_STORAGE_KEY);
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.setAttribute("data-theme", saved);
+          updateThemeButtonLabel();
+          return;
+        }
+      } catch (_) {}
+
+      if (!document.documentElement.getAttribute("data-theme")) {
+        const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
+      }
+      updateThemeButtonLabel();
+    }
+
+    function updateThemeButtonLabel() {
+      const lbl = el("themeLabel");
+      if (!lbl) return;
+      const cur = document.documentElement.getAttribute("data-theme");
+      lbl.textContent = cur === "dark" ? "🌙 暗色" : "☀️ 浅色";
+    }
+
+    function toggleTheme() {
+      clearInjectedCPAVars();
+      const cur = document.documentElement.getAttribute("data-theme");
+      const next = cur === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem(THEME_STORAGE_KEY, next); } catch (_) {}
+      updateThemeButtonLabel();
+    }
+
+    syncThemeFromParent();
+    try {
+      if (window.parent && window.parent !== window && window.parent.document) {
+        const observer = new MutationObserver(() => syncThemeFromParent());
+        observer.observe(window.parent.document.documentElement, {
+          attributes: true,
+          attributeFilter: ["data-theme", "class", "style"]
+        });
+        if (window.parent.document.body) {
+          observer.observe(window.parent.document.body, {
+            attributes: true,
+            attributeFilter: ["data-theme", "class", "style"]
+          });
+        }
+      }
+    } catch (_) {}
+
+    // ---- Automatic Management Key extraction ----
+    function decodeCPASecureAuth(raw, host, ua) {
+      if (!raw || typeof raw !== "string") return "";
+      let decoded = raw;
+      if (raw.startsWith("enc::v2::") || raw.startsWith("enc::v1::")) {
+        try {
+          const isV1 = raw.startsWith("enc::v1::");
+          const b64 = raw.slice(9);
+          const bin = atob(b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          const seed = isV1
+            ? `cli-proxy-api-webui::secure-storage|${host}|${ua}`
+            : (host ? `cli-proxy-api-webui::secure-storage|${host}` : "cli-proxy-api-webui::secure-storage");
+          const keyBytes = new TextEncoder().encode(seed);
+          const out = new Uint8Array(bytes.length);
+          for (let i = 0; i < bytes.length; i++) out[i] = bytes[i] ^ keyBytes[i % keyBytes.length];
+          decoded = new TextDecoder().decode(out);
+        } catch (_) {
+          return "";
+        }
+      }
+      try {
+        const parsed = JSON.parse(decoded);
+        const mk = (parsed && parsed.state && parsed.state.managementKey) || (parsed && parsed.managementKey) || "";
+        return typeof mk === "string" ? mk.trim() : "";
+      } catch (_) {
+        return "";
+      }
+    }
+
+    function readKeyFromWindow(win) {
+      if (!win) return "";
+      try {
+        const params = new URLSearchParams(win.location.search);
+        const qKey = params.get("key") || params.get("management_key") || params.get("management-key");
+        if (qKey && qKey.trim()) return qKey.trim();
+      } catch (_) {}
+
+      const plainKeys = [
+        SESSION_KEY_STORAGE, LOCAL_KEY_STORAGE,
+        "management_key", "management-key", "managementKey",
+        "cpa_management_key", "admin_key", "key"
+      ];
+      for (const k of plainKeys) {
+        try {
+          const sv = win.sessionStorage && win.sessionStorage.getItem(k);
+          if (sv && sv.trim()) return sv.trim();
+          const lv = win.localStorage && win.localStorage.getItem(k);
+          if (lv && lv.trim()) return lv.trim();
+        } catch (_) {}
+      }
+
+      try {
+        const rawAuth = win.localStorage && win.localStorage.getItem("cli-proxy-auth");
+        if (rawAuth) {
+          const host = (win.location && win.location.host) || window.location.host || "";
+          const ua = (win.navigator && win.navigator.userAgent) || navigator.userAgent || "";
+          const mk = decodeCPASecureAuth(rawAuth, host, ua);
+          if (mk) return mk;
+        }
+      } catch (_) {}
+
+      return "";
+    }
+
+    function getManagementKey() {
+      const own = readKeyFromWindow(window);
+      if (own) return own;
+      try {
+        if (window.parent && window.parent !== window) {
+          const parentKey = readKeyFromWindow(window.parent);
+          if (parentKey) return parentKey;
+        }
+      } catch (_) {}
+      return "";
+    }
+
+    function saveManualKey(key, persist) {
+      const clean = String(key || "").trim();
+      try {
+        if (clean) {
+          sessionStorage.setItem(SESSION_KEY_STORAGE, clean);
+          if (persist) localStorage.setItem(LOCAL_KEY_STORAGE, clean);
+          else localStorage.removeItem(LOCAL_KEY_STORAGE);
+        } else {
+          sessionStorage.removeItem(SESSION_KEY_STORAGE);
+          localStorage.removeItem(LOCAL_KEY_STORAGE);
+        }
+      } catch (_) {}
+    }
+
+    function clearSavedManualKey() {
+      try {
+        sessionStorage.removeItem(SESSION_KEY_STORAGE);
+        localStorage.removeItem(LOCAL_KEY_STORAGE);
+      } catch (_) {}
+    }
+
+    function openKeyModal(errMsg) {
+      const input = el("manualKeyInput");
+      if (input) input.value = getManagementKey();
+      const errNode = el("keyModalError");
+      if (errNode) {
+        if (errMsg) {
+          errNode.textContent = errMsg;
+          errNode.hidden = false;
+        } else {
+          errNode.textContent = "";
+          errNode.hidden = true;
+        }
+      }
+      el("keyModal").hidden = false;
+      if (input) setTimeout(() => input.focus(), 20);
+    }
+
+    function closeKeyModal() {
+      el("keyModal").hidden = true;
+    }
+
+    async function submitManualKey() {
+      const input = el("manualKeyInput");
+      const key = input ? input.value.trim() : "";
+      const errNode = el("keyModalError");
+      if (!key) {
+        errNode.textContent = "请输入 Management Key";
+        errNode.hidden = false;
+        return;
+      }
+      const btn = el("btnSaveKey");
+      btn.disabled = true;
+      errNode.hidden = true;
+      try {
+        saveManualKey(key, el("rememberKeyToggle").checked);
+        const data = await loadDashboard(false);
+        closeKeyModal();
+        showToast("管理密钥验证成功", "success");
+        if (data && data.accounts && data.accounts.some(a => !a.quota && !a.disabled)) {
+          loadDashboard(true).catch(() => {});
+        }
+      } catch (err) {
+        clearSavedManualKey();
+        errNode.textContent = "验证失败：" + err.message;
+        errNode.hidden = false;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    el("manualKeyInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") submitManualKey();
+    });
+
+    // ---- Account masking (matching antigravity-priority) ----
+    function maskPart(value) {
+      const chars = Array.from(String(value || ""));
+      const len = chars.length;
+      if (len === 0) return "";
+      if (len <= 2) return chars[0] + "***";
+      if (len <= 5) return chars[0] + "***" + chars[len - 1];
+      if (len <= 8) return chars.slice(0, 2).join("") + "***" + chars.slice(-2).join("");
+      if (len <= 11) return chars.slice(0, 3).join("") + "***" + chars.slice(-3).join("");
+      return chars.slice(0, 4).join("") + "***" + chars.slice(-4).join("");
+    }
+
+    function formatAccountName(value) {
+      const s = String(value == null ? "" : value).trim();
+      if (!s) return "--";
+      if (!accountMaskingEnabled) return s;
+      const at = s.lastIndexOf("@");
+      if (at > 0 && at < s.length - 1) return maskPart(s.slice(0, at)) + s.slice(at);
+      return maskPart(s);
+    }
+
+    function updateMaskButton() {
+      const btn = el("btnAccountMask");
+      if (!btn) return;
+      btn.setAttribute("aria-pressed", accountMaskingEnabled ? "true" : "false");
+      btn.innerHTML = accountMaskingEnabled ? "<span>🙈 脱敏显示</span>" : "<span>👁 明文显示</span>";
+    }
+
+    function toggleAccountMasking() {
+      accountMaskingEnabled = !accountMaskingEnabled;
+      try { localStorage.setItem(MASK_STORAGE_KEY, accountMaskingEnabled ? "1" : "0"); } catch (_) {}
+      updateMaskButton();
+      renderDashboard();
+    }
+
+    // ---- API Fetch ----
+    async function apiFetch(url, opts) {
+      const key = getManagementKey();
+      const headers = Object.assign({ "Accept": "application/json" }, (opts && opts.headers) || {});
+      if (key) {
+        headers["Authorization"] = "Bearer " + key;
+        headers["X-Management-Key"] = key;
+      }
+      const resp = await fetch(url, Object.assign({}, opts, { headers }));
+      const text = await resp.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch (_) {}
+      if (resp.status === 401) {
+        clearSavedManualKey();
+        const msg = (data && (data.message || data.error)) || "需要 CPA 管理密钥认证 (401)";
+        openKeyModal(msg);
+        const err = new Error(msg);
+        err.status = 401;
+        throw err;
+      }
+      if (!resp.ok) {
+        const msg = (data && (data.message || data.error)) || ("HTTP " + resp.status);
+        const err = new Error(msg);
+        err.status = resp.status;
+        throw err;
+      }
+      return data || {};
+    }
+
+    // ---- Tabs & Custom Select ----
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tabId));
+      el("panelOverview").hidden = tabId !== "overview";
+      el("panelConfig").hidden = tabId !== "config";
+    }
+
+    function toggleSiteMenu(event) {
+      if (event) event.stopPropagation();
+      const wrap = el("siteSelectWrapper");
+      const menu = el("siteSelectMenu");
+      const open = menu.hidden;
+      menu.hidden = !open;
+      wrap.classList.toggle("open", open);
+    }
+
+    function selectSiteFilter(value, event) {
+      if (event) event.stopPropagation();
+      siteFilter = value;
+      const labels = {
+        "all": "全部站点",
+        "workbuddy": "国内 WorkBuddy (CN)",
+        "workbuddy-ai": "国际 WorkBuddy AI (Global)"
+      };
+      el("siteSelectLabel").textContent = labels[value] || "全部站点";
+      el("siteSelectMenu").querySelectorAll(".custom-select-option").forEach(opt => {
+        opt.classList.toggle("selected", opt.getAttribute("data-value") === value);
+      });
+      el("siteSelectMenu").hidden = true;
+      el("siteSelectWrapper").classList.remove("open");
+      renderDashboard();
+    }
+
+    document.addEventListener("click", () => {
+      const menu = el("siteSelectMenu");
+      const wrap = el("siteSelectWrapper");
+      if (menu && wrap) {
+        menu.hidden = true;
+        wrap.classList.remove("open");
+      }
+    });
+
+    // ---- Formatting & Badges ----
+    function formatCredits(v) {
+      if (v == null || Number.isNaN(Number(v))) return "--";
+      const n = Number(v);
+      return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    }
+
+    function formatTime(iso) {
+      if (!iso) return "--";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toLocaleString("zh-CN", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    }
+
+    function makeBadge(text, cls) {
+      const span = document.createElement("span");
+      span.className = "badge " + cls;
+      span.textContent = text;
+      return span;
+    }
+
+    function renderDailyBadge(acc) {
+      const d = acc.daily_status;
+      if (!d) return makeBadge("未检测", "badge-subtle");
+      switch (d.outcome) {
+        case "claimed": return makeBadge("已签到 +" + formatCredits(d.credit || 100), "badge-success");
+        case "done": return makeBadge("今日已签", "badge-success");
+        case "lit": return makeBadge("已点亮 (次日发放)", "badge-success");
+        case "already_lit": return makeBadge("今日已点亮", "badge-success");
+        case "pending": return makeBadge(acc.site === "workbuddy" ? "待签到" : "待点亮", "badge-warning");
+        case "inactive": return makeBadge("活动未开启", "badge-subtle");
+        case "ineligible": return makeBadge("不可用", "badge-warning");
+        case "failed": return makeBadge("失败", "badge-danger");
+        default: return makeBadge(d.outcome || "--", "badge-subtle");
+      }
+    }
+
+    // ---- Config form state ----
+    let savedConfigSnapshot = null;
+
+    function updateWindowPreview(hhmm) {
+      const preview = el("windowPreview");
+      const m = /^(\d{1,2}):(\d{2})$/.exec((hhmm || "").trim());
+      if (!m) {
+        preview.textContent = "请输入有效 24 小时制 HH:MM（如 09:00）";
+        return false;
+      }
+      const h = Number(m[1]), min = Number(m[2]);
+      if (h < 0 || h > 23 || min < 0 || min > 59) {
+        preview.textContent = "时间范围须在 00:00 ~ 23:59";
+        return false;
+      }
+      const pad = x => String(x).padStart(2, "0");
+      const startH = (h + 24 - 3) % 24;
+      const endH = (h + 3) % 24;
+      preview.textContent = `浮动触发窗口：${pad(startH)}:${pad(min)} ~ ${pad(endH)}:${pad(min)}`;
+      return true;
+    }
+
+    function readConfigFormState() {
+      return {
+        cn_model_prefix: el("cfgCnPrefix").checked,
+        intl_model_prefix: el("cfgIntlPrefix").checked,
+        auto_checkin_enabled: el("cfgAutoEnabled").checked,
+        auto_checkin_time: el("cfgAnchorTime").value.trim()
+      };
+    }
+
+    function onConfigFormInput() {
+      const cur = readConfigFormState();
+      el("configPrefixWarning").hidden = cur.cn_model_prefix || cur.intl_model_prefix;
+      const validTime = updateWindowPreview(cur.auto_checkin_time);
+      const dirty = !savedConfigSnapshot ||
+        cur.cn_model_prefix !== savedConfigSnapshot.cn_model_prefix ||
+        cur.intl_model_prefix !== savedConfigSnapshot.intl_model_prefix ||
+        cur.auto_checkin_enabled !== savedConfigSnapshot.auto_checkin_enabled ||
+        cur.auto_checkin_time !== savedConfigSnapshot.auto_checkin_time;
+      el("btnResetConfig").disabled = !dirty;
+      el("btnSaveConfig").disabled = !dirty || !validTime;
+    }
+
+    function applyConfigToForm(cfg, scheduler) {
+      if (!cfg) return;
+      savedConfigSnapshot = {
+        cn_model_prefix: !!cfg.cn_model_prefix,
+        intl_model_prefix: !!cfg.intl_model_prefix,
+        auto_checkin_enabled: !!cfg.auto_checkin_enabled,
+        auto_checkin_time: cfg.auto_checkin_time || "09:00"
+      };
+      el("cfgCnPrefix").checked = savedConfigSnapshot.cn_model_prefix;
+      el("cfgIntlPrefix").checked = savedConfigSnapshot.intl_model_prefix;
+      el("cfgAutoEnabled").checked = savedConfigSnapshot.auto_checkin_enabled;
+      el("cfgAnchorTime").value = savedConfigSnapshot.auto_checkin_time;
+      el("prefixWarningBanner").hidden = savedConfigSnapshot.cn_model_prefix || savedConfigSnapshot.intl_model_prefix;
+      onConfigFormInput();
+
+      const badge = el("scheduleStatusBadge");
+      const badgeTxt = el("scheduleStatusText");
+      if (scheduler) {
+        const nextText = scheduler.enabled ? (scheduler.next_run_at ? formatTime(scheduler.next_run_at) : "计算中") : "已关闭";
+        const lastText = scheduler.last_run_at ? `${formatTime(scheduler.last_run_at)} · ${scheduler.last_run_summary || ""}` : "尚无执行记录";
+        el("valNextRun").textContent = nextText;
+        el("valLastRun").textContent = lastText;
+        el("cfgSchedulerDetail").textContent = `下次运行：${nextText} · 上次运行：${lastText}`;
+        badge.className = "schedule-status " + (scheduler.enabled ? "active" : "paused");
+        badgeTxt.textContent = scheduler.enabled ? `🟢 自动调度 ${savedConfigSnapshot.auto_checkin_time}` : "🟡 自动调度已暂停";
+      }
+    }
+
+    function resetConfigForm() {
+      if (savedConfigSnapshot) applyConfigToForm(savedConfigSnapshot, dashboardData && dashboardData.scheduler);
+    }
+
+    async function saveConfig() {
+      const payload = readConfigFormState();
+      const btn = el("btnSaveConfig");
+      btn.disabled = true;
+      try {
+        try {
+          await apiFetch(MGMT_BASE + "/config", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        } catch (patchErr) {
+          if (patchErr.status !== 404 && patchErr.status !== 405) throw patchErr;
+        }
+        await apiFetch(MGMT_BASE + "/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        await loadDashboard(false);
+        showToast("配置已保存并同步生效", "success");
+      } catch (err) {
+        if (err.status !== 401) showToast("保存失败：" + err.message, "error");
+        onConfigFormInput();
+      }
+    }
+
+    // ---- Render Dashboard ----
+    function renderDashboard() {
+      if (!dashboardData) return;
+      el("pluginVersion").textContent = "v" + (dashboardData.version || "--");
+      applyConfigToForm(dashboardData.config, dashboardData.scheduler);
+
+      const all = dashboardData.accounts || [];
+      let cnCount = 0, intlCount = 0, activeCount = 0, remSum = 0, totSum = 0, expSum = 0;
+      let dailyDone = 0, cnDone = 0, intlDone = 0, cnPending = 0, intlPending = 0;
+
+      for (const a of all) {
+        const completed = isDailyCompleted(a);
+        if (a.site === "workbuddy") {
+          cnCount++;
+          if (!a.disabled && !completed) cnPending++;
+        } else if (a.site === "workbuddy-ai") {
+          intlCount++;
+          if (!a.disabled && !completed) intlPending++;
+        }
+        if (!a.disabled && !a.unavailable) activeCount++;
+        if (a.quota) {
+          remSum += Number(a.quota.remaining || 0);
+          totSum += Number(a.quota.total || 0);
+          expSum += Number(a.quota.expiring_amount || 0);
+        }
+        if (completed) {
+          dailyDone++;
+          if (a.site === "workbuddy") cnDone++;
+          else if (a.site === "workbuddy-ai") intlDone++;
+        }
+      }
+
+      const checkinBatchBtn = el("btnCheckinAll");
+      if (checkinBatchBtn) {
+        const noCnWork = cnCount === 0 || cnPending === 0;
+        checkinBatchBtn.disabled = noCnWork;
+        checkinBatchBtn.title = cnCount === 0 ? "暂无国内账号" : (cnPending === 0 ? "全部国内账号今日已签到" : "执行国内一键签到");
+      }
+      const bonusBatchBtn = el("btnBonusAll");
+      if (bonusBatchBtn) {
+        const noIntlWork = intlCount === 0 || intlPending === 0;
+        bonusBatchBtn.disabled = noIntlWork;
+        bonusBatchBtn.title = intlCount === 0 ? "暂无国际账号" : (intlPending === 0 ? "全部国际账号今日已点亮" : "执行国际一键点亮");
+      }
+
+      el("valTotalCreds").textContent = String(all.length);
+      el("valTotalDesc").textContent = `国内 ${cnCount} · 国际 ${intlCount} · 活跃 ${activeCount}`;
+      el("valTotalCredits").textContent = formatCredits(remSum);
+      el("valCreditsDesc").textContent = expSum > 0
+        ? `总额度 ${formatCredits(totSum)} · 近期到期 ${formatCredits(expSum)}`
+        : `总额度 ${formatCredits(totSum)}`;
+      el("valDailyDone").textContent = `${dailyDone} / ${all.length}`;
+      el("valDailyDesc").textContent = all.length === 0 ? "暂无账号" : `国内已签 ${cnDone} · 国际已亮 ${intlDone}`;
+
+      const filtered = all.filter(a => siteFilter === "all" || a.site === siteFilter);
+      const container = el("credentialsContainer");
+      container.textContent = "";
+
+      if (filtered.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = all.length === 0
+          ? "暂无 WorkBuddy 凭证，请先在 CPA 认证管理中完成浏览器登录。"
+          : "当前站点筛选下无凭证。";
+        container.appendChild(empty);
+        return;
+      }
+
+      for (const acc of filtered) {
+        const completedToday = isDailyCompleted(acc);
+        const card = document.createElement("div");
+        card.className = "cred-card" + (acc.disabled ? " cred-card-disabled" : "");
+        card.title = "点击查看该账号的模型列表与消耗倍率";
+        card.onclick = (e) => {
+          if (e.target && e.target.closest("button")) return;
+          openModelsModal(acc);
+        };
+
+        // Info header (account name only, no UUID)
+        const info = document.createElement("div");
+        info.className = "cred-info";
+        const nameRow = document.createElement("div");
+        nameRow.className = "cred-name";
+        const emailSpan = document.createElement("span");
+        emailSpan.className = "cred-email";
+        const rawTitle = acc.label || acc.name || acc.id || acc.auth_index;
+        emailSpan.textContent = formatAccountName(rawTitle);
+        emailSpan.title = accountMaskingEnabled ? "" : rawTitle;
+        nameRow.appendChild(emailSpan);
+
+        const badgeRow = document.createElement("div");
+        badgeRow.className = "cred-badge-row";
+        badgeRow.appendChild(makeBadge(
+          acc.site === "workbuddy" ? "国内 CN" : acc.site === "workbuddy-ai" ? "国际 AI" : (acc.site || "未知"),
+          acc.site === "workbuddy" ? "badge-cn" : "badge-intl"
+        ));
+        badgeRow.appendChild(makeBadge(
+          acc.scope === "enterprise" ? ("企业" + (acc.enterprise_id ? " · " + acc.enterprise_id : "")) : "个人",
+          "badge-subtle"
+        ));
+        if (acc.quota && acc.quota.plan_name) {
+          const isPro = /pro|plus|enterprise|vip/i.test(acc.quota.plan_name);
+          badgeRow.appendChild(makeBadge(acc.quota.plan_name, isPro ? "badge-plan-pro" : "badge-plan-free"));
+        }
+        if (acc.disabled) badgeRow.appendChild(makeBadge("已禁用", "badge-subtle"));
+        else if (acc.unavailable) badgeRow.appendChild(makeBadge("不可用", "badge-danger"));
+        else if (acc.token_expired) badgeRow.appendChild(makeBadge("Token 过期", "badge-warning"));
+        else badgeRow.appendChild(makeBadge("正常", "badge-success"));
+
+        info.append(nameRow, badgeRow);
+        card.appendChild(info);
+
+        // Quota meter
+        const meter = document.createElement("div");
+        meter.className = "meter-container " + (acc.error && !acc.quota ? "meter-error" : acc.site === "workbuddy-ai" ? "meter-intl" : "");
+
+        if (acc.quota) {
+          const pct = acc.quota.total > 0 ? Math.max(0, Math.min(100, (acc.quota.remaining / acc.quota.total) * 100)) : 0;
+          const lblRow = document.createElement("div");
+          lblRow.className = "meter-label-row";
+          const titleEl = document.createElement("span");
+          titleEl.textContent = "剩余积分";
+          const valWrap = document.createElement("span");
+          const credStrong = document.createElement("span");
+          credStrong.className = "meter-credits";
+          credStrong.textContent = `${formatCredits(acc.quota.remaining)} / ${formatCredits(acc.quota.total)}`;
+          const pctEl = document.createElement("span");
+          pctEl.className = "meter-pct";
+          pctEl.textContent = `(${pct.toFixed(0)}%)`;
+          valWrap.append(credStrong, pctEl);
+          lblRow.append(titleEl, valWrap);
+
+          const track = document.createElement("div");
+          track.className = "meter-track";
+          const fill = document.createElement("div");
+          fill.className = "meter-fill " + (pct <= 10 ? "meter-fill-danger" : pct <= 30 ? "meter-fill-warning" : "meter-fill-healthy");
+          fill.style.width = pct.toFixed(1) + "%";
+          track.appendChild(fill);
+
+          const subRow = document.createElement("div");
+          subRow.className = "meter-sub-row";
+          const leftMeta = document.createElement("span");
+          const parts = [];
+          if (acc.quota.extra_remain > 0) parts.push("奖励 " + formatCredits(acc.quota.extra_remain));
+          if (acc.quota.expiring_amount > 0 && acc.quota.expiring_at) {
+            parts.push(`近期到期 ${formatCredits(acc.quota.expiring_amount)} (${formatTime(acc.quota.expiring_at)})`);
+          } else if (acc.quota.resets_at) {
+            parts.push("重置 " + formatTime(acc.quota.resets_at));
+          }
+          leftMeta.textContent = parts.join(" · ") || ("更新 " + formatTime(acc.quota.fetched_at));
+          const rightMeta = document.createElement("span");
+          rightMeta.style.fontFamily = "var(--font-mono)";
+          rightMeta.textContent = acc.expires_at ? ("Access " + formatTime(acc.expires_at)) : (acc.status_message || "");
+          subRow.append(leftMeta, rightMeta);
+
+          meter.append(lblRow, track, subRow);
+        } else {
+          const emptyRow = document.createElement("div");
+          emptyRow.className = "meter-sub-row";
+          emptyRow.textContent = acc.error || "暂未获取配额，点击刷新探测";
+          meter.appendChild(emptyRow);
+        }
+        card.appendChild(meter);
+
+        // Card footer
+        const footer = document.createElement("div");
+        footer.className = "cred-footer";
+
+        const reason = document.createElement("div");
+        reason.className = "cred-reason";
+        reason.appendChild(renderDailyBadge(acc));
+        if (acc.daily_status && acc.daily_status.message) {
+          const msgSpan = document.createElement("span");
+          msgSpan.className = "cred-reason-msg";
+          msgSpan.textContent = acc.daily_status.message;
+          msgSpan.title = acc.daily_status.message;
+          reason.appendChild(msgSpan);
+        }
+
+        const actions = document.createElement("div");
+        actions.className = "cred-actions";
+
+        const mBtn = document.createElement("button");
+        mBtn.type = "button";
+        mBtn.className = "btn-secondary btn-card-action";
+        mBtn.textContent = "模型";
+        mBtn.title = "查看该账号的模型列表与消耗倍率";
+        mBtn.onclick = (e) => {
+          e.stopPropagation();
+          openModelsModal(acc);
+        };
+        actions.appendChild(mBtn);
+
+        const qBtn = document.createElement("button");
+        qBtn.type = "button";
+        qBtn.className = "btn-secondary btn-card-action";
+        qBtn.textContent = busyKeys.has("q:" + acc.auth_index) ? "..." : "刷新";
+        qBtn.disabled = busyKeys.has("q:" + acc.auth_index);
+        qBtn.onclick = (e) => {
+          e.stopPropagation();
+          refreshSingleQuota(acc.auth_index);
+        };
+        actions.appendChild(qBtn);
+
+        const dBtn = document.createElement("button");
+        dBtn.type = "button";
+        dBtn.className = (completedToday ? "btn-secondary" : "btn-primary") + " btn-card-action";
+        if (busyKeys.has("d:" + acc.auth_index)) {
+          dBtn.textContent = "...";
+        } else if (completedToday) {
+          dBtn.textContent = acc.site === "workbuddy" ? "已签到" : "已点亮";
+        } else {
+          dBtn.textContent = acc.site === "workbuddy" ? "签到" : "点亮";
+        }
+        dBtn.disabled = acc.disabled || completedToday || busyKeys.has("d:" + acc.auth_index);
+        if (completedToday) dBtn.title = "今日已完成，无需重复操作";
+        dBtn.onclick = (e) => {
+          e.stopPropagation();
+          runSingleDaily(acc);
+        };
+        actions.appendChild(dBtn);
+
+        footer.append(reason, actions);
+        card.appendChild(footer);
+        container.appendChild(card);
+      }
+    }
+
+    function isDailyCompleted(acc) {
+      return !!(acc && acc.daily_status && ["claimed", "done", "lit", "already_lit"].includes(acc.daily_status.outcome));
+    }
+
+    // ---- Account Models Modal ----
+    function openModelsModal(acc) {
+      currentModelsData = { auth_index: acc.auth_index, label: acc.label || acc.name || acc.auth_index, site: acc.site, models: [] };
+      modelsFilter = "all";
+      document.querySelectorAll("[data-model-filter]").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-model-filter") === "all");
+      });
+      el("modelsSearchInput").value = "";
+      el("modelsModalTitle").textContent = formatAccountName(currentModelsData.label);
+      const siteBadge = el("modelsSiteBadge");
+      siteBadge.textContent = acc.site === "workbuddy" ? "国内 CN" : acc.site === "workbuddy-ai" ? "国际 AI" : (acc.site || "--");
+      siteBadge.className = "badge " + (acc.site === "workbuddy" ? "badge-cn" : "badge-intl");
+      el("modelsPrefixBadge").textContent = "加载中...";
+      el("modelsListBody").innerHTML = '<div class="empty-state" style="border:0; background:transparent;">正在读取账号模型列表...</div>';
+      el("modelsSourceInfo").textContent = "--";
+      el("cntModelsAll").textContent = "0";
+      el("cntModelsFree").textContent = "0";
+      el("cntModelsPaid").textContent = "0";
+      el("modelsModal").hidden = false;
+      loadAccountModels(acc.auth_index, false);
+    }
+
+    function closeModelsModal() {
+      el("modelsModal").hidden = true;
+    }
+
+    function setModelsFilter(filter) {
+      modelsFilter = filter;
+      document.querySelectorAll("[data-model-filter]").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-model-filter") === filter);
+      });
+      renderModelsList();
+    }
+
+    function refreshCurrentAccountModels() {
+      if (!currentModelsData || !currentModelsData.auth_index) return;
+      loadAccountModels(currentModelsData.auth_index, true);
+    }
+
+    async function loadAccountModels(authIndex, refresh) {
+      const btn = el("btnRefreshModels");
+      if (btn) btn.disabled = true;
+      try {
+        const suffix = refresh ? "&refresh=1" : "";
+        const data = await apiFetch(MGMT_BASE + "/models?auth_index=" + encodeURIComponent(authIndex) + suffix);
+        currentModelsData = data;
+        el("modelsPrefixBadge").textContent = data.prefix ? ("前缀 " + data.prefix) : "无前缀";
+        el("modelsSourceInfo").textContent = (data.source === "live" ? "实时拉取" : "本地快照") +
+          (data.captured_at ? (" · 更新于 " + formatTime(data.captured_at)) : "");
+        renderModelsList();
+      } catch (err) {
+        if (err.status !== 401) {
+          const listEl = el("modelsListBody");
+          listEl.textContent = "";
+          const errBox = document.createElement("div");
+          errBox.className = "empty-state";
+          errBox.style.border = "0";
+          errBox.style.background = "transparent";
+          errBox.style.color = "var(--accent-red-text)";
+          errBox.textContent = "加载模型失败：" + err.message;
+          listEl.appendChild(errBox);
+        }
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function formatTokensK(n) {
+      const v = Number(n || 0);
+      if (!v) return "";
+      if (v >= 1000000) return (v / 1000000).toFixed(v % 1000000 === 0 ? 0 : 1) + "M";
+      if (v >= 1000) return Math.round(v / 1000) + "K";
+      return String(v);
+    }
+    function renderModelsList() {
+      const listEl = el("modelsListBody");
+      if (!currentModelsData || !Array.isArray(currentModelsData.models)) {
+        listEl.innerHTML = '<div class="empty-state" style="border:0; background:transparent;">暂无模型</div>';
+        return;
+      }
+      const all = currentModelsData.models;
+      const prefix = currentModelsData.prefix || "";
+      const isFreeModel = (m) => m.free === true || (m.credit_rate != null && Number(m.credit_rate) === 0);
+      const isPaidModel = (m) => !isFreeModel(m) && m.credit_rate != null && Number(m.credit_rate) > 0;
+
+      el("cntModelsAll").textContent = String(all.length);
+      el("cntModelsFree").textContent = String(all.filter(isFreeModel).length);
+      el("cntModelsPaid").textContent = String(all.filter(isPaidModel).length);
+
+      const kw = (el("modelsSearchInput").value || "").trim().toLowerCase();
+      const items = all.filter(m => {
+        if (modelsFilter === "free" && !isFreeModel(m)) return false;
+        if (modelsFilter === "paid" && !isPaidModel(m)) return false;
+        if (kw) {
+          const fullId = (prefix + (m.id || "")).toLowerCase();
+          const name = (m.name || "").toLowerCase();
+          if (!fullId.includes(kw) && !name.includes(kw)) return false;
+        }
+        return true;
+      });
+
+      listEl.textContent = "";
+      if (items.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.style.border = "0";
+        empty.style.background = "transparent";
+        empty.textContent = "没有匹配的模型";
+        listEl.appendChild(empty);
+        return;
+      }
+
+      for (const m of items) {
+        const row = document.createElement("div");
+        row.className = "model-row";
+
+        const main = document.createElement("div");
+        main.className = "model-main";
+
+        const idLine = document.createElement("div");
+        idLine.className = "model-id-line";
+        const fullId = prefix + (m.id || "");
+        const idEl = document.createElement("span");
+        idEl.className = "model-id";
+        idEl.textContent = fullId;
+        idEl.title = "点击复制 " + fullId;
+        idEl.style.cursor = "pointer";
+        idEl.onclick = () => {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(fullId).then(() => showToast("已复制 " + fullId, "info")).catch(() => {});
+          }
+        };
+        idLine.appendChild(idEl);
+
+        if (isFreeModel(m)) {
+          idLine.appendChild(makeBadge("FREE", "badge-success"));
+        }
+        if (m.images) {
+          idLine.appendChild(makeBadge("Vision", "badge-subtle"));
+        }
+        if (Array.isArray(m.efforts) && m.efforts.length > 0) {
+          idLine.appendChild(makeBadge("Reasoning", "badge-subtle"));
+        }
+
+        const sub = document.createElement("div");
+        sub.className = "model-sub";
+        const subParts = [];
+        if (m.name && m.name !== m.id) subParts.push(m.name);
+        if (m.context_length > 0) subParts.push("Ctx " + formatTokensK(m.context_length));
+        if (m.max_output_tokens > 0) subParts.push("Out " + formatTokensK(m.max_output_tokens));
+        sub.textContent = subParts.join(" · ") || "文本模型";
+
+        main.append(idLine, sub);
+
+        const right = document.createElement("div");
+        right.className = "model-right";
+        if (m.credit_rate_was != null && m.credit_rate != null && Number(m.credit_rate_was) !== Number(m.credit_rate)) {
+          const was = document.createElement("span");
+          was.className = "rate-was";
+          was.textContent = "x" + Number(m.credit_rate_was).toFixed(2);
+          right.appendChild(was);
+        }
+        const rateEl = document.createElement("span");
+        if (isFreeModel(m)) {
+          rateEl.className = "rate-badge rate-free";
+          rateEl.textContent = "FREE · x0.00";
+        } else if (m.credit_rate != null) {
+          rateEl.className = "rate-badge rate-paid";
+          rateEl.textContent = "x" + Number(m.credit_rate).toFixed(2);
+        } else {
+          rateEl.className = "rate-badge rate-unknown";
+          rateEl.textContent = "未知倍率";
+        }
+        right.appendChild(rateEl);
+
+        row.append(main, right);
+        listEl.appendChild(row);
+      }
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeModelsModal();
+        closeKeyModal();
+      }
+    });
+
+    // ---- Actions ----
+    async function loadDashboard(liveRefresh) {
+      const suffix = liveRefresh ? "?refresh=1" : "";
+      const data = await apiFetch(MGMT_BASE + "/dashboard" + suffix);
+      dashboardData = data;
+      renderDashboard();
+      return data;
+    }
+
+    async function refreshAllAccounts() {
+      const btn = el("btnRefreshAll");
+      btn.disabled = true;
+      try {
+        await loadDashboard(true);
+        showToast("已刷新全部账号配额与今日状态", "success");
+      } catch (err) {
+        if (err.status !== 401) showToast("刷新失败：" + err.message, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function refreshSingleQuota(authIndex) {
+      busyKeys.add("q:" + authIndex);
+      renderDashboard();
+      try {
+        await apiFetch(MGMT_BASE + "/credits", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ auth_index: authIndex })
+        });
+        await loadDashboard(false);
+        showToast("配额已刷新", "success");
+      } catch (err) {
+        if (err.status !== 401) showToast("刷新配额失败：" + err.message, "error");
+      } finally {
+        busyKeys.delete("q:" + authIndex);
+        renderDashboard();
+      }
+    }
+
+    async function runSingleDaily(acc) {
+      busyKeys.add("d:" + acc.auth_index);
+      renderDashboard();
+      try {
+        const endpoint = acc.site === "workbuddy" ? "/checkin" : "/daily-bonus";
+        const res = await apiFetch(MGMT_BASE + endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ auth_index: acc.auth_index })
+        });
+        await loadDashboard(false);
+        const item = (res.results && res.results[0]) || res;
+        const ok = item.outcome !== "failed";
+        showToast(`${formatAccountName(acc.label || acc.auth_index)}: ${item.message || item.outcome}`, ok ? "success" : "error");
+      } catch (err) {
+        if (err.status !== 401) showToast("执行失败：" + err.message, "error");
+      } finally {
+        busyKeys.delete("d:" + acc.auth_index);
+        renderDashboard();
+      }
+    }
+
+    async function runBatch(endpoint, btnId, label) {
+      const btn = el(btnId);
+      btn.disabled = true;
+      try {
+        const res = await apiFetch(MGMT_BASE + endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}"
+        });
+        await loadDashboard(false);
+        const results = res.results || [];
+        const okCount = results.filter(r => r.outcome !== "failed").length;
+        showToast(`${label}完成：处理 ${results.length} 个，成功/已完成 ${okCount} 个`, "success");
+      } catch (err) {
+        if (err.status !== 401) showToast(`${label}失败：` + err.message, "error");
+      } finally {
+        btn.disabled = false;
+        renderDashboard();
+      }
+    }
+
+    // ---- Boot ----
+    async function initializeApp() {
+      updateMaskButton();
+      const key = getManagementKey();
+      if (!key) {
+        el("credentialsContainer").innerHTML = '<div class="empty-state">等待连接 CPA 管理接口（请点击右上角 🔑 密钥 进行认证）</div>';
+        openKeyModal();
+        return;
+      }
+      try {
+        const data = await loadDashboard(false);
+        if (data && data.accounts && data.accounts.some(a => !a.quota && !a.disabled)) {
+          loadDashboard(true).catch(() => {});
+        }
+      } catch (_) {}
+    }
+
+    initializeApp();
+  </script>
+</body>
+</html>

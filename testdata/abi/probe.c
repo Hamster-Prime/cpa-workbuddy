@@ -441,13 +441,14 @@ int main(int argc, char **argv) {
     check(author >= 0 && registered.tokens[author].len > 0 && repository >= 0 &&
           registered.tokens[repository].len > 0, "host requires author and source metadata");
     int capabilities = field(&registered, result, "capabilities");
-    check(object_size(&registered, capabilities) == 7 &&
+    check(object_size(&registered, capabilities) == 8 &&
           equals(&registered, field(&registered, capabilities, "management_api"), "true") &&
+          equals(&registered, field(&registered, capabilities, "quota_provider"), "true") &&
           equals(&registered, field(&registered, capabilities, "auth_provider"), "true") &&
           equals(&registered, field(&registered, capabilities, "model_provider"), "true") &&
           equals(&registered, field(&registered, capabilities, "executor"), "true") &&
           equals(&registered, field(&registered, capabilities, "executor_model_scope"), "oauth"),
-          "registration must advertise account model execution and formats");
+          "registration must advertise account model execution, quota, and formats");
     emit("registration", registration);
     void *registration_snapshot = malloc(registration.len);
     check(registration_snapshot != NULL, "allocating ownership snapshot failed");
@@ -459,11 +460,12 @@ int main(int argc, char **argv) {
     int route_list = field(&route_doc, route_result, "routes");
     check(route_list >= 0 && route_doc.tokens[route_list].kind == '[', "management routes must be array");
     int route = route_list + 1;
-    check(route < route_doc.tokens[route_list].next && route_doc.tokens[route].next == route_doc.tokens[route_list].next,
-          "expected exactly one real management route");
+    check(route < route_doc.tokens[route_list].next, "expected at least one management route");
     check(equals(&route_doc, field(&route_doc, route, "Method"), "GET") &&
           equals(&route_doc, field(&route_doc, route, "Path"), "/v0/management/plugins/cpa-workbuddy/status"),
           "incorrect status route");
+    int res_list = field(&route_doc, route_result, "resources");
+    check(res_list >= 0 && route_doc.tokens[res_list].kind == '[', "management resources must be array");
     emit("routes", routes);
     api.free_buffer(routes.ptr, routes.len);
 

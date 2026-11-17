@@ -40,8 +40,11 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	response := call("plugin.register", `{"schema_version":11,"multi_auth_providers":true,"config_yaml":null}`)
 	var result struct {
 		SchemaVersion int `json:"schema_version"`
-		Metadata      struct{ Name, Version, Author, GitHubRepository string }
-		Capabilities  map[string]json.RawMessage
+		Metadata      struct {
+			Name, Version, Author, GitHubRepository string
+			ConfigFields                            []struct{ Name, Type string }
+		}
+		Capabilities map[string]json.RawMessage
 	}
 	if err := json.Unmarshal(response["result"], &result); err != nil {
 		t.Fatal(err)
@@ -49,10 +52,10 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	if string(response["ok"]) != "true" || result.SchemaVersion != 10 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != workbuddy.Version() {
 		t.Fatalf("unexpected registration: %s", response)
 	}
-	if result.Metadata.Author == "" || result.Metadata.GitHubRepository == "" {
-		t.Fatalf("metadata must meet CPA validPlugin: %+v", result.Metadata)
+	if result.Metadata.Author == "" || result.Metadata.GitHubRepository == "" || len(result.Metadata.ConfigFields) != 4 {
+		t.Fatalf("metadata must meet CPA validPlugin with 4 ConfigFields: %+v", result.Metadata)
 	}
-	if len(result.Capabilities) != 7 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai","openai-response","claude","gemini"]` || string(result.Capabilities["executor_output_formats"]) != `["openai","openai-response","claude","gemini"]` {
+	if len(result.Capabilities) != 8 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["quota_provider"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai","openai-response","claude","gemini"]` || string(result.Capabilities["executor_output_formats"]) != `["openai","openai-response","claude","gemini"]` {
 		t.Fatalf("unexpected capabilities: %v", result.Capabilities)
 	}
 	assertError("plugin.identifier", `{}`, "unknown_method")
@@ -72,6 +75,9 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	if string(call("executor.identifier", `{}`)["result"]) != `{"identifier":"workbuddy"}` {
 		t.Fatal("executor identifier is invalid")
 	}
+	if string(call("quota.identifier", `{}`)["result"]) != `{"identifier":"workbuddy"}` {
+		t.Fatal("quota identifier is invalid")
+	}
 	static := call("model.static", `{}`)
 	var catalog struct{ Models []json.RawMessage }
 	if err := json.Unmarshal(static["result"], &catalog); err != nil || string(static["ok"]) != "true" || catalog.Models == nil || len(catalog.Models) != 0 {
@@ -89,13 +95,17 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	}
 	response = call("management.register", `{"BasePath":"/v0/management","ResourceBasePath":"/v0/resource/plugins/cpa-workbuddy"}`)
 	var routes struct {
-		Routes []struct{ Method, Path string }
+		Routes    []struct{ Method, Path string }
+		Resources []struct{ Path, Menu, Description string }
 	}
 	if err := json.Unmarshal(response["result"], &routes); err != nil {
 		t.Fatal(err)
 	}
-	if len(routes.Routes) != 1 || routes.Routes[0].Method != "GET" || routes.Routes[0].Path != "/v0/management/plugins/cpa-workbuddy/status" {
-		t.Fatalf("unexpected route: %s", response)
+	if len(routes.Routes) != 8 || routes.Routes[0].Method != "GET" || routes.Routes[0].Path != "/v0/management/plugins/cpa-workbuddy/status" {
+		t.Fatalf("unexpected routes: %s", response)
+	}
+	if len(routes.Resources) != 1 || routes.Resources[0].Path != "/panel" || routes.Resources[0].Menu != "WorkBuddy" {
+		t.Fatalf("unexpected resources: %s", response)
 	}
 	response = call("management.handle", `{"Method":"GET","Path":"/v0/management/plugins/cpa-workbuddy/status"}`)
 	var statusResponse struct {

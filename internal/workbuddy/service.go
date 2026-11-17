@@ -102,11 +102,28 @@ type Service struct {
 	jobs          sync.WaitGroup
 	refreshes     map[string]*refreshAccount
 	compatibility chatCompatibility
+
+	cfgMu        sync.RWMutex
+	cfg          PluginConfig
+	hostCall     func(string, []byte) ([]byte, error)
+	acctLocks    map[string]*sync.Mutex
+	billingMu    sync.RWMutex
+	billingCache map[string]AccountBillingSnapshot
+	schedMu      sync.Mutex
+	schedStarted bool
+	schedWake    chan struct{}
+	schedState   SchedulerStatus
 }
 
 func New() *Service {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Service{sessions: make(map[string]*session), execCtx: ctx, cancelExec: cancel}
+	return &Service{
+		sessions:   make(map[string]*session),
+		execCtx:    ctx,
+		cancelExec: cancel,
+		cfg:        DefaultPluginConfig(),
+		schedWake:  make(chan struct{}, 1),
+	}
 }
 
 // Close stops admission, cancels login sessions and active work, and waits until
@@ -206,6 +223,22 @@ func (s *Service) Handle(ctx context.Context, method string, raw []byte, call fu
 	}
 	if method == "model.static" || method == "model.for_auth" {
 		return s.models(ctx, method, raw, call)
+	}
+	if method == "quota.identifier" {
+		return map[string]string{"identifier": provider}, nil
+	}
+	if method == "quota.describe" {
+		return QuotaDescribeResponse{
+			SupportedProviders: []string{provider},
+			DisplayName:        "WorkBuddy",
+			SupportsReset:      false,
+		}, nil
+	}
+	if method == "quota.fetch" {
+		return s.fetchQuotaRPC(ctx, raw, call)
+	}
+	if method == "quota.reset" {
+		return nil, failure("unsupported_operation", "WorkBuddy quota reset is not supported", 501)
 	}
 	var req loginRequest
 	if err := decode(raw, &req); err != nil {
@@ -466,7 +499,7 @@ func (s *Service) poll(ctx context.Context, req loginRequest, call func(string, 
 	if err != nil {
 		return nil, err
 	}
-	auth = captureModelSnapshot(pollCtx, auth, req.HostCallbackID, call)
+	auth = s.captureModelSnapshot(pollCtx, auth, req.HostCallbackID, call)
 	if cancelled() {
 		return invalidSession(), nil
 	}

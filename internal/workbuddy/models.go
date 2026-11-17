@@ -65,10 +65,10 @@ func (s *Service) models(ctx context.Context, method string, raw []byte, call fu
 	if method == "model.static" {
 		return result, nil
 	}
-	return discoverModels(ctx, req, call)
+	return s.discoverModels(ctx, req, call)
 }
 
-func discoverModels(ctx context.Context, req authModelRequest, call func(string, []byte) ([]byte, error)) (ModelResponse, error) {
+func (s *Service) discoverModels(ctx context.Context, req authModelRequest, call func(string, []byte) ([]byte, error)) (ModelResponse, error) {
 	result := ModelResponse{Provider: provider, Models: []ModelInfo{}}
 	auth, err := checkedAuth(req.AuthID, req.AuthProvider, req.StorageJSON, req.Metadata)
 	if err != nil {
@@ -118,9 +118,13 @@ func discoverModels(ctx context.Context, req authModelRequest, call func(string,
 			status = "snapshot"
 		}
 	}
+	prefix := ""
+	if s.modelPrefixEnabled(chosen.id) {
+		prefix = chosen.modelPrefix
+	}
 	for _, model := range models {
 		info := ModelInfo{
-			ID: chosen.modelPrefix + model.ID, Object: "model", OwnedBy: provider, Type: provider,
+			ID: prefix + model.ID, Object: "model", OwnedBy: provider, Type: provider,
 			DisplayName: model.Name, Name: model.ID, ContextLength: model.ContextLength,
 			InputTokenLimit: model.ContextLength, OutputTokenLimit: model.MaxOutputTokens, MaxCompletionTokens: model.MaxOutputTokens,
 			SupportedInputModalities: []string{"text"}, SupportedOutputModalities: []string{"text"},
@@ -175,11 +179,11 @@ func discoverModels(ctx context.Context, req authModelRequest, call func(string,
 // captureModelSnapshot attaches the current account catalog before a credential
 // lifecycle result reaches CPA's persistence boundary. Catalog failures must not
 // discard credentials after a successful upstream token rotation.
-func captureModelSnapshot(ctx context.Context, auth AuthData, callbackID string, call func(string, []byte) ([]byte, error)) AuthData {
+func (s *Service) captureModelSnapshot(ctx context.Context, auth AuthData, callbackID string, call func(string, []byte) ([]byte, error)) AuthData {
 	if ctx.Err() != nil {
 		return auth
 	}
-	result, err := discoverModels(ctx, authModelRequest{
+	result, err := s.discoverModels(ctx, authModelRequest{
 		AuthID: auth.ID, AuthProvider: auth.Provider, StorageJSON: auth.StorageJSON,
 		Metadata: auth.Metadata, HostCallbackID: callbackID,
 	}, call)

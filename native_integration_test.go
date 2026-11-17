@@ -110,23 +110,27 @@ func TestNativeABI(t *testing.T) {
 		case "registration":
 			var result struct {
 				SchemaVersion int `json:"schema_version"`
-				Metadata      struct{ Name, Version, Author, GitHubRepository string }
-				Capabilities  map[string]json.RawMessage
+				Metadata      struct {
+					Name, Version, Author, GitHubRepository string
+					ConfigFields                            []struct{ Name, Type string }
+				}
+				Capabilities map[string]json.RawMessage
 			}
 			if err := json.Unmarshal(envelope.Result, &result); err != nil {
 				t.Fatal(err)
 			}
-			if !envelope.OK || envelope.Error != nil || result.SchemaVersion != 10 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != expectedVersion || result.Metadata.Author != "sheepyu" || result.Metadata.GitHubRepository != "ygq-future/cpa-workbuddy" || len(result.Capabilities) != 7 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai","openai-response","claude","gemini"]` || string(result.Capabilities["executor_output_formats"]) != `["openai","openai-response","claude","gemini"]` {
+			if !envelope.OK || envelope.Error != nil || result.SchemaVersion != 10 || result.Metadata.Name != "cpa-workbuddy" || result.Metadata.Version != expectedVersion || result.Metadata.Author != "sheepyu" || result.Metadata.GitHubRepository != "ygq-future/cpa-workbuddy" || len(result.Metadata.ConfigFields) != 4 || len(result.Capabilities) != 8 || string(result.Capabilities["management_api"]) != "true" || string(result.Capabilities["quota_provider"]) != "true" || string(result.Capabilities["auth_provider"]) != "true" || string(result.Capabilities["model_provider"]) != "true" || string(result.Capabilities["executor"]) != "true" || string(result.Capabilities["executor_model_scope"]) != `"oauth"` || string(result.Capabilities["executor_input_formats"]) != `["openai","openai-response","claude","gemini"]` || string(result.Capabilities["executor_output_formats"]) != `["openai","openai-response","claude","gemini"]` {
 				t.Fatalf("registration violates CPA contract: %s", raw)
 			}
 		case "routes":
 			var result struct {
-				Routes []struct{ Method, Path string }
+				Routes    []struct{ Method, Path string }
+				Resources []struct{ Path, Menu, Description string }
 			}
 			if err := json.Unmarshal(envelope.Result, &result); err != nil {
 				t.Fatal(err)
 			}
-			if !envelope.OK || len(result.Routes) != 1 || result.Routes[0].Method != "GET" || result.Routes[0].Path != "/v0/management/plugins/cpa-workbuddy/status" {
+			if !envelope.OK || len(result.Routes) != 8 || result.Routes[0].Method != "GET" || result.Routes[0].Path != "/v0/management/plugins/cpa-workbuddy/status" || len(result.Resources) != 1 || result.Resources[0].Path != "/panel" {
 				t.Fatalf("unexpected management registration: %s", raw)
 			}
 		case "status":

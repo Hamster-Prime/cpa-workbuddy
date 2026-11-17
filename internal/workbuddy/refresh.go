@@ -197,7 +197,7 @@ func (s *Service) renew(ctx context.Context, auth AuthData, callbackID string, c
 	if err != nil {
 		return AuthData{}, err
 	}
-	nextAuth = captureModelSnapshot(ctx, nextAuth, callbackID, call)
+	nextAuth = s.captureModelSnapshot(ctx, nextAuth, callbackID, call)
 	next, _, _, err = credentialFromJSON(nextAuth.StorageJSON)
 	if err != nil {
 		return AuthData{}, err

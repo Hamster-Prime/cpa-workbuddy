@@ -19,11 +19,18 @@ import (
 // These wire contracts follow CPA sdk/pluginabi and sdk/pluginapi, ABI 1/schema 10.
 // In particular Metadata and ManagementResponse retain CPA's capitalized fields.
 const (
-	ABIVersion    = 1
-	SchemaVersion = 10
-	Name          = "cpa-workbuddy"
-	StatusPath    = "/v0/management/plugins/" + Name + "/status"
-	MaxRPCPayload = 64 << 20
+	ABIVersion        = 1
+	SchemaVersion     = 10
+	Name              = "cpa-workbuddy"
+	StatusPath        = "/v0/management/plugins/" + Name + "/status"
+	DashboardPath     = "/v0/management/plugins/" + Name + "/dashboard"
+	CreditsPath       = "/v0/management/plugins/" + Name + "/credits"
+	CheckinPath       = "/v0/management/plugins/" + Name + "/checkin"
+	DailyBonusPath    = "/v0/management/plugins/" + Name + "/daily-bonus"
+	SettingsPath      = "/v0/management/plugins/" + Name + "/settings"
+	ModelsPath        = "/v0/management/plugins/" + Name + "/models"
+	PanelResourcePath = "/panel"
+	MaxRPCPayload     = 64 << 20
 )
 
 type metadata struct {
@@ -31,6 +38,7 @@ type metadata struct {
 	Version          string
 	Author           string
 	GitHubRepository string
+	ConfigFields     []protocol.ConfigField
 }
 
 type registration struct {
@@ -41,6 +49,7 @@ type registration struct {
 
 type capabilities struct {
 	ManagementAPI         bool     `json:"management_api"`
+	QuotaProvider         bool     `json:"quota_provider"`
 	AuthProvider          bool     `json:"auth_provider"`
 	ModelProvider         bool     `json:"model_provider"`
 	Executor              bool     `json:"executor"`
@@ -54,9 +63,24 @@ type lifecycleRequest struct {
 	SchemaVersion uint32 `json:"schema_version"`
 }
 
-type managementRequest struct {
+type managementRoute struct {
 	Method string
 	Path   string
+}
+
+type resourceRoute struct {
+	Path        string
+	Menu        string
+	Description string
+}
+
+type managementRequest struct {
+	Method         string
+	Path           string
+	Headers        map[string][]string
+	Query          map[string][]string
+	Body           []byte
+	HostCallbackID string `json:"host_callback_id"`
 }
 
 type managementResponse struct {
@@ -123,7 +147,7 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 		return Failure("plugin_shutdown", "plugin has shut down", 503)
 	}
 	switch method {
-	case "auth.identifier", "auth.parse", "auth.login.start", "auth.login.poll", "auth.refresh", "model.static", "model.for_auth", "executor.identifier", "executor.execute", "executor.execute_stream", "executor.count_tokens", "executor.http_request":
+	case "auth.identifier", "auth.parse", "auth.login.start", "auth.login.poll", "auth.refresh", "model.static", "model.for_auth", "executor.identifier", "executor.execute", "executor.execute_stream", "executor.count_tokens", "executor.http_request", "quota.identifier", "quota.describe", "quota.fetch", "quota.reset":
 		if !r.registered {
 			return Failure("not_registered", "plugin.register must succeed first", 409)
 		}
@@ -149,16 +173,33 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 			r.ctx, r.cancel = context.WithCancel(context.Background())
 			r.auth = protocol.New()
 		}
+		if err := r.auth.Reconfigure(req.ConfigYAML); err != nil {
+			if detail, ok := errors.AsType[*protocol.Error](err); ok {
+				return Failure(detail.Code, detail.Message, detail.HTTPStatus)
+			}
+			return Failure("invalid_config", err.Error(), 400)
+		}
 		r.registered = true
 		r.quiesced = false
+		r.auth.EnsureScheduler(r.call)
 		return success(registration{
 			SchemaVersion: SchemaVersion,
 			Metadata: metadata{
 				Name: Name, Version: workbuddy.Version(),
 				Author:           "sheepyu",
 				GitHubRepository: "ygq-future/cpa-workbuddy",
+				ConfigFields:     protocol.ConfigFields(),
 			},
-			Capabilities: capabilities{ManagementAPI: true, AuthProvider: true, ModelProvider: true, Executor: true, ExecutorModelScope: "oauth", ExecutorInputFormats: []string{"openai", "openai-response", "claude", "gemini"}, ExecutorOutputFormats: []string{"openai", "openai-response", "claude", "gemini"}},
+			Capabilities: capabilities{
+				ManagementAPI:         true,
+				QuotaProvider:         true,
+				AuthProvider:          true,
+				ModelProvider:         true,
+				Executor:              true,
+				ExecutorModelScope:    "oauth",
+				ExecutorInputFormats:  []string{"openai", "openai-response", "claude", "gemini"},
+				ExecutorOutputFormats: []string{"openai", "openai-response", "claude", "gemini"},
+			},
 		})
 	case "plugin.quiesce":
 		r.quiesced = true
@@ -184,32 +225,67 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 				return Failure("invalid_request", "BasePath must be /v0/management", 400)
 			}
 			return success(struct {
-				Routes []managementRequest `json:"routes"`
-			}{Routes: []managementRequest{{Method: "GET", Path: StatusPath}}})
+				Routes    []managementRoute `json:"routes"`
+				Resources []resourceRoute   `json:"resources"`
+			}{
+				Routes: []managementRoute{
+					{Method: "GET", Path: StatusPath},
+					{Method: "GET", Path: DashboardPath},
+					{Method: "POST", Path: CreditsPath},
+					{Method: "POST", Path: CheckinPath},
+					{Method: "POST", Path: DailyBonusPath},
+					{Method: "GET", Path: SettingsPath},
+					{Method: "PUT", Path: SettingsPath},
+					{Method: "GET", Path: ModelsPath},
+				},
+				Resources: []resourceRoute{
+					{
+						Path:        PanelResourcePath,
+						Menu:        "WorkBuddy",
+						Description: "WorkBuddy 每日签到、成长点亮、配额查看与模型前缀控制面板",
+					},
+				},
+			})
 		}
 		var req managementRequest
 		if err := decodeObject(raw, &req); err != nil {
 			return Failure("invalid_request", err.Error(), 400)
 		}
-		if req.Path != StatusPath {
-			return Failure("route_not_found", "unknown management path", 404)
+		if req.Path == StatusPath {
+			if req.Method != "GET" {
+				return Failure("method_not_allowed", "status requires GET", 405)
+			}
+			body, err := json.Marshal(struct {
+				Name          string `json:"name"`
+				Version       string `json:"version"`
+				ABIVersion    uint32 `json:"abi_version"`
+				SchemaVersion uint32 `json:"schema_version"`
+			}{Name: Name, Version: workbuddy.Version(), ABIVersion: ABIVersion, SchemaVersion: SchemaVersion})
+			if err != nil {
+				return Failure("internal_error", err.Error(), 500)
+			}
+			return success(managementResponse{
+				StatusCode: 200,
+				Headers:    map[string][]string{"Content-Type": {"application/json; charset=utf-8"}},
+				Body:       body,
+			})
 		}
-		if req.Method != "GET" {
-			return Failure("method_not_allowed", "status requires GET", 405)
-		}
-		body, err := json.Marshal(struct {
-			Name          string `json:"name"`
-			Version       string `json:"version"`
-			ABIVersion    uint32 `json:"abi_version"`
-			SchemaVersion uint32 `json:"schema_version"`
-		}{Name: Name, Version: workbuddy.Version(), ABIVersion: ABIVersion, SchemaVersion: SchemaVersion})
+		r.active.Add(1)
+		ctx := r.ctx
+		r.mu.Unlock()
+		res, err := r.auth.HandleManagement(ctx, req.HostCallbackID, r.call, req.Method, req.Path, req.Query, req.Body, workbuddy.Version())
+		r.mu.Lock()
+		r.active.Done()
 		if err != nil {
-			return Failure("internal_error", err.Error(), 500)
+			if detail, ok := errors.AsType[*protocol.Error](err); ok {
+				return Failure(detail.Code, detail.Message, detail.HTTPStatus)
+			}
+			return Failure("request_failed", err.Error(), 502)
 		}
 		return success(managementResponse{
-			StatusCode: 200,
-			Headers:    map[string][]string{"Content-Type": {"application/json; charset=utf-8"}},
-			Body:       body,
+			StatusCode: res.StatusCode,
+			Headers:    res.Headers,
+			Body:       res.Body,
 		})
 	default:
 		return Failure("unknown_method", "unsupported method: "+method, 404)

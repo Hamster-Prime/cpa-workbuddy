@@ -70,8 +70,8 @@ func (s *Service) prepareChat(req executorRequest) (preparedChat, error) {
 	if err != nil {
 		return preparedChat{}, err
 	}
-	model, matches := strings.CutPrefix(req.Model, chosen.modelPrefix)
-	if !matches || !catalogID(model) || strings.HasPrefix(model, "wb/") || strings.HasPrefix(model, "wb-ai/") {
+	model, matches := s.resolveChatModel(chosen, req.Model)
+	if !matches {
 		return preparedChat{}, failure("unsupported_model", "model does not belong to the selected WorkBuddy site", 400)
 	}
 	native := messagesModel(chosen.id, model)
@@ -185,6 +185,26 @@ func (s *Service) prepareChat(req executorRequest) (preparedChat, error) {
 		return preparedChat{}, err
 	}
 	return prepared, nil
+}
+
+func (s *Service) resolveChatModel(chosen site, rawModel string) (string, bool) {
+	otherPrefix := "wb-ai/"
+	if chosen.id == "workbuddy-ai" {
+		otherPrefix = "wb/"
+	}
+	if strings.HasPrefix(rawModel, otherPrefix) {
+		return "", false
+	}
+	if trimmed, ok := strings.CutPrefix(rawModel, chosen.modelPrefix); ok {
+		if !catalogID(trimmed) || strings.HasPrefix(trimmed, "wb/") || strings.HasPrefix(trimmed, "wb-ai/") {
+			return "", false
+		}
+		return trimmed, true
+	}
+	if !s.modelPrefixEnabled(chosen.id) && catalogID(rawModel) {
+		return rawModel, true
+	}
+	return "", false
 }
 
 func nonemptyChatValue(raw json.RawMessage) bool {

@@ -33,15 +33,15 @@ go run ./cmd/project --help
 | --- | --- |
 | `cmd/cpa-workbuddy/` | CGO 动态库入口、原生导出与 C 缓冲区所有权 |
 | `internal/plugin/` | CPA ABI / JSON wire、回调和分派 |
-| `internal/workbuddy/` | 登录、账号身份、模型、刷新、Chat / Messages 及协议转换 |
+| `internal/workbuddy/` | 登录、账号身份、模型、刷新、Chat / Messages、协议转换、配额/签到、定时调度及控制面板 |
 | `cmd/project/` | 构建、检查、打包和 Git 事件编排 |
 | `VERSION`、`version.go` | 产品版本及嵌入入口 |
 
 产品版本以根 `VERSION` 为唯一来源；原生 ABI 为 1，JSON schema 为 10，两者与产品版本独立。发布 tag 必须等于 `v` 加 `VERSION`。
 
-插件由 CPA 加载，网络及凭证保存通过宿主契约。持久 provider 为 `workbuddy`，OAuth 入口为 `workbuddy` / `workbuddy-ai`；模型前缀为 `wb/` / `wb-ai/`，AuthData.Prefix 留空。完整认证 ID 由站点、用户和企业作用域决定，可读文件名独立持久化；同身份重登从宿主记录复用名称。
+插件由 CPA 加载，网络及凭证保存通过宿主契约。持久 provider 为 `workbuddy`，OAuth 入口为 `workbuddy` / `workbuddy-ai`；模型前缀默认为 `wb/` / `wb-ai/`（可通过 `cn_model_prefix` / `intl_model_prefix` 独立开关），AuthData.Prefix 留空。完整认证 ID 由站点、用户和企业作用域决定，可读文件名独立持久化；同身份重登从宿主记录复用名称。
 
-CPA Manager 负责凭证保存、安装、刷新及一次 401 恢复；插件返回轮换结果。协议转换使用固定的官方 CPA SDK。模型资格来自当前账号的成功发现或其持久快照；模型表中的全局条目不授予其他账号调用权限。C 缓冲区、回调、流及取消均有明确所有者，卸载等待在途工作结束。
+CPA Manager 负责凭证保存、安装、刷新及一次 401 恢复；插件同时实现 `QuotaProvider`（`quota.*`）、受 Management Key 保护的插件控制面接口与静态资源面板 `/panel`（未鉴权资源页仅承载静态前端，所有业务接口均经 `mgmt.Middleware()` 鉴权），并在内部维护受 `Service.Close()` 生命周期管理的每日 ±3 小时浮动自动签到/成长点亮调度器。
 
 ## 测试与提交
 

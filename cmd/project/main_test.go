@@ -340,7 +340,7 @@ func TestNativeSmokeRequiresABITest(t *testing.T) {
 		if walkErr != nil {
 			return walkErr
 		}
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+		if entry.IsDir() || (!strings.HasSuffix(entry.Name(), ".go") && !strings.HasSuffix(entry.Name(), ".html")) || strings.HasSuffix(entry.Name(), "_test.go") {
 			return nil
 		}
 		relative, err := filepath.Rel(repositoryRoot, path)
