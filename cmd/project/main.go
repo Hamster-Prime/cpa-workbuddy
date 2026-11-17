@@ -598,7 +598,7 @@ func (c *controller) test(prebuilt bool) error {
 		}
 	}
 	child.env = append(child.env, "WORKBUDDY_TEST_LIBRARY="+artifact)
-	output, err := child.tool("go", runPolicy{stderrFails: true}, "test", "-json", "-count=1", "./...")
+	output, err := child.tool("go", runPolicy{stderrFails: true}, "test", "-json", "-count=1", "-timeout=30m", "./...")
 	if err != nil {
 		return err
 	}

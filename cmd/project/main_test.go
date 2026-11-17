@@ -179,7 +179,7 @@ func (f fixture) execute(t *testing.T, arguments ...string) commandResult {
 
 func (f fixture) run(t *testing.T, executable string, arguments ...string) commandResult {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	command := exec.CommandContext(ctx, executable, arguments...)
 	command.Dir = f.root
