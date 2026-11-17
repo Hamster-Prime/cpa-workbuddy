@@ -160,6 +160,9 @@ func dispatch(args []string) error {
 		if err == nil && settings.githubEvent {
 			err = c.githubEventMessages()
 		}
+		if err == nil && settings.messageFile == "" && settings.commitRange == "" && !settings.githubEvent {
+			err = c.pendingMessages()
+		}
 		if err == nil {
 			fmt.Println("quality passed")
 		}
@@ -799,6 +802,13 @@ func (c *controller) commitMessages(messageFile, commitRange string) error {
 	if commitRange == "" {
 		return nil
 	}
+	return c.commitRange(commitRange, true)
+}
+
+// commitRange validates every commit selected by range. Empty selections are
+// an error unless allowEmpty is set, which the pending-commit gate needs when a
+// branch has nothing unpublished.
+func (c *controller) commitRange(commitRange string, allowEmpty bool) error {
 	if strings.HasPrefix(commitRange, "-") {
 		return errors.New("commit range cannot begin with '-'")
 	}
@@ -808,6 +818,9 @@ func (c *controller) commitMessages(messageFile, commitRange string) error {
 	}
 	commits := strings.Fields(string(output))
 	if len(commits) == 0 {
+		if allowEmpty {
+			return nil
+		}
 		return errors.New("commit range selected no commits")
 	}
 	for _, commit := range commits {
@@ -820,6 +833,45 @@ func (c *controller) commitMessages(messageFile, commitRange string) error {
 		}
 	}
 	return nil
+}
+
+// pendingMessages validates commits that the current branch has not published
+// to its upstream. Local quality therefore reports the same Conventional
+// Commit violations the CI push event gate reports, before a push can turn
+// them into failed checks. Trees that are not their own Git repository, or
+// branches without an upstream, have no publish intent to inspect, so the gate
+// stays silent there.
+func (c *controller) pendingMessages() error {
+	topPath, ok := c.optional("git", "rev-parse", "--show-toplevel")
+	if !ok {
+		return nil
+	}
+	top, err := os.Stat(topPath)
+	if err != nil {
+		return err
+	}
+	root, err := os.Stat(c.root)
+	if err != nil {
+		return err
+	}
+	if !os.SameFile(top, root) {
+		return nil
+	}
+	upstream, ok := c.optional("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+	if !ok || upstream == "" {
+		return nil
+	}
+	return c.commitRange(upstream+"..HEAD", true)
+}
+
+// optional runs a probe whose absence is a valid answer, such as a repository
+// state query outside a Git tree.
+func (c *controller) optional(args ...string) (string, bool) {
+	stdout, _, err := c.capture(args)
+	if err != nil {
+		return "", false
+	}
+	return strings.TrimSpace(string(stdout)), true
 }
 
 func (c *controller) githubEventMessages() error {

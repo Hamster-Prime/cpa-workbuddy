@@ -312,6 +312,61 @@ func TestCommitBodyRequiresBlankSeparator(t *testing.T) {
 	requireSuccess(t, f.execute(t, "commit-msg", "--message-file", message))
 }
 
+func (f fixture) git(t *testing.T, arguments ...string) {
+	t.Helper()
+	result := f.run(t, "git", arguments...)
+	if result.code != 0 {
+		t.Fatalf("git %q: exit %d\nstdout:\n%s\nstderr:\n%s", arguments, result.code, result.stdout, result.stderr)
+	}
+}
+
+func (f fixture) initRepository(t *testing.T) {
+	t.Helper()
+	f.git(t, "init", "-b", "main")
+	f.git(t, "config", "user.name", "WorkBuddy Test")
+	f.git(t, "config", "user.email", "workbuddy@example.com")
+	f.git(t, "commit", "--allow-empty", "-m", "chore: initial commit")
+}
+
+// markPublished points the branch's upstream at a tracking ref without
+// requiring a remote, so the pending-commit gate sees a published base.
+func (f fixture) markPublished(t *testing.T) {
+	t.Helper()
+	f.git(t, "config", "remote.origin.url", f.root)
+	f.git(t, "config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*")
+	f.git(t, "config", "branch.main.remote", "origin")
+	f.git(t, "config", "branch.main.merge", "refs/heads/main")
+	f.git(t, "update-ref", "refs/remotes/origin/main", "HEAD")
+}
+
+func TestQualityValidatesPendingCommitMessages(t *testing.T) {
+	f := newFixture(t)
+	writeFixtureFile(t, filepath.Join(f.root, "version.go"), "//go:embed VERSION\n")
+	f.initRepository(t)
+	f.markPublished(t)
+	requireSuccess(t, f.execute(t, "quality", "--stage", "version"))
+
+	f.git(t, "commit", "--allow-empty", "-m", "ship the panel")
+	requireFailure(t, f.execute(t, "quality", "--stage", "version"), "invalid Conventional Commit subject")
+
+	f.git(t, "commit", "--amend", "--allow-empty", "-m", "fix: ship the panel")
+	requireSuccess(t, f.execute(t, "quality", "--stage", "version"))
+}
+
+func TestQualityIgnoresCommitsOfEnclosingRepository(t *testing.T) {
+	parent := newFixture(t)
+	writeFixtureFile(t, filepath.Join(parent.root, "version.go"), "//go:embed VERSION\n")
+	parent.initRepository(t)
+	parent.markPublished(t)
+	parent.git(t, "commit", "--allow-empty", "-m", "ship the panel")
+
+	nested := fixture{root: filepath.Join(parent.root, "nested")}
+	for _, relative := range []string{"go.mod", "VERSION", "version.go"} {
+		copyFixtureFile(t, filepath.Join(parent.root, relative), filepath.Join(nested.root, relative))
+	}
+	requireSuccess(t, nested.execute(t, "quality", "--stage", "version"))
+}
+
 func TestVersionTagMismatchPreservesSource(t *testing.T) {
 	f := newFixture(t)
 	version := filepath.Join(f.root, "VERSION")

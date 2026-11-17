@@ -13,7 +13,7 @@ go run ./cmd/project package
 ```
 
 - `bootstrap`：安装固定版本的 gopls、golangci-lint，准备经过 SHA256 校验的打包许可素材。首次执行需要网络。
-- `quality`：依次执行 tools、version、format、modules、vet、lsp、lint、build、test。检查不修改源码；warning、info、hint 同样阻断。
+- `quality`：依次执行 tools、version、format、modules、vet、lsp、lint、build、test。检查不修改源码；warning、info、hint 同样阻断。未指定 `--message-file`、`--commit-range` 或 `--github-event` 时，还会校验当前分支相对上游尚未推送的提交信息。
 - `build`：为当前系统和架构构建 CGO 动态库及生成头，输出到 `out/bin/`。
 - `test`：构建动态库并运行 Go 行为测试、工程命令测试及实际 C ABI 加载测试。
 - `package`：生成 `out/dist/cpa-workbuddy_<VERSION>_<goos>_<goarch>.zip` 和 `.zip.sha256`。发布时汇总五个平台的摘要为 `checksums.txt`。
@@ -52,7 +52,7 @@ go run ./cmd/project quality
 go run ./cmd/project commit-msg --commit-range BASE..HEAD
 ```
 
-质量门禁只检查，不修改源码，也不提交、推送或发布；提交前运行一次完整 `quality` 即可。推送到 GitHub 后由 Actions 在五个平台重新执行 lint 与 test，作为发布的正式依据。
+质量门禁只检查，不修改源码，也不提交、推送或发布；提交前运行一次完整 `quality` 即可。推送到 GitHub 后由 Actions 在五个平台重新执行 lint、test 及本次推送的提交信息检查，作为发布的正式依据。
 
 本仓库 XERJ 前缀为 `cpawb`。修改后执行：
 
@@ -73,7 +73,7 @@ CI 在 Windows amd64、Linux amd64 / arm64、macOS amd64 / arm64 原生 runner �
 1. 更新根 `VERSION`，在 `.github/release-notes/` 编写对应版本的说明，文件名为 `v<VERSION>.md`，首行为 `# v<VERSION>`。
 2. 完成代码、文档和验收收尾，运行本地质量检查。
 3. 得到发布指令后，推送提交及与 VERSION 一致的 tag。
-4. tag workflow 先运行五个平台的 lint 和 test；全部成功后才启动五个平台的发布构建和打包；全部构建成功后才校验包及摘要，使用 Release notes 创建 GitHub Release 并上传产物。
+4. tag workflow 先运行五个平台的 lint 和 test，并按上一个 release tag 到本次 tag 的范围校验提交信息；全部成功后才启动五个平台的发布构建和打包；全部构建成功后才校验包及摘要，使用 Release notes 创建 GitHub Release 并上传产物。
 
 发布工作流的远程执行结果以 GitHub Actions 为准。Release 发布前可在 Actions 检查各平台日志；失败任务必须修复后重新执行。CLI 先创建草稿并上传附件，全部上传成功后公开发布；上传失败遗留的草稿需确认后删除，再重跑发布任务。已发布的版本不覆盖。
 
