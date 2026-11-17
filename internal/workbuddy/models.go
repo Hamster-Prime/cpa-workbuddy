@@ -114,7 +114,7 @@ func (s *Service) discoverModels(ctx context.Context, req authModelRequest, call
 			changed = stored.ModelDiscoveryFailure != reason
 			stored.ModelDiscoveryFailure = reason
 		} else if reason == "temporary_failure" && stored.ModelDiscoveryFailure == "" && validModelSnapshot(stored.ModelSnapshot, req.AuthID, chosen.id) {
-			models = stored.ModelSnapshot.Models
+			models = filterCatalogModels(chosen.id, stored.ModelSnapshot.Models)
 			status = "snapshot"
 		}
 	}

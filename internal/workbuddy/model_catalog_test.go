@@ -203,7 +203,6 @@ func TestModelCatalogConfigurationFixtures(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string][]string{
-		"default-model":          nil,
 		"fast-model":             {"low", "medium", "high", "max"},
 		"primary-model":          {"low", "high", "max"},
 		"hy3":                    {"low", "high"},
@@ -222,8 +221,29 @@ func TestModelCatalogConfigurationFixtures(t *testing.T) {
 			t.Errorf("%s efforts = %v", model.ID, model.Efforts)
 		}
 	}
-	if models[1].CreditRate == nil || *models[1].CreditRate != 0.34 || models[8].MaxOutputTokens != 32000 || !models[8].Images || models[7].Images {
+	if models[0].CreditRate == nil || *models[0].CreditRate != 0.34 || models[7].MaxOutputTokens != 32000 || !models[7].Images || models[6].Images {
 		t.Fatal("fixture credit units, output limits or image declarations were lost")
+	}
+}
+
+func TestModelCatalogSiteExclusions(t *testing.T) {
+	const cfg = `{"agents":[{"name":"cli","models":["auto","default-model","max-model","gpt-5"]}],"models":[]}`
+	cnModels := parseCatalog(t, "workbuddy", cfg)
+	cnIDs := make([]string, len(cnModels))
+	for i, m := range cnModels {
+		cnIDs[i] = m.ID
+	}
+	if !reflect.DeepEqual(cnIDs, []string{"default-model", "max-model", "gpt-5"}) {
+		t.Fatalf("workbuddy models = %v, want auto excluded", cnIDs)
+	}
+
+	intlModels := parseCatalog(t, "workbuddy-ai", cfg)
+	intlIDs := make([]string, len(intlModels))
+	for i, m := range intlModels {
+		intlIDs[i] = m.ID
+	}
+	if !reflect.DeepEqual(intlIDs, []string{"auto", "gpt-5"}) {
+		t.Fatalf("workbuddy-ai models = %v, want default-model and max-model excluded", intlIDs)
 	}
 }
 

@@ -155,7 +155,7 @@ func ParseModelConfig(siteID string, rawData []byte, now time.Time) ([]CatalogMo
 	out := make([]CatalogModel, 0)
 	seen := make(map[string]bool)
 	add := func(id string, detail *catalogDetail) {
-		if seen[id] {
+		if seen[id] || shouldExcludeCatalogModel(siteID, id) {
 			return
 		}
 		seen[id] = true
@@ -213,6 +213,29 @@ func ParseModelConfig(siteID string, rawData []byte, now time.Time) ([]CatalogMo
 	return out, nil
 }
 
+func shouldExcludeCatalogModel(siteID, id string) bool {
+	switch siteID {
+	case "workbuddy-ai":
+		return id == "default-model" || id == "max-model"
+	case "workbuddy":
+		return id == "auto"
+	default:
+		return false
+	}
+}
+
+func filterCatalogModels(siteID string, models []CatalogModel) []CatalogModel {
+	if len(models) == 0 {
+		return []CatalogModel{}
+	}
+	out := make([]CatalogModel, 0, len(models))
+	for _, m := range models {
+		if !shouldExcludeCatalogModel(siteID, m.ID) {
+			out = append(out, m)
+		}
+	}
+	return out
+}
 func catalogID(id string) bool {
 	if id == "" {
 		return false

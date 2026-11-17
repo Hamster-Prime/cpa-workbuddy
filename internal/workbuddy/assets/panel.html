@@ -415,12 +415,12 @@
     }
 
     .btn-primary {
-      background: var(--primary-color, var(--accent-blue));
-      color: var(--primary-contrast, var(--text-inverse));
+      background: var(--accent-blue);
+      color: #ffffff;
       border-color: transparent;
     }
     .btn-primary:hover:not(:disabled) {
-      background: var(--primary-hover, var(--accent-blue-hover));
+      background: var(--accent-blue-hover);
     }
 
     .btn-secondary {
@@ -1315,7 +1315,7 @@
     <section id="panelConfig" hidden>
       <div class="config-scroll">
         <div class="config-card">
-          <h3 class="config-card-title">模型前缀路由 (Option A 向后兼容)</h3>
+          <h3 class="config-card-title">模型前缀路由</h3>
           <div class="config-form-grid">
             <div class="form-row">
               <div class="form-label-box">
@@ -1429,11 +1429,7 @@
         </div>
       </div>
       <div class="models-toolbar">
-        <div class="models-filter-pills" role="group" aria-label="模型筛选">
-          <button type="button" class="pill-btn active" data-model-filter="all" onclick="setModelsFilter('all')">全部 <span id="cntModelsAll">0</span></button>
-          <button type="button" class="pill-btn" data-model-filter="free" onclick="setModelsFilter('free')">FREE <span id="cntModelsFree">0</span></button>
-          <button type="button" class="pill-btn" data-model-filter="paid" onclick="setModelsFilter('paid')">付费倍率 <span id="cntModelsPaid">0</span></button>
-        </div>
+        <span class="badge badge-subtle">共 <span id="cntModelsAll">0</span> 个模型</span>
         <input type="text" id="modelsSearchInput" class="models-search" placeholder="搜索模型 ID 或名称..." oninput="renderModelsList()">
       </div>
       <div id="modelsListBody" class="models-list">
@@ -1470,7 +1466,6 @@
     } catch (_) {}
 
     let currentModelsData = null;
-    let modelsFilter = "all";
     const busyKeys = new Set();
 
     function el(id) { return document.getElementById(id); }
@@ -1486,6 +1481,35 @@
         toast.classList.add("toast-exit");
         setTimeout(() => toast.remove(), 180);
       }, 2800);
+    }
+
+    async function copyText(text) {
+      if (!text) return false;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (_) {}
+      }
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      ta.style.top = "0";
+      const host = el("modelsModal") && !el("modelsModal").hidden ? el("modelsModal") : document.body;
+      host.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      let ok = false;
+      try {
+        ok = document.execCommand("copy");
+      } catch (_) {
+        ok = false;
+      }
+      ta.remove();
+      return ok;
     }
 
     // ---- Theme extraction & CPA parent sync ----
@@ -2235,10 +2259,6 @@
     // ---- Account Models Modal ----
     function openModelsModal(acc) {
       currentModelsData = { auth_index: acc.auth_index, label: acc.label || acc.name || acc.auth_index, site: acc.site, models: [] };
-      modelsFilter = "all";
-      document.querySelectorAll("[data-model-filter]").forEach(btn => {
-        btn.classList.toggle("active", btn.getAttribute("data-model-filter") === "all");
-      });
       el("modelsSearchInput").value = "";
       el("modelsModalTitle").textContent = formatAccountName(currentModelsData.label);
       const siteBadge = el("modelsSiteBadge");
@@ -2248,8 +2268,6 @@
       el("modelsListBody").innerHTML = '<div class="empty-state" style="border:0; background:transparent;">正在读取账号模型列表...</div>';
       el("modelsSourceInfo").textContent = "--";
       el("cntModelsAll").textContent = "0";
-      el("cntModelsFree").textContent = "0";
-      el("cntModelsPaid").textContent = "0";
       el("modelsModal").hidden = false;
       loadAccountModels(acc.auth_index, false);
     }
@@ -2258,13 +2276,6 @@
       el("modelsModal").hidden = true;
     }
 
-    function setModelsFilter(filter) {
-      modelsFilter = filter;
-      document.querySelectorAll("[data-model-filter]").forEach(btn => {
-        btn.classList.toggle("active", btn.getAttribute("data-model-filter") === filter);
-      });
-      renderModelsList();
-    }
 
     function refreshCurrentAccountModels() {
       if (!currentModelsData || !currentModelsData.auth_index) return;
@@ -2315,24 +2326,23 @@
       const all = currentModelsData.models;
       const prefix = currentModelsData.prefix || "";
       const isFreeModel = (m) => m.free === true || (m.credit_rate != null && Number(m.credit_rate) === 0);
-      const isPaidModel = (m) => !isFreeModel(m) && m.credit_rate != null && Number(m.credit_rate) > 0;
 
       el("cntModelsAll").textContent = String(all.length);
-      el("cntModelsFree").textContent = String(all.filter(isFreeModel).length);
-      el("cntModelsPaid").textContent = String(all.filter(isPaidModel).length);
 
       const kw = (el("modelsSearchInput").value || "").trim().toLowerCase();
-      const items = all.filter(m => {
-        if (modelsFilter === "free" && !isFreeModel(m)) return false;
-        if (modelsFilter === "paid" && !isPaidModel(m)) return false;
-        if (kw) {
+      const items = all
+        .filter(m => {
+          if (!kw) return true;
           const fullId = (prefix + (m.id || "")).toLowerCase();
           const name = (m.name || "").toLowerCase();
-          if (!fullId.includes(kw) && !name.includes(kw)) return false;
-        }
-        return true;
-      });
-
+          return fullId.includes(kw) || name.includes(kw);
+        })
+        .slice()
+        .sort((a, b) => {
+          const af = isFreeModel(a) ? 0 : 1;
+          const bf = isFreeModel(b) ? 0 : 1;
+          return af - bf;
+        });
       listEl.textContent = "";
       if (items.length === 0) {
         const empty = document.createElement("div");
@@ -2359,9 +2369,12 @@
         idEl.textContent = fullId;
         idEl.title = "点击复制 " + fullId;
         idEl.style.cursor = "pointer";
-        idEl.onclick = () => {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(fullId).then(() => showToast("已复制 " + fullId, "info")).catch(() => {});
+        idEl.onclick = async () => {
+          const ok = await copyText(fullId);
+          if (ok) {
+            showToast("已复制 " + fullId, "info");
+          } else {
+            showToast("复制失败，请手动复制", "error");
           }
         };
         idLine.appendChild(idEl);

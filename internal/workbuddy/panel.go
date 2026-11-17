@@ -359,10 +359,7 @@ func (s *Service) fetchAccountModels(ctx context.Context, callbackID string, cal
 	}
 	if !refresh && validModelSnapshot(rec.Stored.ModelSnapshot, rec.Auth.ID, rec.Site.id) {
 		capturedAt := rec.Stored.ModelSnapshot.CapturedAt.UTC()
-		models := rec.Stored.ModelSnapshot.Models
-		if models == nil {
-			models = []CatalogModel{}
-		}
+		models := filterCatalogModels(rec.Site.id, rec.Stored.ModelSnapshot.Models)
 		return AccountModelsResponse{
 			AuthIndex:  rec.AuthIndex,
 			Label:      label,
