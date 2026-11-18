@@ -125,8 +125,8 @@ jobs:
         shell: bash
         env:
           CGO_ENABLED: "1"
-          GOOS: windows
-          GOARCH: arm64
+          TARGET_GOOS: windows
+          TARGET_GOARCH: arm64
           CC: zig cc -target aarch64-windows-gnu
           CXX: zig c++ -target aarch64-windows-gnu
         run: go run ./cmd/project package

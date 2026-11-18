@@ -523,11 +523,11 @@ func (c *controller) lint() error {
 }
 
 func targetPlatform() (string, string) {
-	goos := os.Getenv("GOOS")
+	goos := os.Getenv("TARGET_GOOS")
 	if goos == "" {
 		goos = runtime.GOOS
 	}
-	goarch := os.Getenv("GOARCH")
+	goarch := os.Getenv("TARGET_GOARCH")
 	if goarch == "" {
 		goarch = runtime.GOARCH
 	}
@@ -573,7 +573,10 @@ func (c *controller) build() error {
 	if _, err := c.tool("go", runPolicy{stderrFails: true}, "mod", "download"); err != nil {
 		return err
 	}
-	if _, err := c.tool("go", runPolicy{nonemptyFails: true}, "build", "-trimpath", "-buildmode=c-shared", "-o", artifact, "./cmd/cpa-workbuddy"); err != nil {
+	goos, goarch := targetPlatform()
+	buildCtrl := *c
+	buildCtrl.env = append(append([]string(nil), c.env...), "GOOS="+goos, "GOARCH="+goarch)
+	if _, err := buildCtrl.tool("go", runPolicy{nonemptyFails: true}, "build", "-trimpath", "-buildmode=c-shared", "-o", artifact, "./cmd/cpa-workbuddy"); err != nil {
 		return err
 	}
 	info, err := os.Stat(artifact)
