@@ -575,7 +575,15 @@ func (c *controller) build() error {
 	}
 	goos, goarch := targetPlatform()
 	buildCtrl := *c
-	buildCtrl.env = append(append([]string(nil), c.env...), "GOOS="+goos, "GOARCH="+goarch)
+	buildEnv := append([]string(nil), c.env...)
+	buildEnv = append(buildEnv, "GOOS="+goos, "GOARCH="+goarch)
+	if cc := os.Getenv("TARGET_CC"); cc != "" {
+		buildEnv = append(buildEnv, "CC="+cc)
+	}
+	if cxx := os.Getenv("TARGET_CXX"); cxx != "" {
+		buildEnv = append(buildEnv, "CXX="+cxx)
+	}
+	buildCtrl.env = buildEnv
 	if _, err := buildCtrl.tool("go", runPolicy{nonemptyFails: true}, "build", "-trimpath", "-buildmode=c-shared", "-o", artifact, "./cmd/cpa-workbuddy"); err != nil {
 		return err
 	}

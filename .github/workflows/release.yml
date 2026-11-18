@@ -127,8 +127,8 @@ jobs:
           CGO_ENABLED: "1"
           TARGET_GOOS: windows
           TARGET_GOARCH: arm64
-          CC: zig cc -target aarch64-windows-gnu
-          CXX: zig c++ -target aarch64-windows-gnu
+          TARGET_CC: zig cc -target aarch64-windows-gnu
+          TARGET_CXX: zig c++ -target aarch64-windows-gnu
         run: go run ./cmd/project package
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
