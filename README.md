@@ -68,6 +68,7 @@ plugins:
 | CPA 运行环境 | 发布包后缀 | 动态库安装路径示例 |
 | --- | --- | --- |
 | Windows x64 | `windows_amd64.zip` | `plugins/windows/amd64/cpa-workbuddy.dll` |
+| Windows ARM64 | `windows_arm64.zip` | `plugins/windows/arm64/cpa-workbuddy.dll` |
 | Linux x64 | `linux_amd64.zip` | `plugins/linux/amd64/cpa-workbuddy.so` |
 | Linux ARM64 | `linux_arm64.zip` | `plugins/linux/arm64/cpa-workbuddy.so` |
 | macOS Intel | `darwin_amd64.zip` | `plugins/darwin/amd64/cpa-workbuddy.dylib` |

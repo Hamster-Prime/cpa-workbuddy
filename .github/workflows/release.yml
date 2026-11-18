@@ -80,6 +80,10 @@ jobs:
             target: windows/amd64
             artifact: windows-amd64
           - os: ubuntu-24.04
+            target: windows/arm64
+            artifact: windows-arm64
+            zig: true
+          - os: ubuntu-24.04
             target: linux/amd64
             artifact: linux-amd64
           - os: ubuntu-24.04-arm
@@ -101,12 +105,30 @@ jobs:
           persist-credentials: false
           set-safe-directory: false
       - uses: ./.github/actions/toolchain
+      - name: Setup Zig for Windows ARM64 cross-compilation
+        if: matrix.zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.14.1
+          use-cache: false
       - name: Verify native target
+        if: "!matrix.zig"
         shell: bash
         env:
           EXPECTED_TARGET: ${{ matrix.target }}
         run: test "$(go env GOOS)/$(go env GOARCH)" = "$EXPECTED_TARGET"
       - name: Build and package allowlisted library
+        if: "!matrix.zig"
+        run: go run ./cmd/project package
+      - name: Cross-compile and package Windows ARM64 library
+        if: matrix.zig
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+          GOOS: windows
+          GOARCH: arm64
+          CC: zig cc -target aarch64-windows-gnu
+          CXX: zig c++ -target aarch64-windows-gnu
         run: go run ./cmd/project package
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -151,7 +173,7 @@ jobs:
         run: |
           set -euo pipefail
           version="$(tr -d '[:space:]' < VERSION)"
-          targets=(windows_amd64 linux_amd64 linux_arm64 darwin_amd64 darwin_arm64)
+          targets=(windows_amd64 windows_arm64 linux_amd64 linux_arm64 darwin_amd64 darwin_arm64)
           expected=""
           for target in "${targets[@]}"; do
             base="cpa-workbuddy_${version}_${target}.zip"
@@ -164,7 +186,7 @@ jobs:
           fi
           actual="$(find artifacts -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | sort)"
           if test "$actual" != "$(printf '%s' "$expected" | sort)"; then
-            echo "downloaded artifacts do not match the five expected targets" >&2
+            echo "downloaded artifacts do not match the six expected targets" >&2
             printf 'expected:\n%s\nactual:\n%s\n' "$(printf '%s' "$expected" | sort)" "$actual" >&2
             exit 1
           fi
@@ -185,7 +207,7 @@ jobs:
           set -euo pipefail
           version="$(tr -d '[:space:]' < VERSION)"
           assets=()
-          for target in windows_amd64 linux_amd64 linux_arm64 darwin_amd64 darwin_arm64; do
+          for target in windows_amd64 windows_arm64 linux_amd64 linux_arm64 darwin_amd64 darwin_arm64; do
             base="cpa-workbuddy_${version}_${target}.zip"
             assets+=("artifacts/$base")
           done

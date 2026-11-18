@@ -522,17 +522,30 @@ func (c *controller) lint() error {
 	return err
 }
 
+func targetPlatform() (string, string) {
+	goos := os.Getenv("GOOS")
+	if goos == "" {
+		goos = runtime.GOOS
+	}
+	goarch := os.Getenv("GOARCH")
+	if goarch == "" {
+		goarch = runtime.GOARCH
+	}
+	return goos, goarch
+}
+
 func (c *controller) libraryPath() (string, error) {
+	goos, goarch := targetPlatform()
 	var extension string
-	switch runtime.GOOS + "/" + runtime.GOARCH {
-	case "windows/amd64":
+	switch goos + "/" + goarch {
+	case "windows/amd64", "windows/arm64":
 		extension = ".dll"
 	case "linux/amd64", "linux/arm64":
 		extension = ".so"
 	case "darwin/amd64", "darwin/arm64":
 		extension = ".dylib"
 	default:
-		return "", fmt.Errorf("unsupported native target: %s/%s", runtime.GOOS, runtime.GOARCH)
+		return "", fmt.Errorf("unsupported target: %s/%s", goos, goarch)
 	}
 	return filepath.Join(c.out, "bin", "cpa-workbuddy"+extension), nil
 }
@@ -670,7 +683,8 @@ func (c *controller) bundle() (resultErr error) {
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return err
 	}
-	archive := filepath.Join(directory, fmt.Sprintf("cpa-workbuddy_%s_%s_%s.zip", value, runtime.GOOS, runtime.GOARCH))
+	goos, goarch := targetPlatform()
+	archive := filepath.Join(directory, fmt.Sprintf("cpa-workbuddy_%s_%s_%s.zip", value, goos, goarch))
 	file, err := os.Create(archive)
 	if err != nil {
 		return err
