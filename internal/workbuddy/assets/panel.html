@@ -652,6 +652,64 @@
       white-space: nowrap;
     }
 
+    .transfer-select {
+      flex: 0 0 auto;
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      accent-color: var(--accent-blue);
+      cursor: pointer;
+    }
+    .transfer-select:focus-visible {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 2px;
+    }
+
+    .transfer-preview-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      max-height: 46vh;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background: var(--bg-primary);
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-color) transparent;
+    }
+    .transfer-preview-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-subtle, var(--border-color));
+      font-size: 12.5px;
+      cursor: pointer;
+    }
+    .transfer-preview-row:last-child {
+      border-bottom: 0;
+    }
+    .transfer-preview-row:hover {
+      background: var(--bg-hover, var(--bg-subtle));
+    }
+    .transfer-preview-row.unimportable {
+      cursor: not-allowed;
+      opacity: 0.62;
+    }
+    .transfer-preview-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text-primary);
+    }
+    .transfer-preview-problem {
+      flex: 0 0 auto;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
     .cred-badge-row {
       display: flex;
       align-items: center;
@@ -1447,6 +1505,40 @@
     </div>
   </div>
 
+  <div id="transferModal" class="modal-backdrop" hidden onclick="if (event.target === this) closeTransferModal()">
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="transferModalTitle">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px; min-width:0; flex-wrap:wrap;">
+          <h2 id="transferModalTitle" class="modal-title">导入账号预览</h2>
+          <span id="transferSourceBadge" class="badge badge-subtle"></span>
+        </div>
+        <button type="button" class="btn-secondary" onclick="closeTransferModal()" style="min-height:28px; padding:2px 8px;">✕</button>
+      </div>
+      <p style="font-size:12.5px; color:var(--text-secondary); margin:0; line-height:1.5;">
+        预览只显示脱敏账号信息，访问令牌不会出现在这里。勾选要导入的记录后确认。
+      </p>
+      <div class="models-toolbar">
+        <span class="badge badge-subtle">共 <span id="transferPreviewTotal">0</span> 条</span>
+        <span class="badge badge-success">可导入 <span id="transferPreviewImportable">0</span> 条</span>
+        <label class="badge badge-subtle" style="cursor:pointer;">
+          <input type="checkbox" id="transferSelectAll" onchange="toggleTransferSelectAll(this.checked)" style="margin-right:6px; vertical-align:middle;">
+          全选可导入
+        </label>
+      </div>
+      <div id="transferPreviewList" class="transfer-preview-list">
+        <div class="empty-state" style="border:0; background:transparent;">加载中...</div>
+      </div>
+      <div id="transferModalError" class="modal-error" hidden></div>
+      <div class="models-footer">
+        <span id="transferPreviewSummary">--</span>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn-secondary" onclick="closeTransferModal()">取消</button>
+          <button type="button" id="btnTransferConfirm" class="btn-primary" onclick="confirmTransferImport()">确认导入</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const MGMT_BASE = "/v0/management/plugins/cpa-workbuddy";
     const LOCAL_KEY_STORAGE = "cpa_workbuddy_mgmt_key";
@@ -2113,13 +2205,13 @@
         const nameRow = document.createElement("div");
         nameRow.className = "cred-name";
         const selectBox = document.createElement("input");
-         selectBox.type = "checkbox";
-         selectBox.className = "transfer-select";
-         selectBox.dataset.authIndex = acc.auth_index || "";
-         selectBox.title = "选择此账号用于导出";
-         selectBox.onclick = (e) => e.stopPropagation();
-         nameRow.appendChild(selectBox);
-         const emailSpan = document.createElement("span");
+        selectBox.type = "checkbox";
+        selectBox.className = "transfer-select";
+        selectBox.dataset.authIndex = acc.auth_index || "";
+        selectBox.title = "选择此账号用于导出";
+        selectBox.onclick = (e) => e.stopPropagation();
+        nameRow.appendChild(selectBox);
+        const emailSpan = document.createElement("span");
         emailSpan.className = "cred-email";
         const rawTitle = acc.label || acc.name || acc.id || acc.auth_index;
         emailSpan.textContent = formatAccountName(rawTitle);
@@ -2547,12 +2639,108 @@
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ auth_indexes: accountIds })
         });
-        const blob = new Blob([JSON.stringify(data.accounts || [], null, 2)], { type: "application/json;charset=utf-8" });
+        const accounts = data.accounts || [];
+        const blob = new Blob([JSON.stringify({ accounts }, null, 2)], { type: "application/json;charset=utf-8" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob); link.download = "workbuddy-accounts.json"; link.click();
         URL.revokeObjectURL(link.href);
-        showToast(`已导出 ${data.accounts.length} 个账号`, "success");
+        showToast(`已导出 ${accounts.length} 个账号`, "success");
       } catch (err) { if (err.status !== 401) showToast("导出失败：" + err.message, "error"); }
+    }
+
+    let pendingTransferText = "";
+    let pendingTransferPreview = [];
+
+    function setTransferModalError(message) {
+      const box = el("transferModalError");
+      if (!box) return;
+      box.textContent = message || "";
+      box.hidden = !message;
+    }
+
+    function closeTransferModal() {
+      const modal = el("transferModal");
+      if (modal) modal.hidden = true;
+      pendingTransferText = "";
+      pendingTransferPreview = [];
+      setTransferModalError("");
+    }
+
+    function transferRowLabel(account) {
+      const parts = [];
+      if (account.nickname) parts.push(account.nickname);
+      if (account.email) parts.push(account.email);
+      if (account.uid) parts.push("UID " + account.uid);
+      return parts.length ? parts.join(" · ") : `记录 ${account.index + 1}`;
+    }
+
+    function renderTransferPreview() {
+      const list = el("transferPreviewList");
+      if (!list) return;
+      list.textContent = "";
+      pendingTransferPreview.forEach((account) => {
+        const row = document.createElement("label");
+        row.className = "transfer-preview-row" + (account.importable ? "" : " unimportable");
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.className = "transfer-preview-select";
+        box.dataset.index = String(account.index);
+        box.disabled = !account.importable;
+        box.checked = Boolean(account.importable);
+        box.onchange = updateTransferConfirmState;
+        row.appendChild(box);
+
+        const name = document.createElement("span");
+        name.className = "transfer-preview-name";
+        name.textContent = transferRowLabel(account);
+        row.appendChild(name);
+
+        if (account.site) {
+          const site = document.createElement("span");
+          site.className = "badge " + (account.site === "workbuddy" ? "badge-cn" : "badge-intl");
+          site.textContent = account.site === "workbuddy" ? "国内 CN" : "国际 AI";
+          row.appendChild(site);
+        }
+
+        const problem = document.createElement("span");
+        problem.className = "transfer-preview-problem";
+        problem.textContent = account.importable
+          ? (account.has_token ? "可导入" : "缺少令牌")
+          : account.problem || "不可导入";
+        row.appendChild(problem);
+        list.appendChild(row);
+      });
+      const total = pendingTransferPreview.length;
+      const importable = pendingTransferPreview.filter(account => account.importable).length;
+      el("transferPreviewTotal").textContent = String(total);
+      el("transferPreviewImportable").textContent = String(importable);
+      updateTransferConfirmState();
+    }
+
+    function selectedTransferIndexes() {
+      return Array.from(document.querySelectorAll(".transfer-preview-select:checked"))
+        .map(input => Number(input.dataset.index))
+        .filter(index => Number.isInteger(index));
+    }
+
+    function updateTransferConfirmState() {
+      const selected = selectedTransferIndexes();
+      const button = el("btnTransferConfirm");
+      if (button) button.disabled = selected.length === 0;
+      const summary = el("transferPreviewSummary");
+      if (summary) summary.textContent = `已选择 ${selected.length} 条记录`;
+      const selectAll = el("transferSelectAll");
+      if (selectAll) {
+        const importable = pendingTransferPreview.filter(account => account.importable).length;
+        selectAll.checked = importable > 0 && selected.length === importable;
+        selectAll.indeterminate = selected.length > 0 && selected.length < importable;
+      }
+    }
+
+    function toggleTransferSelectAll(checked) {
+      document.querySelectorAll(".transfer-preview-select:not(:disabled)")
+        .forEach((input) => { input.checked = Boolean(checked); });
+      updateTransferConfirmState();
     }
 
     async function importAccountsFromFile(event) {
@@ -2564,17 +2752,38 @@
         const preview = await apiFetch(MGMT_BASE + "/transfer/preview", {
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text })
         });
-        const count = (preview.accounts || []).length;
-        const tokenCount = (preview.accounts || []).filter(account => account.has_token).length;
-        if (!window.confirm(`文件包含 ${count} 条记录，其中 ${tokenCount} 条有访问令牌。确认导入？令牌不会显示在预览中。`)) return;
-        const indexes = Array.from({ length: count }, (_, index) => index);
+        pendingTransferText = text;
+        pendingTransferPreview = preview.accounts || [];
+        const badge = el("transferSourceBadge");
+        if (badge) badge.textContent = file.name;
+        setTransferModalError("");
+        renderTransferPreview();
+        el("transferModal").hidden = false;
+      } catch (err) {
+        if (err.status !== 401) showToast("导入失败：" + err.message, "error");
+      }
+    }
+
+    async function confirmTransferImport() {
+      const indexes = selectedTransferIndexes();
+      if (indexes.length === 0) { setTransferModalError("请至少选择一条可导入记录"); return; }
+      const button = el("btnTransferConfirm");
+      if (button) button.disabled = true;
+      setTransferModalError("");
+      try {
         const result = await apiFetch(MGMT_BASE + "/transfer/import", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, indexes })
+          body: JSON.stringify({ text: pendingTransferText, indexes })
         });
+        closeTransferModal();
         await loadDashboard(false);
-        showToast(`导入完成：${result.imported} 条，跳过 ${result.skipped} 条`, "success");
-      } catch (err) { if (err.status !== 401) showToast("导入失败：" + err.message, "error"); }
+        const duplicates = result.duplicated ? `，覆盖重复 ${result.duplicated} 条` : "";
+        showToast(`导入完成：${result.imported} 条，跳过 ${result.skipped} 条${duplicates}`, "success");
+      } catch (err) {
+        if (err.status !== 401) setTransferModalError(err.message);
+      } finally {
+        if (button) button.disabled = false;
+      }
     }
 
     // ---- Boot ----

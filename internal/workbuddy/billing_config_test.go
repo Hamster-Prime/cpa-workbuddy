@@ -111,6 +111,9 @@ type fakeHostHarness struct {
 	saved   map[string]json.RawMessage
 	calls   []string
 	handler func(method, url string, body []byte) (int, []byte)
+	// callOverride lets a test fail a specific host method. handled=false falls
+	// through to the default fake behaviour.
+	callOverride func(method string) (reply []byte, err error, handled bool)
 }
 
 func newFakeHostHarness(t *testing.T, auths []workbuddy.AuthData) *fakeHostHarness {
@@ -150,7 +153,13 @@ func newFakeHostHarness(t *testing.T, auths []workbuddy.AuthData) *fakeHostHarne
 func (h *fakeHostHarness) call(method string, raw []byte) ([]byte, error) {
 	h.mu.Lock()
 	h.calls = append(h.calls, method)
+	override := h.callOverride
 	h.mu.Unlock()
+	if override != nil {
+		if reply, err, handled := override(method); handled {
+			return reply, err
+		}
+	}
 
 	switch method {
 	case "host.auth.list":

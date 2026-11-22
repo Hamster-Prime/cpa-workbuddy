@@ -2,15 +2,19 @@ package workbuddy
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 )
 
 // transferRecord is the JSON contract shared with dsh-connect-workbuddy.
+//
+// A record that cannot be imported does not abort the whole file: the parser
+// keeps it and records the reason in problem so preview can show it and the
+// merge step can skip it while still importing the remaining entries.
 type transferRecord struct {
 	AccessToken      string `json:"access_token"`
 	RefreshToken     string `json:"refresh_token,omitempty"`
@@ -21,19 +25,34 @@ type transferRecord struct {
 	ExpiresAt        int64  `json:"expiresAt,omitempty"`
 	RefreshExpiresAt int64  `json:"refreshExpiresAt,omitempty"`
 	AuthRaw          any    `json:"auth_raw,omitempty"`
+
+	problem string
 }
 
 type transferPreviewEntry struct {
-	Index    int    `json:"index"`
-	UID      string `json:"uid,omitempty"`
-	Nickname string `json:"nickname,omitempty"`
-	Email    string `json:"email,omitempty"`
-	HasToken bool   `json:"has_token"`
+	Index      int    `json:"index"`
+	UID        string `json:"uid,omitempty"`
+	Nickname   string `json:"nickname,omitempty"`
+	Email      string `json:"email,omitempty"`
+	Site       string `json:"site,omitempty"`
+	HasToken   bool   `json:"has_token"`
+	Importable bool   `json:"importable"`
+	Problem    string `json:"problem,omitempty"`
 }
 
 type transferPreview struct {
 	Accounts []transferPreviewEntry `json:"accounts"`
 	Total    int                    `json:"total"`
+}
+
+// transferMerge is the outcome of merging selected records into credentials.
+// Imported always equals len(Changes): it counts credentials actually written,
+// not input records, so duplicate identities cannot inflate it.
+type transferMerge struct {
+	Changes    map[string]credential
+	Imported   int
+	Skipped    int
+	Duplicated int
 }
 
 func parseTransferFile(raw []byte) ([]transferRecord, error) {
@@ -50,32 +69,79 @@ func parseTransferFile(raw []byte) ([]transferRecord, error) {
 	}
 	records := make([]transferRecord, 0, len(items))
 	for i, item := range items {
+		position := i + 1
 		object, ok := item.(map[string]any)
 		if !ok {
-			return nil, failure("invalid_transfer", fmt.Sprintf("transfer file item %d is not an account object", i+1), 400)
+			records = append(records, transferRecord{problem: fmt.Sprintf("item %d is not an account object", position)})
+			continue
 		}
 		encoded, err := json.Marshal(object)
 		if err != nil {
-			return nil, failure("invalid_transfer", fmt.Sprintf("transfer file item %d is invalid", i+1), 400)
+			records = append(records, transferRecord{problem: fmt.Sprintf("item %d cannot be encoded", position)})
+			continue
 		}
 		var record transferRecord
 		if err := json.Unmarshal(encoded, &record); err != nil {
-			return nil, failure("invalid_transfer", fmt.Sprintf("transfer file item %d is invalid", i+1), 400)
-		}
-		if strings.TrimSpace(record.AccessToken) == "" {
-			// Missing tokens are valid file entries but are skipped during merge.
-			records = append(records, record)
+			records = append(records, transferRecord{problem: fmt.Sprintf("item %d has an invalid field type", position)})
 			continue
 		}
-		if !safeValue(record.AccessToken) || !safeValue(record.RefreshToken) || !safeValue(record.Domain) {
-			return nil, failure("invalid_transfer", fmt.Sprintf("transfer file item %d contains unsafe credential text", i+1), 400)
-		}
-		if record.ExpiresAt < 0 || record.RefreshExpiresAt < 0 {
-			return nil, failure("invalid_transfer", fmt.Sprintf("transfer file item %d has an invalid expiry", i+1), 400)
-		}
+		record.problem = transferRecordProblem(record, position)
 		records = append(records, record)
 	}
 	return records, nil
+}
+
+// transferDomain resolves the domain a record belongs to, falling back to the
+// nested auth_raw.auth.domain used by the reference exporter when the flat
+// field is absent.
+func transferDomain(record transferRecord) string {
+	if domain := strings.TrimSpace(record.Domain); domain != "" {
+		return domain
+	}
+	raw, ok := record.AuthRaw.(map[string]any)
+	if !ok {
+		return ""
+	}
+	auth, ok := raw["auth"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	domain, _ := auth["domain"].(string)
+	return strings.TrimSpace(domain)
+}
+
+// transferRecordProblem reports why a parsed record cannot be imported, or ""
+// when it is usable. Missing tokens stay a per-record problem rather than a
+// file-level error so one bad entry never blocks a batch.
+func transferRecordProblem(record transferRecord, position int) string {
+	if strings.TrimSpace(record.AccessToken) == "" {
+		return fmt.Sprintf("item %d is missing access_token", position)
+	}
+	if !safeValue(record.AccessToken) || !safeValue(record.RefreshToken) || !safeValue(record.Domain) {
+		return fmt.Sprintf("item %d contains unsafe credential text", position)
+	}
+	if record.ExpiresAt < 0 || record.RefreshExpiresAt < 0 {
+		return fmt.Sprintf("item %d has a negative expiry", position)
+	}
+	if strings.TrimSpace(record.UID) == "" {
+		uid, _ := authRawAccount(record)["uid"].(string)
+		if strings.TrimSpace(uid) == "" {
+			return fmt.Sprintf("item %d is missing uid", position)
+		}
+	}
+	if _, ok := selectSite(transferRegion(transferDomain(record))); !ok {
+		return fmt.Sprintf("item %d has an unsupported domain", position)
+	}
+	return ""
+}
+
+func authRawAccount(record transferRecord) map[string]any {
+	raw, ok := record.AuthRaw.(map[string]any)
+	if !ok {
+		return nil
+	}
+	account, _ := raw["account"].(map[string]any)
+	return account
 }
 
 func transferItems(parsed any) ([]any, bool) {
@@ -110,9 +176,11 @@ func previewTransferFile(raw []byte) (transferPreview, error) {
 	}
 	preview := transferPreview{Accounts: make([]transferPreviewEntry, len(records)), Total: len(records)}
 	for i, record := range records {
+		problem := record.problem
 		preview.Accounts[i] = transferPreviewEntry{
 			Index: i, UID: record.UID, Nickname: record.Nickname, Email: record.Email,
-			HasToken: strings.TrimSpace(record.AccessToken) != "",
+			Site: transferRegion(record.Domain), HasToken: strings.TrimSpace(record.AccessToken) != "",
+			Importable: problem == "", Problem: problem,
 		}
 	}
 	return preview, nil
@@ -120,15 +188,29 @@ func previewTransferFile(raw []byte) (transferPreview, error) {
 
 func transferRecordOf(rec hostAuthRecord) (transferRecord, error) {
 	stored := rec.Stored
+	if stored.AccessToken == "" {
+		return transferRecord{}, failure("invalid_credentials", "cannot export a credential without an access token", 400)
+	}
 	record := transferRecord{
 		AccessToken:  stored.AccessToken,
 		RefreshToken: stored.RefreshToken,
 		UID:          stored.UID,
 		Nickname:     stored.DisplayName,
 		Domain:       stored.Domain,
-		ExpiresAt:    stored.ExpiresAt.UnixMilli(),
 	}
-	if stored.RefreshExpiresAt != nil {
+	// Older credentials can carry no domain even though their site is known.
+	// Export the site endpoint so the file stays importable instead of
+	// producing a record the importer must reject.
+	if strings.TrimSpace(record.Domain) == "" {
+		record.Domain = rec.Site.endpoint
+	}
+	// A zero expiry must stay omitted: UnixMilli() on the zero time is a large
+	// negative number, and the importer rejects negative expiries, which would
+	// make exported files impossible to re-import.
+	if !stored.ExpiresAt.IsZero() {
+		record.ExpiresAt = stored.ExpiresAt.UnixMilli()
+	}
+	if stored.RefreshExpiresAt != nil && !stored.RefreshExpiresAt.IsZero() {
 		record.RefreshExpiresAt = stored.RefreshExpiresAt.UnixMilli()
 	}
 	record.AuthRaw = map[string]any{
@@ -139,9 +221,6 @@ func transferRecordOf(rec hostAuthRecord) (transferRecord, error) {
 		"account": map[string]any{
 			"uid": stored.UID, "nickname": stored.DisplayName, "enterpriseId": stored.EnterpriseID,
 		},
-	}
-	if record.AccessToken == "" {
-		return transferRecord{}, failure("invalid_credentials", "cannot export a credential without an access token", 400)
 	}
 	return record, nil
 }
@@ -156,8 +235,16 @@ func credentialFromTransferRecord(record transferRecord, target site) (credentia
 	stored := credential{
 		Provider: provider, Type: provider, CredentialType: "browser", Version: credentialVersion,
 		Site: target.id, UID: strings.TrimSpace(record.UID), DisplayName: strings.TrimSpace(record.Nickname),
-		AccessToken: record.AccessToken, RefreshToken: record.RefreshToken, Domain: strings.TrimSpace(record.Domain),
-		TokenType: "Bearer", Generation: randTextForTransfer(),
+		AccessToken: record.AccessToken, RefreshToken: record.RefreshToken, Domain: transferDomain(record),
+		TokenType: "Bearer", Generation: rand.Text(),
+	}
+	if stored.UID == "" {
+		uid, _ := authRawAccount(record)["uid"].(string)
+		stored.UID = strings.TrimSpace(uid)
+	}
+	if stored.DisplayName == "" {
+		nickname, _ := authRawAccount(record)["nickname"].(string)
+		stored.DisplayName = strings.TrimSpace(nickname)
 	}
 	if record.ExpiresAt > 0 {
 		stored.ExpiresAt = time.UnixMilli(record.ExpiresAt).UTC()
@@ -180,78 +267,110 @@ func credentialFromTransferRecord(record transferRecord, target site) (credentia
 	if stored.UID == "" {
 		return credential{}, failure("invalid_transfer", "account is missing uid", 400)
 	}
-	if stored.ExpiresAt.IsZero() {
-		stored.ExpiresAt = time.UnixMilli(1).UTC()
-	}
 	return stored, nil
 }
 
-func mergeTransferRecordsAll(records []transferRecord, indexes []int) (map[string]credential, int, int) {
-	changes := make(map[string]credential)
-	imported, skipped := 0, 0
+// mergeTransferRecords turns the selected records into credentials keyed by
+// stable identity. Records that cannot be imported are skipped individually, so
+// one malformed entry never rejects the rest of the batch.
+func mergeTransferRecords(records []transferRecord, indexes []int) transferMerge {
+	merged := transferMerge{Changes: make(map[string]credential, len(indexes))}
 	for _, index := range indexes {
 		if index < 0 || index >= len(records) {
-			skipped++
+			merged.Skipped++
 			continue
 		}
 		record := records[index]
-		if strings.TrimSpace(record.AccessToken) == "" {
-			skipped++
+		if record.problem != "" {
+			merged.Skipped++
 			continue
 		}
-		region := transferRegion(record.Domain)
-		target, ok := selectSite(region)
+		target, ok := selectSite(transferRegion(record.Domain))
 		if !ok {
-			skipped++
+			merged.Skipped++
 			continue
 		}
 		credential, err := credentialFromTransferRecord(record, target)
 		if err != nil {
-			skipped++
+			merged.Skipped++
 			continue
 		}
 		id, _, err := credentialIdentity(credential)
 		if err != nil {
-			skipped++
+			merged.Skipped++
 			continue
 		}
-		changes[id] = credential
-		imported++
+		if _, exists := merged.Changes[id]; exists {
+			merged.Duplicated++
+		}
+		merged.Changes[id] = credential
 	}
-	return changes, imported, skipped
+	merged.Imported = len(merged.Changes)
+	return merged
 }
 
-func mergeTransferRecords(records []transferRecord, indexes []int, target site) (map[string]credential, int, int) {
-	changes := make(map[string]credential)
-	imported, skipped := 0, 0
-	for _, index := range indexes {
-		if index < 0 || index >= len(records) {
-			skipped++
-			continue
-		}
-		record := records[index]
-		if strings.TrimSpace(record.AccessToken) == "" {
-			skipped++
-			continue
-		}
-		if transferRegion(record.Domain) != target.id {
-			skipped++
-			continue
-		}
-		credential, err := credentialFromTransferRecord(record, target)
-		if err != nil {
-			skipped++
-			continue
-		}
-		id, _, err := credentialIdentity(credential)
-		if err != nil {
-			skipped++
-			continue
-		}
-		changes[id] = credential
-		imported++
+// importTransferResult is returned by the transfer import endpoint.
+type importTransferResult struct {
+	Imported   int `json:"imported"`
+	Skipped    int `json:"skipped"`
+	Duplicated int `json:"duplicated"`
+}
+
+// importTransferRecords owns the whole import orchestration: parse, select,
+// match existing host credentials by identity, then persist. Keeping it out of
+// HandleManagement leaves that dispatcher as routing only.
+//
+// A host read failure is an error, never a silent skip: treating an unreadable
+// existing credential as absent would create a duplicate file and drop the
+// host-managed metadata the existing record carries.
+func importTransferRecords(call func(string, []byte) ([]byte, error), text string, indexes []int) (importTransferResult, error) {
+	records, err := parseTransferFile([]byte(text))
+	if err != nil {
+		return importTransferResult{}, err
 	}
-	return changes, imported, skipped
+	if len(indexes) == 0 {
+		return importTransferResult{}, failure("invalid_transfer", "indexes must contain at least one record", 400)
+	}
+	merged := mergeTransferRecords(records, indexes)
+	result := importTransferResult{Imported: merged.Imported, Skipped: merged.Skipped, Duplicated: merged.Duplicated}
+	if len(merged.Changes) == 0 {
+		return result, nil
+	}
+
+	entries, err := hostAuthList(call)
+	if err != nil {
+		return importTransferResult{}, err
+	}
+	existing := make(map[string]hostAuthRecord, len(entries))
+	for _, entry := range entries {
+		rec, getErr := hostAuthGet(call, entry.AuthIndex)
+		if getErr != nil {
+			return importTransferResult{}, getErr
+		}
+		id, _, idErr := credentialIdentity(rec.Stored)
+		if idErr != nil {
+			continue
+		}
+		existing[id] = rec
+	}
+
+	for id, stored := range merged.Changes {
+		auth, authErr := authFromCredential(stored, nil)
+		if authErr != nil {
+			return importTransferResult{}, failure("invalid_transfer", "imported credential could not be normalized", 400)
+		}
+		if rec, ok := existing[id]; ok {
+			auth.FileName = rec.FileName
+			if saveErr := hostAuthSaveCredential(call, rec, auth); saveErr != nil {
+				return importTransferResult{}, failure("host_save_failed", "imported credential could not be stored", 502)
+			}
+			continue
+		}
+		if saveErr := hostAuthSaveNewCredential(call, auth); saveErr != nil {
+			return importTransferResult{}, failure("host_save_failed", "imported credential could not be stored", 502)
+		}
+	}
+	return result, nil
 }
 
 func transferRegion(domain string) string {
@@ -268,8 +387,4 @@ func transferRegion(domain string) string {
 	default:
 		return ""
 	}
-}
-
-func randTextForTransfer() string {
-	return strconv.FormatInt(time.Now().UnixNano(), 10)
 }
