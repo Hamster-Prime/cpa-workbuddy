@@ -185,6 +185,12 @@ func TestTransferRecordOfKeepsUnknownDomainExportImportable(t *testing.T) {
 	if got := transferRegion(transferDomain(records[0])); got != "workbuddy" {
 		t.Fatalf("re-import resolved site %q, want workbuddy", got)
 	}
+	// The exported value becomes the X-Domain request header, so it must be a
+	// bare hostname. A scheme-bearing URL there breaks every upstream call the
+	// re-imported account makes.
+	if domain := transferDomain(records[0]); strings.Contains(domain, "/") || strings.Contains(domain, ":") {
+		t.Fatalf("exported domain is not a bare hostname: %q", domain)
+	}
 }
 
 // The nested auth_raw document is the reference exporter's shape, so its
@@ -205,6 +211,158 @@ func TestTransferRecordOfOmitsZeroExpiryFromAuthRaw(t *testing.T) {
 	}
 	if seconds, ok := auth["expiresAt"].(int64); ok && seconds < 0 {
 		t.Fatalf("auth_raw carries a negative expiry: %d", seconds)
+	}
+}
+
+// An external file may spell the domain as a URL. The value is stored as the
+// account's X-Domain header, so import must reduce it to a hostname instead of
+// persisting whatever the file said.
+func TestCredentialFromTransferRecordStoresBareHostname(t *testing.T) {
+	for _, domain := range []string{
+		"https://copilot.tencent.com",
+		"https://copilot.tencent.com/path",
+		"copilot.tencent.com.",
+		"HTTPS://Copilot.Tencent.Com",
+	} {
+		record := transferRecord{AccessToken: "token", UID: "uid", Domain: domain}
+		credential, err := credentialFromTransferRecord(record, mustSite("workbuddy"))
+		if err != nil {
+			t.Fatalf("%s: credentialFromTransferRecord returned error: %v", domain, err)
+		}
+		if credential.Domain != "copilot.tencent.com" {
+			t.Fatalf("%s: stored domain %q, want the bare hostname", domain, credential.Domain)
+		}
+	}
+}
+
+// A domain recovered from auth_raw must pass the same safety check as the
+// flat field. Otherwise a CR/LF smuggled in there reaches the host write path
+// and, because the merge step accepts it, the batch fails part-way through
+// after some credentials were already stored.
+func TestParseTransferFileRejectsUnsafeAuthRawDomain(t *testing.T) {
+	records, err := parseTransferFile([]byte(`[
+		{"access_token":"ok","uid":"uid-a","auth_raw":{"auth":{"domain":"copilot.tencent.com\r\nX-Evil: 1"}}}
+	]`))
+	if err != nil {
+		t.Fatalf("parseTransferFile returned error: %v", err)
+	}
+	if records[0].problem == "" {
+		t.Fatalf("unsafe auth_raw domain was accepted: %#v", records[0])
+	}
+	if !strings.Contains(records[0].problem, "unsafe") {
+		t.Fatalf("unexpected problem text: %q", records[0].problem)
+	}
+}
+
+// Every record must be validated before the first host write. A record that
+// only fails while normalizing would otherwise surface as a mid-batch error
+// with an arbitrary subset of the batch already stored.
+func TestMergeTransferRecordsSkipsRecordsThatCannotNormalize(t *testing.T) {
+	records := []transferRecord{
+		{AccessToken: "ok", UID: "uid-good", Domain: "copilot.tencent.com"},
+		{AccessToken: "bad\x00token", UID: "uid-bad", Domain: "copilot.tencent.com"},
+	}
+	merged := mergeTransferRecords(records, []int{0, 1})
+	if merged.Imported != 1 || merged.Skipped != 1 {
+		t.Fatalf("unexpected merge result: %#v", merged)
+	}
+}
+
+// A record whose auth_raw carries an `auth` object WITHOUT a domain must still
+// resolve: real desktop auth documents hold `accessToken`/`baseUrl` there and
+// name no domain at all, and a sibling exporter may scrub the field. Resolving
+// those to "" made the importer reject a valid credential with
+// "item 1 has an unsupported domain" (the site is known from the flat field or
+// from auth_raw's root).
+func TestTransferDomainFallsBackWhenAuthRawAuthHasNoDomain(t *testing.T) {
+	cases := map[string]struct {
+		record string
+		want   string
+	}{
+		"auth object without domain, flat domain present": {
+			record: `{"access_token":"t","uid":"u","domain":"www.workbuddy.cn","auth_raw":{"auth":{"accessToken":"t"},"account":{"uid":"u"}}}`,
+			want:   "www.workbuddy.cn",
+		},
+		"auth object with only baseUrl, root domain present": {
+			record: `{"access_token":"t","uid":"u","auth_raw":{"auth":{"baseUrl":"https://copilot.tencent.com"},"domain":"www.codebuddy.cn","uid":"u"}}`,
+			want:   "www.codebuddy.cn",
+		},
+		"auth object without domain, root domain in auth_raw": {
+			record: `{"access_token":"t","uid":"u","auth_raw":{"auth":{"accessToken":"t"},"domain":"copilot.tencent.com"}}`,
+			want:   "copilot.tencent.com",
+		},
+		"baseUrl only, nothing else": {
+			record: `{"access_token":"t","uid":"u","auth_raw":{"auth":{"baseUrl":"https://www.workbuddy.cn/login"},"account":{"uid":"u"}}}`,
+			want:   "www.workbuddy.cn",
+		},
+	}
+	for name, tc := range cases {
+		records, err := parseTransferFile([]byte("[" + tc.record + "]"))
+		if err != nil {
+			t.Fatalf("%s: parseTransferFile returned error: %v", name, err)
+		}
+		if got := transferDomain(records[0]); got != tc.want {
+			t.Fatalf("%s: transferDomain = %q, want %q", name, got, tc.want)
+		}
+		if records[0].problem != "" {
+			t.Fatalf("%s: record was rejected: %s", name, records[0].problem)
+		}
+	}
+}
+
+// Real export files do not always carry a bare hostname: sibling tools store the
+// login URL, and a credential copied out of a network capture can name a port.
+// Every one of those must reduce to the hostname, because the value ends up in
+// the X-Domain header and a leftover scheme/port/path breaks every call the
+// account makes -- and, before normalisation, rejected the whole record as an
+// unsupported domain.
+// The two ways a record can fail the domain gate are different problems for the
+// user, and the message has to say which: a file with no domain at all needs a
+// different fix (add `domain`) than a file naming a host this build does not
+// serve. Reporting both as "unsupported domain" sent the account-transfer bug
+// report hunting a domain that was never present.
+func TestTransferRecordProblemDistinguishesMissingFromUnknownDomain(t *testing.T) {
+	missing := transferRecord{AccessToken: "t", UID: "u"}
+	if got := transferRecordProblem(missing, 1); !strings.Contains(got, "missing domain") {
+		t.Fatalf("record with no domain reported %q, want a missing-domain message", got)
+	}
+	unknown := transferRecord{AccessToken: "t", UID: "u", Domain: "login.example.invalid"}
+	if got := transferRecordProblem(unknown, 2); !strings.Contains(got, "unsupported domain") {
+		t.Fatalf("record with an unknown domain reported %q, want an unsupported-domain message", got)
+	}
+}
+
+func TestTransferDomainNormalizesHostPortAndPathForms(t *testing.T) {
+	cases := map[string]string{
+		"copilot.tencent.com":                                          "copilot.tencent.com",
+		"https://copilot.tencent.com":                                  "copilot.tencent.com",
+		"https://copilot.tencent.com/":                                 "copilot.tencent.com",
+		"https://copilot.tencent.com/login":                            "copilot.tencent.com",
+		"https://copilot.tencent.com/login?platform=workbuddy&state=x": "copilot.tencent.com",
+		"copilot.tencent.com:443":                                      "copilot.tencent.com",
+		"https://copilot.tencent.com:443":                              "copilot.tencent.com",
+		"copilot.tencent.com/path":                                     "copilot.tencent.com",
+		"//copilot.tencent.com":                                        "copilot.tencent.com",
+		"COPILOT.TENCENT.COM":                                          "copilot.tencent.com",
+		"  copilot.tencent.com  ":                                      "copilot.tencent.com",
+		"copilot.tencent.com.":                                         "copilot.tencent.com",
+		"https://www.workbuddy.cn/login?x=1":                           "www.workbuddy.cn",
+		"www.codebuddy.cn:8443":                                        "www.codebuddy.cn",
+		"https://user@www.workbuddy.ai/x":                              "www.workbuddy.ai",
+		"":                                                             "",
+		"   ":                                                          "",
+		"copilot.tencent.com.evil.invalid":                             "copilot.tencent.com.evil.invalid",
+	}
+	for raw, want := range cases {
+		if got := normalizeTransferDomain(raw); got != want {
+			t.Errorf("normalizeTransferDomain(%q) = %q, want %q", raw, got, want)
+		}
+	}
+	// The normalised value is what the region gate and the X-Domain header see.
+	for _, raw := range []string{"copilot.tencent.com:443", "https://copilot.tencent.com/login"} {
+		if got := transferRegion(raw); got != "workbuddy" {
+			t.Errorf("transferRegion(%q) = %q, want workbuddy", raw, got)
+		}
 	}
 }
 

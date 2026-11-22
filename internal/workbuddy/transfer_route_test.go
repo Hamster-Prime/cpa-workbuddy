@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"cpa-workbuddy/internal/workbuddy"
 )
@@ -97,20 +98,80 @@ func TestTransferRoutesPreviewExportImport(t *testing.T) {
 		t.Fatalf("export lost expiresAt: %s", exportRes.Body)
 	}
 
-	// The exported body must be re-importable without changes.
+	// 4. Round trip: feed the exported file back through the REAL import path
+	// and compare the stored credential. Preview alone would not catch a domain
+	// rewritten into a URL or an expiry the host silently rejects.
 	reimport := map[string]any{"accounts": exported.Accounts}
 	rawReimport, err := json.Marshal(reimport)
 	if err != nil {
 		t.Fatal(err)
 	}
-	reimportRes, err := postManagement(t, s, h, transferPreviewPath,
-		`{"text":`+string(mustJSONQuote(t, string(rawReimport)))+`}`)
+	before := storedCredential(t, h, "workbuddy-a")
+	reimportRes, err := postManagement(t, s, h, transferImportPath,
+		`{"text":`+string(mustJSONQuote(t, string(rawReimport)))+`,"indexes":[0]}`)
 	if err != nil || reimportRes.StatusCode != 200 {
-		t.Fatalf("exported file was rejected: status=%d err=%v", reimportRes.StatusCode, err)
+		t.Fatalf("exported file was rejected by import: status=%d err=%v body=%s", reimportRes.StatusCode, err, reimportRes.Body)
 	}
-	if !strings.Contains(string(reimportRes.Body), `"importable":true`) {
-		t.Fatalf("exported file is not importable: %s", reimportRes.Body)
+	var again struct {
+		Imported int `json:"imported"`
+		Skipped  int `json:"skipped"`
 	}
+	if err := json.Unmarshal(reimportRes.Body, &again); err != nil {
+		t.Fatalf("invalid re-import payload: %s err=%v", reimportRes.Body, err)
+	}
+	if again.Imported != 1 || again.Skipped != 0 {
+		t.Fatalf("exported file did not re-import cleanly: %s", reimportRes.Body)
+	}
+	after := storedCredential(t, h, "workbuddy-a")
+	// The fixture credential carries no domain, so export fills it from the
+	// site. What matters is that the value is a bare hostname the upstream
+	// request path can put in X-Domain, not a URL.
+	if after.Domain != "copilot.tencent.com" {
+		t.Fatalf("stored domain is not the bare site hostname: %q (was %q)", after.Domain, before.Domain)
+	}
+	if after.AccessToken != before.AccessToken {
+		t.Fatal("round trip changed the access token")
+	}
+	if !after.ExpiresAt.Equal(before.ExpiresAt) {
+		t.Fatalf("round trip changed the expiry: %v -> %v", before.ExpiresAt, after.ExpiresAt)
+	}
+}
+
+// storedCredential reads the credential the fake host currently holds for an
+// auth index, decoding the WorkBuddy browser document it stores.
+type storedAccount struct {
+	AccessToken string    `json:"accessToken"`
+	Domain      string    `json:"domain"`
+	ExpiresAt   time.Time `json:"expiresAt"`
+}
+
+func storedCredential(t *testing.T, h *fakeHostHarness, authIndex string) storedAccount {
+	t.Helper()
+	request, err := json.Marshal(map[string]any{"auth_index": authIndex})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := h.call("host.auth.get", request)
+	if err != nil {
+		t.Fatalf("host.auth.get failed: %v", err)
+	}
+	var envelope struct {
+		OK   bool `json:"ok"`
+		Auth struct {
+			StorageJSON json.RawMessage `json:"json"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		t.Fatalf("invalid host.auth.get payload: %s err=%v", raw, err)
+	}
+	if !envelope.OK {
+		t.Fatalf("host.auth.get reported failure: %s", raw)
+	}
+	var stored storedAccount
+	if err := json.Unmarshal(envelope.Auth.StorageJSON, &stored); err != nil {
+		t.Fatalf("invalid stored credential: %s err=%v", envelope.Auth.StorageJSON, err)
+	}
+	return stored
 }
 
 func TestTransferImportIsolatesBadRecordsAndHostReadFailures(t *testing.T) {
@@ -149,6 +210,32 @@ func TestTransferImportIsolatesBadRecordsAndHostReadFailures(t *testing.T) {
 		`{"text":"[{\"access_token\":\"new\",\"uid\":\"uid-new\",\"domain\":\"copilot.tencent.com\"}]","indexes":[0]}`)
 	if err == nil {
 		t.Fatal("expected host read failure to surface as an error")
+	}
+}
+
+// A host save failure must name the host's own reason and report how many
+// credentials were stored before it, so the client can tell whether a retry
+// would duplicate accounts.
+func TestTransferImportReportsStoredCountAndHostReasonOnSaveFailure(t *testing.T) {
+	s := workbuddy.New()
+	defer s.Close()
+	cnAuth := parsedIdentity(t, "workbuddy", "")
+	h := newFakeHostHarness(t, []workbuddy.AuthData{cnAuth})
+	h.callOverride = func(method string) ([]byte, error, bool) {
+		if method == "host.auth.save" {
+			return []byte(`{"ok":false,"error":{"message":"auth file name must end with .json"}}`), nil, true
+		}
+		return nil, nil, false
+	}
+
+	res, err := postManagement(t, s, h, transferImportPath,
+		`{"text":"[{\"access_token\":\"new\",\"uid\":\"uid-new\",\"domain\":\"copilot.tencent.com\"}]","indexes":[0]}`)
+	if err == nil {
+		t.Fatal("expected the host save failure to surface")
+	}
+	_ = res
+	if !strings.Contains(err.Error(), "auth file name must end with .json") {
+		t.Fatalf("host reason was swallowed: %v", err)
 	}
 }
 

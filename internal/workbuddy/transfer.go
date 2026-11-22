@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 )
@@ -95,21 +96,84 @@ func parseTransferFile(raw []byte) ([]transferRecord, error) {
 // nested auth_raw.auth.domain used by the reference exporter when the flat
 // field is absent.
 func transferDomain(record transferRecord) string {
-	if domain := strings.TrimSpace(record.Domain); domain != "" {
+	if domain := normalizeTransferDomain(record.Domain); domain != "" {
 		return domain
 	}
 	root := authRawRoot(record)
 	if root == nil {
 		return ""
 	}
-	if auth, ok := root["auth"].(map[string]any); ok {
-		domain, _ := auth["domain"].(string)
-		return strings.TrimSpace(domain)
+	auth, _ := root["auth"].(map[string]any)
+	// Every source is TRIED IN TURN rather than returning on the first hit: an
+	// auth document legitimately carries an `auth` object that names no domain
+	// (a desktop file holds accessToken/baseUrl there, and the reference vault
+	// serializes domain as "" when the login never reported one). Returning early
+	// on the presence of the KEY turned a missing value into a permanent "" and
+	// rejected a credential whose domain sat one level up, which is the
+	// "item 1 has an unsupported domain" report this fallback chain fixes.
+	//
+	// An explicit `domain` outranks a `baseUrl` at ANY level: the base is the host
+	// the client happened to talk to (a failover entry can point at a different
+	// brand host), while `domain` is the sign-in the credential belongs to.
+	explicit := []string{stringField(root, "domain"), stringField(auth, "domain")}
+	for _, domain := range explicit {
+		if resolved := normalizeTransferDomain(domain); resolved != "" {
+			return resolved
+		}
 	}
-	// A sibling tool may copy a desktop auth document verbatim, which keeps the
-	// fields at the root of auth_raw instead of nesting them under auth.
-	domain, _ := root["domain"].(string)
-	return strings.TrimSpace(domain)
+	// Only when nothing names a domain does the recorded gateway decide, because
+	// for a desktop document it is the only evidence of which product this is.
+	for _, base := range []string{stringField(root, "baseUrl"), stringField(auth, "baseUrl")} {
+		if resolved := normalizeTransferDomain(base); resolved != "" {
+			return resolved
+		}
+	}
+	return ""
+}
+
+// stringField reads one string member of a decoded JSON object, tolerating a nil
+// (absent) document and a non-string value.
+func stringField(document map[string]any, key string) string {
+	if document == nil {
+		return ""
+	}
+	value, _ := document[key].(string)
+	return value
+}
+
+// normalizeTransferDomain reduces a domain to the bare hostname that the
+// upstream request path expects in X-Domain. The value lands in
+// credential.Domain, and requestDomain passes a non-empty value through
+// verbatim, so a scheme or path left here would be sent to the upstream
+// verbatim and break every call the account makes.
+func normalizeTransferDomain(domain string) string {
+	trimmed := strings.TrimSpace(domain)
+	if trimmed == "" {
+		return ""
+	}
+	// A BARE host with a port or path ("copilot.tencent.com:443",
+	// "copilot.tencent.com/login") does not parse to a Hostname: url.Parse reads
+	// the first segment as a scheme-less path, so Hostname() comes back empty and
+	// the value fell through verbatim -- which then failed the region gate AND,
+	// once stored, would have been sent to the upstream as X-Domain. Prefixing the
+	// scheme is what makes those forms parse; a value that already carries one is
+	// left alone.
+	candidate := trimmed
+	if !strings.Contains(candidate, "://") {
+		candidate = "https://" + strings.TrimPrefix(candidate, "//")
+	}
+	if parsed, err := url.Parse(candidate); err == nil && parsed.Hostname() != "" {
+		return strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
+	}
+	// Not URL-shaped at all: strip the decoration a bare token can still carry
+	// (a port, a path, a trailing dot) rather than handing back the whole thing.
+	if host, _, ok := strings.Cut(trimmed, "/"); ok {
+		trimmed = host
+	}
+	if host, _, ok := strings.Cut(trimmed, ":"); ok {
+		trimmed = host
+	}
+	return strings.ToLower(strings.TrimSuffix(trimmed, "."))
 }
 
 // authRawRoot returns the auth_raw document as an object, or nil when the
@@ -127,7 +191,12 @@ func transferRecordProblem(record transferRecord, position int) string {
 	if strings.TrimSpace(record.AccessToken) == "" {
 		return fmt.Sprintf("item %d is missing access_token", position)
 	}
-	if !safeValue(record.AccessToken) || !safeValue(record.RefreshToken) || !safeValue(record.Domain) {
+	// The domain may come from auth_raw instead of the flat field, so check the
+	// resolved value: a CR/LF smuggled into the nested document would otherwise
+	// reach the host write path and fail the batch part-way through, after some
+	// credentials were already stored.
+	domain := transferDomain(record)
+	if !safeValue(record.AccessToken) || !safeValue(record.RefreshToken) || !safeValue(record.Domain) || !safeValue(domain) {
 		return fmt.Sprintf("item %d contains unsafe credential text", position)
 	}
 	if record.ExpiresAt < 0 || record.RefreshExpiresAt < 0 {
@@ -139,7 +208,16 @@ func transferRecordProblem(record transferRecord, position int) string {
 			return fmt.Sprintf("item %d is missing uid", position)
 		}
 	}
-	if _, ok := selectSite(transferRegion(transferDomain(record))); !ok {
+	// Two different problems, two different fixes: a record naming no domain at
+	// all (the common shape of a desktop auth document, which carries the token
+	// and a baseUrl but no domain) needs `domain` added, while one naming a host
+	// this build does not serve is a genuinely foreign credential. Collapsing both
+	// into "unsupported domain" sent the bug report hunting a value that was
+	// never there.
+	if domain == "" {
+		return fmt.Sprintf("item %d is missing domain", position)
+	}
+	if _, ok := selectSite(transferRegion(domain)); !ok {
 		return fmt.Sprintf("item %d has an unsupported domain", position)
 	}
 	return ""
@@ -221,8 +299,10 @@ func transferRecordOf(rec hostAuthRecord) (transferRecord, error) {
 	// and an upstream may report a domain the importer does not recognise. In
 	// both cases export the site endpoint: a file the importer would reject
 	// defeats the purpose of exporting it.
+	// The endpoint carries a scheme; export the hostname so the value is usable
+	// as the X-Domain header once the file is re-imported.
 	if transferRegion(record.Domain) == "" {
-		record.Domain = rec.Site.endpoint
+		record.Domain = strings.TrimPrefix(rec.Site.endpoint, "https://")
 	}
 	// A zero expiry must stay omitted: UnixMilli() on the zero time is a large
 	// negative number, and the importer rejects negative expiries, which would
@@ -298,11 +378,19 @@ func credentialFromTransferRecord(record transferRecord, target site) (credentia
 // one malformed entry never rejects the rest of the batch.
 func mergeTransferRecords(records []transferRecord, indexes []int) transferMerge {
 	merged := transferMerge{Changes: make(map[string]credential, len(indexes))}
+	seen := make(map[int]bool, len(indexes))
 	for _, index := range indexes {
 		if index < 0 || index >= len(records) {
 			merged.Skipped++
 			continue
 		}
+		// A selection may repeat an index; counting it twice would make
+		// imported+skipped+duplicated disagree with the number the panel said
+		// the user selected.
+		if seen[index] {
+			continue
+		}
+		seen[index] = true
 		record := records[index]
 		if record.problem != "" {
 			merged.Skipped++
@@ -315,6 +403,13 @@ func mergeTransferRecords(records []transferRecord, indexes []int) transferMerge
 		}
 		credential, err := credentialFromTransferRecord(record, target)
 		if err != nil {
+			merged.Skipped++
+			continue
+		}
+		// Validate here, not in the write loop: a credential the host would
+		// reject must be a skipped record, otherwise the batch fails after an
+		// arbitrary subset was already stored.
+		if _, err := credentialSite(credential); err != nil {
 			merged.Skipped++
 			continue
 		}
@@ -377,31 +472,39 @@ func importTransferRecords(call func(string, []byte) ([]byte, error), text strin
 		existing[id] = rec
 	}
 
-	for id, stored := range merged.Changes {
-		auth, authErr := authFromCredential(stored, nil)
+	// Sorted so a partial failure is reproducible and the reported count names
+	// the credentials that really landed, not an arbitrary prefix of a map walk.
+	ids := make([]string, 0, len(merged.Changes))
+	for id := range merged.Changes {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	written := 0
+	for _, id := range ids {
+		auth, authErr := authFromCredential(merged.Changes[id], nil)
 		if authErr != nil {
-			return importTransferResult{}, failure("invalid_transfer", "imported credential could not be normalized", 400)
+			return importTransferResult{Imported: written}, failure("invalid_transfer", "imported credential could not be normalized", 400)
 		}
+		var saveErr error
 		if rec, ok := existing[id]; ok {
 			auth.FileName = rec.FileName
-			if saveErr := hostAuthSaveCredential(call, rec, auth); saveErr != nil {
-				return importTransferResult{}, failure("host_save_failed", "imported credential could not be stored", 502)
-			}
-			continue
+			saveErr = hostAuthSaveCredential(call, rec, auth)
+		} else {
+			saveErr = hostAuthSaveNewCredential(call, auth)
 		}
-		if saveErr := hostAuthSaveNewCredential(call, auth); saveErr != nil {
-			return importTransferResult{}, failure("host_save_failed", "imported credential could not be stored", 502)
+		if saveErr != nil {
+			// Report how many were stored before the failure: the client cannot
+			// otherwise tell whether retrying would duplicate accounts.
+			return importTransferResult{Imported: written, Skipped: result.Skipped, Duplicated: result.Duplicated}, saveErr
 		}
+		written++
 	}
+	result.Imported = written
 	return result, nil
 }
 
 func transferRegion(domain string) string {
-	host := strings.ToLower(strings.TrimSpace(domain))
-	if parsed, err := url.Parse(host); err == nil && parsed.Hostname() != "" {
-		host = strings.ToLower(parsed.Hostname())
-	}
-	host = strings.TrimSuffix(host, ".")
+	host := normalizeTransferDomain(domain)
 	switch {
 	// The CN product signs in under BOTH brand spellings, and real credentials
 	// carry either one in `domain`; refusing `codebuddy.cn` rejected this
