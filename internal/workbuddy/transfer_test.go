@@ -163,6 +163,51 @@ func TestTransferRecordRoundTripPreservesMillisecondExpiry(t *testing.T) {
 	}
 }
 
+// A credential whose stored domain is not one the importer recognises must
+// still export as a file the importer accepts: otherwise the round trip that
+// the transfer format exists for silently breaks on that one account.
+func TestTransferRecordOfKeepsUnknownDomainExportImportable(t *testing.T) {
+	rec := hostAuthRecord{
+		Site:   mustSite("workbuddy"),
+		Stored: credential{AccessToken: "access-a", UID: "uid-a", Domain: "account.workbuddy"},
+	}
+	exported, err := transferRecordOf(rec)
+	if err != nil {
+		t.Fatalf("transferRecordOf returned error: %v", err)
+	}
+	records, err := parseTransferFile(mustJSON(t, []transferRecord{exported}))
+	if err != nil {
+		t.Fatalf("parseTransferFile returned error: %v", err)
+	}
+	if records[0].problem != "" {
+		t.Fatalf("exported record cannot be re-imported: %s", records[0].problem)
+	}
+	if got := transferRegion(transferDomain(records[0])); got != "workbuddy" {
+		t.Fatalf("re-import resolved site %q, want workbuddy", got)
+	}
+}
+
+// The nested auth_raw document is the reference exporter's shape, so its
+// seconds-based expiry must stay a real timestamp: a zero expiry must be
+// omitted rather than serialised as the zero time's negative Unix seconds.
+func TestTransferRecordOfOmitsZeroExpiryFromAuthRaw(t *testing.T) {
+	rec := hostAuthRecord{
+		Site:   mustSite("workbuddy"),
+		Stored: credential{AccessToken: "access-a", UID: "uid-a", Domain: "copilot.tencent.com"},
+	}
+	exported, err := transferRecordOf(rec)
+	if err != nil {
+		t.Fatalf("transferRecordOf returned error: %v", err)
+	}
+	auth, ok := exported.AuthRaw.(map[string]any)["auth"].(map[string]any)
+	if !ok {
+		t.Fatalf("export lost the nested auth document: %#v", exported.AuthRaw)
+	}
+	if seconds, ok := auth["expiresAt"].(int64); ok && seconds < 0 {
+		t.Fatalf("auth_raw carries a negative expiry: %d", seconds)
+	}
+}
+
 func TestTransferRegionResolvesSitesAndRejectsUnknownDomains(t *testing.T) {
 	cases := map[string]string{
 		"copilot.tencent.com":              "workbuddy",

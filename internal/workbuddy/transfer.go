@@ -217,10 +217,11 @@ func transferRecordOf(rec hostAuthRecord) (transferRecord, error) {
 		Nickname:     stored.DisplayName,
 		Domain:       stored.Domain,
 	}
-	// Older credentials can carry no domain even though their site is known.
-	// Export the site endpoint so the file stays importable instead of
-	// producing a record the importer must reject.
-	if strings.TrimSpace(record.Domain) == "" {
+	// Older credentials can carry no domain even though their site is known,
+	// and an upstream may report a domain the importer does not recognise. In
+	// both cases export the site endpoint: a file the importer would reject
+	// defeats the purpose of exporting it.
+	if transferRegion(record.Domain) == "" {
 		record.Domain = rec.Site.endpoint
 	}
 	// A zero expiry must stay omitted: UnixMilli() on the zero time is a large
@@ -232,11 +233,17 @@ func transferRecordOf(rec hostAuthRecord) (transferRecord, error) {
 	if stored.RefreshExpiresAt != nil && !stored.RefreshExpiresAt.IsZero() {
 		record.RefreshExpiresAt = stored.RefreshExpiresAt.UnixMilli()
 	}
+	auth := map[string]any{
+		"accessToken": stored.AccessToken, "refreshToken": stored.RefreshToken,
+		"domain": record.Domain,
+	}
+	// Same rule as the flat expiry: the zero time's Unix seconds are a large
+	// negative number, so an unknown expiry stays absent.
+	if !stored.ExpiresAt.IsZero() {
+		auth["expiresAt"] = stored.ExpiresAt.Unix()
+	}
 	record.AuthRaw = map[string]any{
-		"auth": map[string]any{
-			"accessToken": stored.AccessToken, "refreshToken": stored.RefreshToken,
-			"expiresAt": stored.ExpiresAt.Unix(), "domain": stored.Domain,
-		},
+		"auth": auth,
 		"account": map[string]any{
 			"uid": stored.UID, "nickname": stored.DisplayName, "enterpriseId": stored.EnterpriseID,
 		},
