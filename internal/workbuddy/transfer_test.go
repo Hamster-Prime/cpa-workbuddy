@@ -167,6 +167,9 @@ func TestTransferRegionResolvesSitesAndRejectsUnknownDomains(t *testing.T) {
 	cases := map[string]string{
 		"copilot.tencent.com":              "workbuddy",
 		"https://copilot.tencent.com/path": "workbuddy",
+		"www.workbuddy.cn":                 "workbuddy",
+		"www.codebuddy.cn":                 "workbuddy",
+		"codebuddy.cn":                     "workbuddy",
 		"www.workbuddy.ai":                 "workbuddy-ai",
 		"codebuddy.ai":                     "workbuddy-ai",
 		"unknown.example":                  "",
@@ -175,6 +178,34 @@ func TestTransferRegionResolvesSitesAndRejectsUnknownDomains(t *testing.T) {
 	for domain, want := range cases {
 		if got := transferRegion(domain); got != want {
 			t.Errorf("transferRegion(%q) = %q, want %q", domain, got, want)
+		}
+	}
+}
+
+// A credential holding a CN account commonly names the CodeBuddy brand
+// domain, and the reference exporter nests it under auth_raw.auth.domain.
+// Both spellings and both placements must import, or the plugin refuses the
+// files it and the sibling tools produce ("item 1 has an unsupported domain").
+func TestTransferImportAcceptsBothCNBrandDomains(t *testing.T) {
+	cases := map[string]string{
+		"flat codebuddy.cn":   `{"access_token":"t1","uid":"uid-1","domain":"www.codebuddy.cn"}`,
+		"flat workbuddy.cn":   `{"access_token":"t2","uid":"uid-2","domain":"www.workbuddy.cn"}`,
+		"nested codebuddy.cn": `{"access_token":"t3","auth_raw":{"auth":{"domain":"www.codebuddy.cn"},"account":{"uid":"uid-3"}}}`,
+		"nested workbuddy.cn": `{"access_token":"t4","auth_raw":{"auth":{"domain":"codebuddy.cn"},"account":{"uid":"uid-4"}}}`,
+		// A sibling tool may copy a desktop auth document verbatim, which puts
+		// the fields at the root of auth_raw instead of nesting them.
+		"desktop codebuddy.cn": `{"access_token":"t5","auth_raw":{"domain":"www.codebuddy.cn","uid":"uid-5"}}`,
+	}
+	for name, record := range cases {
+		records, err := parseTransferFile([]byte("[" + record + "]"))
+		if err != nil {
+			t.Fatalf("%s: parseTransferFile returned error: %v", name, err)
+		}
+		if records[0].problem != "" {
+			t.Fatalf("%s: record was rejected: %s", name, records[0].problem)
+		}
+		if got := transferRegion(transferDomain(records[0])); got != "workbuddy" {
+			t.Fatalf("%s: resolved site %q, want workbuddy", name, got)
 		}
 	}
 }

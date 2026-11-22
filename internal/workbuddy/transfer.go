@@ -98,16 +98,26 @@ func transferDomain(record transferRecord) string {
 	if domain := strings.TrimSpace(record.Domain); domain != "" {
 		return domain
 	}
-	raw, ok := record.AuthRaw.(map[string]any)
-	if !ok {
+	root := authRawRoot(record)
+	if root == nil {
 		return ""
 	}
-	auth, ok := raw["auth"].(map[string]any)
-	if !ok {
-		return ""
+	if auth, ok := root["auth"].(map[string]any); ok {
+		domain, _ := auth["domain"].(string)
+		return strings.TrimSpace(domain)
 	}
-	domain, _ := auth["domain"].(string)
+	// A sibling tool may copy a desktop auth document verbatim, which keeps the
+	// fields at the root of auth_raw instead of nesting them under auth.
+	domain, _ := root["domain"].(string)
 	return strings.TrimSpace(domain)
+}
+
+// authRawRoot returns the auth_raw document as an object, or nil when the
+// record carries none. Both the nested {auth, account} shape this plugin
+// exports and a flat desktop auth document are honoured.
+func authRawRoot(record transferRecord) map[string]any {
+	root, _ := record.AuthRaw.(map[string]any)
+	return root
 }
 
 // transferRecordProblem reports why a parsed record cannot be imported, or ""
@@ -136,12 +146,21 @@ func transferRecordProblem(record transferRecord, position int) string {
 }
 
 func authRawAccount(record transferRecord) map[string]any {
-	raw, ok := record.AuthRaw.(map[string]any)
-	if !ok {
+	root := authRawRoot(record)
+	if root == nil {
 		return nil
 	}
-	account, _ := raw["account"].(map[string]any)
-	return account
+	if account, ok := root["account"].(map[string]any); ok {
+		return account
+	}
+	// Flat desktop auth documents put uid/nickname at the root.
+	if _, ok := root["uid"]; ok {
+		return root
+	}
+	if _, ok := root["nickname"]; ok {
+		return root
+	}
+	return nil
 }
 
 func transferItems(parsed any) ([]any, bool) {
@@ -179,7 +198,7 @@ func previewTransferFile(raw []byte) (transferPreview, error) {
 		problem := record.problem
 		preview.Accounts[i] = transferPreviewEntry{
 			Index: i, UID: record.UID, Nickname: record.Nickname, Email: record.Email,
-			Site: transferRegion(record.Domain), HasToken: strings.TrimSpace(record.AccessToken) != "",
+			Site: transferRegion(transferDomain(record)), HasToken: strings.TrimSpace(record.AccessToken) != "",
 			Importable: problem == "", Problem: problem,
 		}
 	}
@@ -258,11 +277,8 @@ func credentialFromTransferRecord(record transferRecord, target site) (credentia
 		expires := time.UnixMilli(record.RefreshExpiresAt).UTC()
 		stored.RefreshExpiresAt = &expires
 	}
-	if raw, ok := record.AuthRaw.(map[string]any); ok {
-		account, _ := raw["account"].(map[string]any)
-		if enterprise, ok := account["enterpriseId"].(string); ok {
-			stored.EnterpriseID = strings.TrimSpace(enterprise)
-		}
+	if enterprise, ok := authRawAccount(record)["enterpriseId"].(string); ok {
+		stored.EnterpriseID = strings.TrimSpace(enterprise)
 	}
 	if stored.UID == "" {
 		return credential{}, failure("invalid_transfer", "account is missing uid", 400)
@@ -285,7 +301,7 @@ func mergeTransferRecords(records []transferRecord, indexes []int) transferMerge
 			merged.Skipped++
 			continue
 		}
-		target, ok := selectSite(transferRegion(record.Domain))
+		target, ok := selectSite(transferRegion(transferDomain(record)))
 		if !ok {
 			merged.Skipped++
 			continue
@@ -380,9 +396,16 @@ func transferRegion(domain string) string {
 	}
 	host = strings.TrimSuffix(host, ".")
 	switch {
-	case host == "copilot.tencent.com" || strings.HasSuffix(host, ".tencent.com") || host == "workbuddy.cn" || strings.HasSuffix(host, ".workbuddy.cn"):
+	// The CN product signs in under BOTH brand spellings, and real credentials
+	// carry either one in `domain`; refusing `codebuddy.cn` rejected this
+	// plugin's own export, because www.codebuddy.cn is one of its CN login
+	// pages (see trustedLoginURL).
+	case host == "copilot.tencent.com" || strings.HasSuffix(host, ".tencent.com") ||
+		host == "workbuddy.cn" || strings.HasSuffix(host, ".workbuddy.cn") ||
+		host == "codebuddy.cn" || strings.HasSuffix(host, ".codebuddy.cn"):
 		return "workbuddy"
-	case host == "www.workbuddy.ai" || host == "workbuddy.ai" || host == "codebuddy.ai" || strings.HasSuffix(host, ".workbuddy.ai") || strings.HasSuffix(host, ".codebuddy.ai"):
+	case host == "www.workbuddy.ai" || host == "workbuddy.ai" || host == "codebuddy.ai" ||
+		strings.HasSuffix(host, ".workbuddy.ai") || strings.HasSuffix(host, ".codebuddy.ai"):
 		return "workbuddy-ai"
 	default:
 		return ""

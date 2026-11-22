@@ -129,7 +129,7 @@ curl http://127.0.0.1:8317/v1/chat/completions \
 | `refresh_token` | 否 | 刷新令牌 |
 | `uid` | 是（当前插件） | WorkBuddy 账号 UID |
 | `nickname` / `email` | 否 | 脱敏预览用的显示信息 |
-| `domain` | 是（当前插件） | `copilot.tencent.com`（国内）或 `workbuddy.ai`/`codebuddy.ai`（国际） |
+| `domain` | 是（当前插件） | `copilot.tencent.com`、`workbuddy.cn`/`codebuddy.cn`（国内）或 `workbuddy.ai`/`codebuddy.ai`（国际）；缺省时回退到 `auth_raw.auth.domain` |
 | `expiresAt` | 否 | epoch 毫秒；导出会保留毫秒精度 |
 | `refreshExpiresAt` | 否 | epoch 毫秒 |
 | `auth_raw` | 否 | 兼容参考实现的原始身份块，导入时只用于恢复企业身份等辅助字段 |
