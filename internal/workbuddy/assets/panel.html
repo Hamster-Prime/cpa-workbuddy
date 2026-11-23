@@ -1120,7 +1120,9 @@
     }
     .modal.modal-wide {
       width: min(760px, 100%);
+      height: min(720px, 85vh);
       max-height: 85vh;
+      transition: height 0.2s ease, transform 0.2s ease;
     }
     .models-toolbar {
       display: flex;
@@ -1163,14 +1165,22 @@
     }
     .models-list {
       flex: 1;
-      min-height: 140px;
-      max-height: 55vh;
+      min-height: 0;
       overflow-y: auto;
       border: 1px solid var(--border-color);
       border-radius: 10px;
       background: var(--bg-primary);
       scrollbar-width: thin;
       scrollbar-color: var(--border-color) transparent;
+    }
+    .models-loading-state {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 13px;
     }
     .model-row {
       display: flex;
@@ -2452,7 +2462,7 @@
       siteBadge.textContent = acc.site === "workbuddy" ? "国内 CN" : acc.site === "workbuddy-ai" ? "国际 AI" : (acc.site || "--");
       siteBadge.className = "badge " + (acc.site === "workbuddy" ? "badge-cn" : "badge-intl");
       el("modelsPrefixBadge").textContent = "加载中...";
-      el("modelsListBody").innerHTML = '<div class="empty-state" style="border:0; background:transparent;">正在读取账号模型列表...</div>';
+      el("modelsListBody").innerHTML = '<div class="models-loading-state"><span class="btn-spinner"></span><span>正在读取账号模型列表...</span></div>';
       el("modelsSourceInfo").textContent = "--";
       el("cntModelsAll").textContent = "0";
       el("modelsModal").hidden = false;
@@ -2471,7 +2481,13 @@
 
     async function loadAccountModels(authIndex, refresh) {
       const btn = el("btnRefreshModels");
-      if (btn) btn.disabled = true;
+      if (btn) {
+        btn.disabled = true;
+        setButtonLoading(btn, true, "刷新中", "🔄 刷新");
+      }
+      if (refresh) {
+        el("modelsListBody").innerHTML = '<div class="models-loading-state"><span class="btn-spinner"></span><span>正在刷新账号模型列表...</span></div>';
+      }
       try {
         const suffix = refresh ? "&refresh=1" : "";
         const data = await apiFetch(MGMT_BASE + "/models?auth_index=" + encodeURIComponent(authIndex) + suffix);
@@ -2493,7 +2509,10 @@
           listEl.appendChild(errBox);
         }
       } finally {
-        if (btn) btn.disabled = false;
+        if (btn) {
+          setButtonLoading(btn, false, "刷新中", "🔄 刷新");
+          btn.disabled = false;
+        }
       }
     }
 
