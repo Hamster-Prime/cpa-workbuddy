@@ -446,6 +446,127 @@
       opacity: 0.55;
       cursor: not-allowed !important;
     }
+    @keyframes wb-spin {
+      to { transform: rotate(360deg); }
+    }
+    .btn-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: wb-spin 0.65s linear infinite;
+      flex-shrink: 0;
+    }
+    .credentials-wrapper {
+      position: relative;
+    }
+    .credentials-loading-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+    }
+    .credentials-loading-overlay[hidden] {
+      display: none;
+    }
+    .credentials-loading-card {
+      position: relative;
+      z-index: 3;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 20px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow-lg);
+      max-width: 380px;
+      width: calc(100% - 32px);
+      text-align: center;
+      animation: cardScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes cardScaleIn {
+      from { transform: scale(0.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .quota-probe-radar {
+      position: relative;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--accent-blue-subtle);
+    }
+    .radar-ping {
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid var(--accent-blue);
+      animation: radarPing 1.8s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    @keyframes radarPing {
+      0% { transform: scale(0.65); opacity: 0.85; }
+      100% { transform: scale(1.65); opacity: 0; }
+    }
+    .radar-beacon {
+      font-size: 24px;
+      animation: beaconPulse 1.6s ease-in-out infinite;
+      line-height: 1;
+      user-select: none;
+    }
+    @keyframes beaconPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+    .quota-loading-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .quota-loading-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+    .quota-loading-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+    .quota-loading-bar {
+      width: 100%;
+      height: 4px;
+      background: var(--meter-bg);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+    .quota-loading-bar-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 35%;
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+      border-radius: 999px;
+      animation: indeterminateBar 1.4s ease-in-out infinite;
+    }
+    @keyframes indeterminateBar {
+      0% { left: -35%; width: 30%; }
+      50% { width: 50%; }
+      100% { left: 100%; width: 30%; }
+    }
 
     input[type="password"], input[type="text"] {
       min-height: 34px;
@@ -1057,7 +1178,9 @@
     }
     .modal.modal-wide {
       width: min(760px, 100%);
+      height: min(720px, 85vh);
       max-height: 85vh;
+      transition: height 0.2s ease, transform 0.2s ease;
     }
     .models-toolbar {
       display: flex;
@@ -1100,14 +1223,22 @@
     }
     .models-list {
       flex: 1;
-      min-height: 140px;
-      max-height: 55vh;
+      min-height: 0;
       overflow-y: auto;
       border: 1px solid var(--border-color);
       border-radius: 10px;
       background: var(--bg-primary);
       scrollbar-width: thin;
       scrollbar-color: var(--border-color) transparent;
+    }
+    .models-loading-state {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 13px;
     }
     .model-row {
       display: flex;
@@ -1346,13 +1477,13 @@
           </div>
         </div>
 
-        <button type="button" id="btnRefreshAll" class="btn-secondary" onclick="refreshAllAccounts()">
+        <button type="button" id="btnRefreshAll" class="btn-secondary" onclick="refreshAllAccounts()" disabled>
           <span>🔄 刷新配额</span>
         </button>
-        <button type="button" id="btnCheckinAll" class="btn-primary" onclick="runBatch('/checkin', 'btnCheckinAll', '国内一键签到')">
+        <button type="button" id="btnCheckinAll" class="btn-primary" onclick="runBatch('/checkin', 'btnCheckinAll', '国内一键签到')" disabled>
           <span>✨ 国内一键签到</span>
         </button>
-        <button type="button" id="btnBonusAll" class="btn-secondary" onclick="runBatch('/daily-bonus', 'btnBonusAll', '国际一键点亮')">
+        <button type="button" id="btnBonusAll" class="btn-secondary" onclick="runBatch('/daily-bonus', 'btnBonusAll', '国际一键点亮')" disabled>
           <span>⚡ 国际一键点亮</span>
         </button>
         <button type="button" id="btnTransferExport" class="btn-secondary" onclick="exportSelectedAccounts()">
@@ -1369,6 +1500,21 @@
       </div>
 
       <div class="credentials-wrapper">
+        <div id="credentialsLoadingOverlay" class="credentials-loading-overlay" hidden aria-live="polite">
+          <div class="credentials-loading-card">
+            <div class="quota-probe-radar">
+              <div class="radar-ping"></div>
+              <div class="radar-beacon">📡</div>
+            </div>
+            <div class="quota-loading-text">
+              <div class="quota-loading-title">正在刷新全局配额...</div>
+              <div class="quota-loading-desc">正在向 WorkBuddy 服务探测最新配额与今日状态</div>
+            </div>
+            <div class="quota-loading-bar">
+              <div class="quota-loading-bar-fill"></div>
+            </div>
+          </div>
+        </div>
         <div id="credentialsContainer" class="credentials-grid scroll-container">
           <div class="empty-state">加载中...</div>
         </div>
@@ -1564,6 +1710,57 @@
 
     let currentModelsData = null;
     const busyKeys = new Set();
+    let dashboardLoading = false;
+    let activeBatchOp = null;
+
+    function setButtonLoading(btn, isLoading, loadingText, idleText) {
+      if (!btn) return;
+      btn.textContent = "";
+      if (isLoading) {
+        const sp = document.createElement("span");
+        sp.className = "btn-spinner";
+        btn.appendChild(sp);
+      }
+      const label = document.createElement("span");
+      label.textContent = isLoading ? loadingText : idleText;
+      btn.appendChild(label);
+    }
+
+    function updateToolbarButtons(cnCount = 0, cnPending = 0, intlCount = 0, intlPending = 0) {
+      const hasData = Boolean(dashboardData && Array.isArray(dashboardData.accounts));
+      const busy = dashboardLoading || activeBatchOp !== null;
+
+      const overlay = el("credentialsLoadingOverlay");
+      if (overlay) {
+        overlay.hidden = !(dashboardLoading || activeBatchOp === "refresh");
+      }
+
+      const refreshBtn = el("btnRefreshAll");
+      if (refreshBtn) {
+        refreshBtn.disabled = busy || !getManagementKey();
+        setButtonLoading(refreshBtn, activeBatchOp === "refresh" || dashboardLoading, "刷新中...", "🔄 刷新配额");
+      }
+
+      const checkinBatchBtn = el("btnCheckinAll");
+      if (checkinBatchBtn) {
+        const noCnWork = !hasData || cnCount === 0 || cnPending === 0;
+        checkinBatchBtn.disabled = busy || noCnWork;
+        setButtonLoading(checkinBatchBtn, activeBatchOp === "checkin", "签到中...", "✨ 国内一键签到");
+        checkinBatchBtn.title = !hasData
+          ? "等待数据加载"
+          : (cnCount === 0 ? "暂无国内账号" : (cnPending === 0 ? "全部国内账号今日已签到" : "执行国内一键签到"));
+      }
+
+      const bonusBatchBtn = el("btnBonusAll");
+      if (bonusBatchBtn) {
+        const noIntlWork = !hasData || intlCount === 0 || intlPending === 0;
+        bonusBatchBtn.disabled = busy || noIntlWork;
+        setButtonLoading(bonusBatchBtn, activeBatchOp === "daily-bonus", "点亮中...", "⚡ 国际一键点亮");
+        bonusBatchBtn.title = !hasData
+          ? "等待数据加载"
+          : (intlCount === 0 ? "暂无国际账号" : (intlPending === 0 ? "全部国际账号今日已点亮" : "执行国际一键点亮"));
+      }
+    }
 
     function el(id) { return document.getElementById(id); }
 
@@ -2153,18 +2350,7 @@
         }
       }
 
-      const checkinBatchBtn = el("btnCheckinAll");
-      if (checkinBatchBtn) {
-        const noCnWork = cnCount === 0 || cnPending === 0;
-        checkinBatchBtn.disabled = noCnWork;
-        checkinBatchBtn.title = cnCount === 0 ? "暂无国内账号" : (cnPending === 0 ? "全部国内账号今日已签到" : "执行国内一键签到");
-      }
-      const bonusBatchBtn = el("btnBonusAll");
-      if (bonusBatchBtn) {
-        const noIntlWork = intlCount === 0 || intlPending === 0;
-        bonusBatchBtn.disabled = noIntlWork;
-        bonusBatchBtn.title = intlCount === 0 ? "暂无国际账号" : (intlPending === 0 ? "全部国际账号今日已点亮" : "执行国际一键点亮");
-      }
+      updateToolbarButtons(cnCount, cnPending, intlCount, intlPending);
 
       el("valTotalCreds").textContent = String(all.length);
       el("valTotalDesc").textContent = `国内 ${cnCount} · 国际 ${intlCount} · 活跃 ${activeCount}`;
@@ -2334,8 +2520,9 @@
         const qBtn = document.createElement("button");
         qBtn.type = "button";
         qBtn.className = "btn-secondary btn-card-action";
-        qBtn.textContent = busyKeys.has("q:" + acc.auth_index) ? "..." : "刷新";
-        qBtn.disabled = busyKeys.has("q:" + acc.auth_index);
+        const qBusy = busyKeys.has("q:" + acc.auth_index);
+        setButtonLoading(qBtn, qBusy, "刷新中", "刷新");
+        qBtn.disabled = qBusy;
         qBtn.onclick = (e) => {
           e.stopPropagation();
           refreshSingleQuota(acc.auth_index);
@@ -2379,7 +2566,7 @@
       siteBadge.textContent = acc.site === "workbuddy" ? "国内 CN" : acc.site === "workbuddy-ai" ? "国际 AI" : (acc.site || "--");
       siteBadge.className = "badge " + (acc.site === "workbuddy" ? "badge-cn" : "badge-intl");
       el("modelsPrefixBadge").textContent = "加载中...";
-      el("modelsListBody").innerHTML = '<div class="empty-state" style="border:0; background:transparent;">正在读取账号模型列表...</div>';
+      el("modelsListBody").innerHTML = '<div class="models-loading-state"><span class="btn-spinner"></span><span>正在读取账号模型列表...</span></div>';
       el("modelsSourceInfo").textContent = "--";
       el("cntModelsAll").textContent = "0";
       el("modelsModal").hidden = false;
@@ -2398,7 +2585,13 @@
 
     async function loadAccountModels(authIndex, refresh) {
       const btn = el("btnRefreshModels");
-      if (btn) btn.disabled = true;
+      if (btn) {
+        btn.disabled = true;
+        setButtonLoading(btn, true, "刷新中", "🔄 刷新");
+      }
+      if (refresh) {
+        el("modelsListBody").innerHTML = '<div class="models-loading-state"><span class="btn-spinner"></span><span>正在刷新账号模型列表...</span></div>';
+      }
       try {
         const suffix = refresh ? "&refresh=1" : "";
         const data = await apiFetch(MGMT_BASE + "/models?auth_index=" + encodeURIComponent(authIndex) + suffix);
@@ -2420,7 +2613,10 @@
           listEl.appendChild(errBox);
         }
       } finally {
-        if (btn) btn.disabled = false;
+        if (btn) {
+          setButtonLoading(btn, false, "刷新中", "🔄 刷新");
+          btn.disabled = false;
+        }
       }
     }
 
@@ -2556,15 +2752,17 @@
     }
 
     async function refreshAllAccounts() {
-      const btn = el("btnRefreshAll");
-      btn.disabled = true;
+      if (activeBatchOp !== null || dashboardLoading) return;
+      activeBatchOp = "refresh";
+      updateToolbarButtons();
       try {
         await loadDashboard(true);
         showToast("已刷新全部账号配额与今日状态", "success");
       } catch (err) {
         if (err.status !== 401) showToast("刷新失败：" + err.message, "error");
       } finally {
-        btn.disabled = false;
+        activeBatchOp = null;
+        renderDashboard();
       }
     }
 
@@ -2610,8 +2808,9 @@
     }
 
     async function runBatch(endpoint, btnId, label) {
-      const btn = el(btnId);
-      btn.disabled = true;
+      if (activeBatchOp !== null || dashboardLoading) return;
+      activeBatchOp = endpoint === "/checkin" ? "checkin" : "daily-bonus";
+      updateToolbarButtons();
       try {
         const res = await apiFetch(MGMT_BASE + endpoint, {
           method: "POST",
@@ -2625,7 +2824,7 @@
       } catch (err) {
         if (err.status !== 401) showToast(`${label}失败：` + err.message, "error");
       } finally {
-        btn.disabled = false;
+        activeBatchOp = null;
         renderDashboard();
       }
     }
@@ -2789,18 +2988,25 @@
     // ---- Boot ----
     async function initializeApp() {
       updateMaskButton();
+      updateToolbarButtons();
       const key = getManagementKey();
       if (!key) {
         el("credentialsContainer").innerHTML = '<div class="empty-state">等待连接 CPA 管理接口（请点击右上角 🔑 密钥 进行认证）</div>';
         openKeyModal();
         return;
       }
+      dashboardLoading = true;
+      updateToolbarButtons();
       try {
         const data = await loadDashboard(false);
         if (data && data.accounts && data.accounts.some(a => !a.quota && !a.disabled)) {
-          loadDashboard(true).catch(() => {});
+          await loadDashboard(true).catch(() => {});
         }
-      } catch (_) {}
+      } catch (_) {
+      } finally {
+        dashboardLoading = false;
+        renderDashboard();
+      }
     }
 
     initializeApp();
