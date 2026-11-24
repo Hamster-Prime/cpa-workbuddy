@@ -105,6 +105,7 @@ type Service struct {
 
 	cfgMu        sync.RWMutex
 	cfg          PluginConfig
+	configPath   string
 	hostCall     func(string, []byte) ([]byte, error)
 	acctLocks    map[string]*sync.Mutex
 	billingMu    sync.RWMutex
@@ -118,14 +119,21 @@ type Service struct {
 
 func New() *Service {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Service{
+	s := &Service{
 		sessions:   make(map[string]*session),
 		execCtx:    ctx,
 		cancelExec: cancel,
 		cfg:        DefaultPluginConfig(),
+		configPath: DefaultConfigPath(),
 		schedWake:  make(chan struct{}, 1),
 		usage:      newUsageTracker(),
 	}
+	if s.configPath != "" {
+		if loaded, ok, err := loadConfigFromFile(s.configPath); err == nil && ok {
+			s.cfg = loaded
+		}
+	}
+	return s
 }
 
 // Close stops admission, cancels login sessions and active work, and waits until

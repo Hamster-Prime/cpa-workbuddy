@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -15,6 +17,7 @@ import (
 )
 
 func TestConfigYAMLAndOptionAModelPrefixRouting(t *testing.T) {
+	t.Setenv(workbuddy.ConfigPathEnv, filepath.Join(t.TempDir(), "config.json"))
 	s := workbuddy.New()
 	defer s.Close()
 
@@ -101,6 +104,42 @@ func TestConfigYAMLAndOptionAModelPrefixRouting(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected %s to reject %q", rejected.auth.Attributes["site"], rejected.model)
 		}
+	}
+}
+
+func TestStandaloneJSONConfigPersistence(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "nested", "config.json")
+	t.Setenv(workbuddy.ConfigPathEnv, cfgPath)
+
+	s1 := workbuddy.New()
+	defer s1.Close()
+
+	want := workbuddy.PluginConfig{
+		CNModelPrefix:      false,
+		IntlModelPrefix:    true,
+		AutoCheckinEnabled: false,
+		AutoCheckinTime:    "07:45",
+	}
+	if err := s1.UpdateConfig(want); err != nil {
+		t.Fatalf("UpdateConfig failed: %v", err)
+	}
+	if _, err := os.Stat(cfgPath); err != nil {
+		t.Fatalf("expected persisted config file at %s: %v", cfgPath, err)
+	}
+
+	// New service instance loads persisted JSON config on startup.
+	s2 := workbuddy.New()
+	defer s2.Close()
+	if got := s2.Config(); got != want {
+		t.Fatalf("reloaded config mismatch: got %+v, want %+v", got, want)
+	}
+
+	// Host Reconfigure with different YAML should not overwrite persisted JSON config.
+	if err := s2.Reconfigure([]byte("cn_model_prefix: true\nauto_checkin_time: \"10:15\"\n")); err != nil {
+		t.Fatalf("Reconfigure failed: %v", err)
+	}
+	if got := s2.Config(); got != want {
+		t.Fatalf("Reconfigure should preserve persisted JSON config: got %+v, want %+v", got, want)
 	}
 }
 
