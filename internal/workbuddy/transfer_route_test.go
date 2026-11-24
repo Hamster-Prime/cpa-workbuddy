@@ -174,6 +174,79 @@ func storedCredential(t *testing.T, h *fakeHostHarness, authIndex string) stored
 	return stored
 }
 
+// Importing over an existing account must only refresh token fields. The
+// host-managed cache, discovery failure state, display name and file name are
+// owned by the existing credential and must survive a transfer that omits them.
+func TestTransferImportPreservesExistingCredentialState(t *testing.T) {
+	s := workbuddy.New()
+	defer s.Close()
+	cnAuth := parsedIdentity(t, "workbuddy", "")
+	h := newFakeHostHarness(t, []workbuddy.AuthData{cnAuth})
+
+	const existingName = "existing-account.json"
+	h.mu.Lock()
+	raw := h.authMap["workbuddy-a"]["json"].(map[string]any)
+	// The previous importer could leave a stale embedded file_name. The host
+	// save name stays authoritative when a later import repairs the record.
+	raw["file_name"] = "stale-account.json"
+	raw["refresh_token"] = "old-refresh"
+	raw["refresh_expires_at"] = "2031-01-01T00:00:00Z"
+	raw["display_name"] = "Existing Name"
+	raw["model_snapshot"] = map[string]any{
+		"captured_at": "2026-01-01T00:00:00Z",
+		"site":        "test",
+		"models":      []any{},
+	}
+	raw["model_discovery_failure"] = "old discovery failure"
+	h.authMap["workbuddy-a"]["name"] = existingName
+	h.authMap["workbuddy-a"]["path"] = "/tmp/" + existingName
+	h.files[0]["name"] = existingName
+	h.mu.Unlock()
+
+	res, err := postManagement(t, s, h, transferImportPath,
+		`{"text":"[{\"access_token\":\"new-access\",\"uid\":\"person\",\"domain\":\"copilot.tencent.com\"}]","indexes":[0]}`)
+	if err != nil || res.StatusCode != 200 {
+		t.Fatalf("unexpected import response: status=%d err=%v body=%s", res.StatusCode, err, res.Body)
+	}
+
+	h.mu.Lock()
+	after := h.authMap["workbuddy-a"]["json"].(map[string]any)
+	h.mu.Unlock()
+	if after["file_name"] != existingName {
+		t.Fatalf("file_name changed: got %v want %q", after["file_name"], existingName)
+	}
+	if after["refresh_token"] != "old-refresh" {
+		t.Fatalf("refresh_token was cleared: %v", after["refresh_token"])
+	}
+	if after["refresh_expires_at"] != "2031-01-01T00:00:00Z" {
+		t.Fatalf("refresh_expires_at was cleared: %v", after["refresh_expires_at"])
+	}
+	if after["display_name"] != "Existing Name" {
+		t.Fatalf("display_name was cleared: %v", after["display_name"])
+	}
+	if after["model_discovery_failure"] != "old discovery failure" {
+		t.Fatalf("model_discovery_failure was cleared: %v", after["model_discovery_failure"])
+	}
+	snapshot, ok := after["model_snapshot"].(map[string]any)
+	if !ok || snapshot["captured_at"] != "2026-01-01T00:00:00Z" {
+		t.Fatalf("model_snapshot was lost: %v", after["model_snapshot"])
+	}
+
+	// A non-empty display name from the import is allowed to replace the
+	// existing one; the empty case above must not.
+	res, err = postManagement(t, s, h, transferImportPath,
+		`{"text":"[{\"access_token\":\"newer-access\",\"uid\":\"person\",\"nickname\":\"New Name\",\"domain\":\"copilot.tencent.com\"}]","indexes":[0]}`)
+	if err != nil || res.StatusCode != 200 {
+		t.Fatalf("unexpected second import response: status=%d err=%v body=%s", res.StatusCode, err, res.Body)
+	}
+	h.mu.Lock()
+	after = h.authMap["workbuddy-a"]["json"].(map[string]any)
+	h.mu.Unlock()
+	if after["display_name"] != "New Name" {
+		t.Fatalf("non-empty nickname did not override display_name: %v", after["display_name"])
+	}
+}
+
 func TestTransferImportIsolatesBadRecordsAndHostReadFailures(t *testing.T) {
 	s := workbuddy.New()
 	defer s.Close()
@@ -221,21 +294,49 @@ func TestTransferImportReportsStoredCountAndHostReasonOnSaveFailure(t *testing.T
 	defer s.Close()
 	cnAuth := parsedIdentity(t, "workbuddy", "")
 	h := newFakeHostHarness(t, []workbuddy.AuthData{cnAuth})
+	saveCalls := 0
 	h.callOverride = func(method string) ([]byte, error, bool) {
 		if method == "host.auth.save" {
-			return []byte(`{"ok":false,"error":{"message":"auth file name must end with .json"}}`), nil, true
+			saveCalls++
+			if saveCalls > 1 {
+				return []byte(`{"ok":false,"error":{"message":"auth file name must end with .json"}}`), nil, true
+			}
 		}
 		return nil, nil, false
 	}
 
-	res, err := postManagement(t, s, h, transferImportPath,
-		`{"text":"[{\"access_token\":\"new\",\"uid\":\"uid-new\",\"domain\":\"copilot.tencent.com\"}]","indexes":[0]}`)
+	_, err := postManagement(t, s, h, transferImportPath,
+		`{"text":"[{\"access_token\":\"new-1\",\"uid\":\"uid-new-1\",\"domain\":\"copilot.tencent.com\"},{\"access_token\":\"new-2\",\"uid\":\"uid-new-2\",\"domain\":\"copilot.tencent.com\"}]","indexes":[0,1]}`)
 	if err == nil {
 		t.Fatal("expected the host save failure to surface")
 	}
-	_ = res
 	if !strings.Contains(err.Error(), "auth file name must end with .json") {
 		t.Fatalf("host reason was swallowed: %v", err)
+	}
+	if !strings.Contains(err.Error(), "imported 1") {
+		t.Fatalf("partial written count was lost: %v", err)
+	}
+}
+
+func TestTransferImportRejectsExistingCredentialWithoutHostFilename(t *testing.T) {
+	s := workbuddy.New()
+	defer s.Close()
+	h := newFakeHostHarness(t, []workbuddy.AuthData{parsedIdentity(t, "workbuddy", "")})
+	h.mu.Lock()
+	delete(h.authMap["workbuddy-a"], "name")
+	delete(h.authMap["workbuddy-a"], "path")
+	delete(h.authMap["workbuddy-a"]["json"].(map[string]any), "file_name")
+	h.mu.Unlock()
+
+	_, err := postManagement(t, s, h, transferImportPath,
+		`{"text":"[{\"access_token\":\"new-access\",\"uid\":\"person\",\"domain\":\"copilot.tencent.com\"}]","indexes":[0]}`)
+	if err == nil || !strings.Contains(err.Error(), "imported 0 credential(s)") || !strings.Contains(err.Error(), "missing the host file name") {
+		t.Fatalf("expected a zero-write error for an unnamed credential, got %v", err)
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if len(h.saved) != 0 {
+		t.Fatalf("unnamed credential was saved: %d files", len(h.saved))
 	}
 }
 

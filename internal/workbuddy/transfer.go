@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -199,14 +200,26 @@ func transferRecordProblem(record transferRecord, position int) string {
 	if !safeValue(record.AccessToken) || !safeValue(record.RefreshToken) || !safeValue(record.Domain) || !safeValue(domain) {
 		return fmt.Sprintf("item %d contains unsafe credential text", position)
 	}
+	// The merge path validates the final UID and enterprise ID with safeValue
+	// through credentialSite. Check the same raw identities during preview so a
+	// record cannot look importable and then be silently skipped on confirm.
+	account := authRawAccount(record)
+	uid := record.UID
+	if strings.TrimSpace(uid) == "" && account != nil {
+		uid, _ = account["uid"].(string)
+	}
+	enterpriseID := ""
+	if account != nil {
+		enterpriseID, _ = account["enterpriseId"].(string)
+	}
+	if !safeValue(uid) || !safeValue(enterpriseID) {
+		return fmt.Sprintf("item %d contains unsafe credential text", position)
+	}
 	if record.ExpiresAt < 0 || record.RefreshExpiresAt < 0 {
 		return fmt.Sprintf("item %d has a negative expiry", position)
 	}
-	if strings.TrimSpace(record.UID) == "" {
-		uid, _ := authRawAccount(record)["uid"].(string)
-		if strings.TrimSpace(uid) == "" {
-			return fmt.Sprintf("item %d is missing uid", position)
-		}
+	if strings.TrimSpace(uid) == "" {
+		return fmt.Sprintf("item %d is missing uid", position)
 	}
 	// Two different problems, two different fixes: a record naming no domain at
 	// all (the common shape of a desktop auth document, which carries the token
@@ -231,11 +244,14 @@ func authRawAccount(record transferRecord) map[string]any {
 	if account, ok := root["account"].(map[string]any); ok {
 		return account
 	}
-	// Flat desktop auth documents put uid/nickname at the root.
+	// Flat desktop auth documents put uid/nickname/enterpriseId at the root.
 	if _, ok := root["uid"]; ok {
 		return root
 	}
 	if _, ok := root["nickname"]; ok {
+		return root
+	}
+	if _, ok := root["enterpriseId"]; ok {
 		return root
 	}
 	return nil
@@ -373,6 +389,29 @@ func credentialFromTransferRecord(record transferRecord, target site) (credentia
 	return stored, nil
 }
 
+// mergeImportedCredential applies an imported record over an existing
+// host-owned credential without discarding fields the transfer file does not
+// carry. Token fields are replaced by the import; refresh metadata, display
+// name and cached model snapshot only change when the import supplies a value,
+// and the host-owned filename is always kept.
+func mergeImportedCredential(base, next credential) credential {
+	merged := mergeCredentialTokens(base, next)
+	if next.ModelSnapshot == nil {
+		merged.ModelSnapshot = base.ModelSnapshot
+		merged.ModelDiscoveryFailure = base.ModelDiscoveryFailure
+	}
+	if strings.TrimSpace(next.RefreshToken) == "" {
+		merged.RefreshToken = base.RefreshToken
+	}
+	if next.RefreshExpiresAt == nil {
+		merged.RefreshExpiresAt = base.RefreshExpiresAt
+	}
+	if strings.TrimSpace(next.DisplayName) != "" {
+		merged.DisplayName = next.DisplayName
+	}
+	return merged
+}
+
 // mergeTransferRecords turns the selected records into credentials keyed by
 // stable identity. Records that cannot be imported are skipped individually, so
 // one malformed entry never rejects the rest of the batch.
@@ -434,6 +473,19 @@ type importTransferResult struct {
 	Duplicated int `json:"duplicated"`
 }
 
+// importProgressError keeps the number of credentials already persisted in the
+// error message, because HandleManagement cannot return a partial result body
+// together with an error.
+func importProgressError(err error, written int) error {
+	message := fmt.Sprintf("imported %d credential(s) before the import stopped: %v", written, err)
+	if detail, ok := err.(*Error); ok {
+		clone := *detail
+		clone.Message = message
+		return &clone
+	}
+	return failure("host_save_failed", message, 502)
+}
+
 // importTransferRecords owns the whole import orchestration: parse, select,
 // match existing host credentials by identity, then persist. Keeping it out of
 // HandleManagement leaves that dispatcher as routing only.
@@ -481,13 +533,28 @@ func importTransferRecords(call func(string, []byte) ([]byte, error), text strin
 	sort.Strings(ids)
 	written := 0
 	for _, id := range ids {
-		auth, authErr := authFromCredential(merged.Changes[id], nil)
+		next := merged.Changes[id]
+		rec, exists := existing[id]
+		var auth AuthData
+		var authErr error
+		if exists {
+			mergedCredential := mergeImportedCredential(rec.Stored, next)
+			if rec.FileName == "" {
+				authErr = failure("host_save_failed", "existing credential is missing the host file name", 502)
+			} else {
+				// Use the same basename as hostAuthSaveCredential, even if an
+				// older import left a different name in the stored JSON.
+				mergedCredential.FileName = filepath.Base(rec.FileName)
+				auth, authErr = authFromCredential(mergedCredential, rec.Auth.Metadata)
+			}
+		} else {
+			auth, authErr = authFromCredential(next, nil)
+		}
 		if authErr != nil {
-			return importTransferResult{Imported: written}, failure("invalid_transfer", "imported credential could not be normalized", 400)
+			return importTransferResult{Imported: written, Skipped: result.Skipped, Duplicated: result.Duplicated}, importProgressError(authErr, written)
 		}
 		var saveErr error
-		if rec, ok := existing[id]; ok {
-			auth.FileName = rec.FileName
+		if exists {
 			saveErr = hostAuthSaveCredential(call, rec, auth)
 		} else {
 			saveErr = hostAuthSaveNewCredential(call, auth)
@@ -495,7 +562,7 @@ func importTransferRecords(call func(string, []byte) ([]byte, error), text strin
 		if saveErr != nil {
 			// Report how many were stored before the failure: the client cannot
 			// otherwise tell whether retrying would duplicate accounts.
-			return importTransferResult{Imported: written, Skipped: result.Skipped, Duplicated: result.Duplicated}, saveErr
+			return importTransferResult{Imported: written, Skipped: result.Skipped, Duplicated: result.Duplicated}, importProgressError(saveErr, written)
 		}
 		written++
 	}
@@ -505,17 +572,16 @@ func importTransferRecords(call func(string, []byte) ([]byte, error), text strin
 
 func transferRegion(domain string) string {
 	host := normalizeTransferDomain(domain)
-	switch {
-	// The CN product signs in under BOTH brand spellings, and real credentials
-	// carry either one in `domain`; refusing `codebuddy.cn` rejected this
-	// plugin's own export, because www.codebuddy.cn is one of its CN login
-	// pages (see trustedLoginURL).
-	case host == "copilot.tencent.com" || strings.HasSuffix(host, ".tencent.com") ||
-		host == "workbuddy.cn" || strings.HasSuffix(host, ".workbuddy.cn") ||
-		host == "codebuddy.cn" || strings.HasSuffix(host, ".codebuddy.cn"):
+	// Only the exact product hosts are trusted. A generic suffix check would
+	// accept arbitrary subdomains such as evil.tencent.com, and the value is
+	// stored as credential.Domain and sent upstream as X-Domain.
+	switch host {
+	case "copilot.tencent.com",
+		"workbuddy.cn", "www.workbuddy.cn",
+		"codebuddy.cn", "www.codebuddy.cn":
 		return "workbuddy"
-	case host == "www.workbuddy.ai" || host == "workbuddy.ai" || host == "codebuddy.ai" ||
-		strings.HasSuffix(host, ".workbuddy.ai") || strings.HasSuffix(host, ".codebuddy.ai"):
+	case "workbuddy.ai", "www.workbuddy.ai",
+		"codebuddy.ai", "www.codebuddy.ai":
 		return "workbuddy-ai"
 	default:
 		return ""

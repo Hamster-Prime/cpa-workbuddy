@@ -254,6 +254,29 @@ func TestParseTransferFileRejectsUnsafeAuthRawDomain(t *testing.T) {
 	}
 }
 
+// The preview and merge stages must accept the same identities. A UID or
+// enterprise ID with a CR/LF/NUL is rejected by credentialSite during merge;
+// leaving it unmarked during preview makes a record look importable and then
+// silently skips it at confirmation time.
+func TestParseTransferFileRejectsUnsafeUIDAndEnterpriseID(t *testing.T) {
+	cases := map[string]string{
+		"unsafe uid":        `{"access_token":"ok","uid":"uid\r\nX-Evil: 1","domain":"copilot.tencent.com"}`,
+		"unsafe enterprise": `{"access_token":"ok","uid":"uid-a","domain":"copilot.tencent.com","auth_raw":{"account":{"uid":"uid-a","enterpriseId":"team\u0000one"}}}`,
+	}
+	for name, raw := range cases {
+		records, err := parseTransferFile([]byte("[" + raw + "]"))
+		if err != nil {
+			t.Fatalf("%s: parseTransferFile returned error: %v", name, err)
+		}
+		if records[0].problem == "" {
+			t.Fatalf("%s: unsafe identity was accepted: %#v", name, records[0])
+		}
+		if !strings.Contains(records[0].problem, "unsafe") {
+			t.Fatalf("%s: unexpected problem text: %q", name, records[0].problem)
+		}
+	}
+}
+
 // Every record must be validated before the first host write. A record that
 // only fails while normalizing would otherwise surface as a mid-batch error
 // with an arbitrary subset of the batch already stored.
@@ -376,7 +399,15 @@ func TestTransferRegionResolvesSitesAndRejectsUnknownDomains(t *testing.T) {
 		"www.workbuddy.ai":                 "workbuddy-ai",
 		"codebuddy.ai":                     "workbuddy-ai",
 		"unknown.example":                  "",
-		"":                                 "",
+		// Subdomains are not WorkBuddy hosts: accepting them would let an
+		// arbitrary host become the X-Domain of an imported credential.
+		"evil.tencent.com":        "",
+		"foo.workbuddy.cn":        "",
+		"foo.codebuddy.cn":        "",
+		"foo.workbuddy.ai":        "",
+		"foo.codebuddy.ai":        "",
+		"sub.copilot.tencent.com": "",
+		"":                        "",
 	}
 	for domain, want := range cases {
 		if got := transferRegion(domain); got != want {
