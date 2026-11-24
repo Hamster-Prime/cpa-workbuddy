@@ -81,6 +81,7 @@ plugins:
 - `cn_model_prefix` / `intl_model_prefix`：分别控制国内 `wb/` 与国际 `wb-ai/` 模型返回前缀（默认均为 `true`）。关闭某站点前缀后，模型列表直接返回原始模型 ID，且请求路由仍向后兼容带该站点前缀的模型名。若两侧同时关闭，同名模型会在国内与国际账号间共同调度。
 - `auto_checkin_enabled` / `auto_checkin_time`：是否开启每日定时自动签到/成长点亮，以及每日基准时间（24 小时制 `HH:MM`，实际触发会在 `±3h` 内随机浮动）。
 - **控制面板入口**：重启 CPA 后可通过管理页面插件菜单 **WorkBuddy** 或直接访问 `http://<CPA地址>/v0/resource/plugins/cpa-workbuddy/panel`。面板自动同步 CPA 主题并读取当前登录态的 Management Key（独立访问未登录时可在弹窗手动输入），支持查看凭证与剩余积分、执行手动/批量签到以及在线修改配置。
+- **本地持久化**：面板保存的配置写入 `data/cpa-workbuddy/config.json`，重启后优先于 CPA 下发的 YAML；用量统计写入 `data/cpa-workbuddy/usage.json`，保留最近 7 天及最多 500 条请求记录。路径相对 CPA 工作目录，可用 `CPA_WORKBUDDY_CONFIG_PATH` 与 `CPA_WORKBUDDY_USAGE_PATH` 覆盖；删除对应文件即可恢复宿主配置或清空用量。
 
 重启 CPA，在管理页面的插件列表确认 `cpa-workbuddy` 已加载并启用。
 插件复用 CPA 的网络代理、凭证目录及管理鉴权。管理密钥与客户端 API key 分别由 CPA 配置。
@@ -151,6 +152,8 @@ volumes:
 
 Linux amd64 容器对应的宿主文件为 `./plugins/linux/amd64/cpa-workbuddy.so`。在 CPA 配置中填写 `dir: "/CLIProxyAPI/plugins"`，并启用上述两个开关；保留 CPA 的配置和凭证目录持久卷。
 
+插件配置与用量文件默认写在容器内 CPA 工作目录的 `data/cpa-workbuddy/` 下；需要跨容器重建保留时，将该目录挂载到持久卷，或用 `CPA_WORKBUDDY_CONFIG_PATH` / `CPA_WORKBUDDY_USAGE_PATH` 指向已挂载路径。
+
 容器内运行 CPA，浏览器登录在你自己的电脑上完成。选择与容器架构匹配的 Linux 包；Linux 发布包使用 glibc，Alpine / musl 环境需使用匹配环境构建的产物。
 
 ## 常见问题
@@ -175,7 +178,7 @@ go run ./cmd/project quality
 go run ./cmd/project build
 ```
 
-动态库位于 `out/bin/`；`go run ./cmd/project package` 生成当前平台 ZIP 和 SHA256。开发约定与发布流程见 [开发指南](docs/development.md)，版本变更见 [Release notes](.github/release-notes/v0.1.3.md)。
+动态库位于 `out/bin/`；`go run ./cmd/project package` 生成当前平台 ZIP 和 SHA256。开发约定与发布流程见 [开发指南](docs/development.md)，版本变更见 [Release notes](.github/release-notes/v0.1.4.md)。
 
 ## 许可证
 
