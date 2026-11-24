@@ -133,6 +133,9 @@ func New() *Service {
 			s.cfg = loaded
 		}
 	}
+	if usagePath := DefaultUsagePath(); usagePath != "" {
+		_ = s.usage.setPathAndLoad(usagePath)
+	}
 	return s
 }
 

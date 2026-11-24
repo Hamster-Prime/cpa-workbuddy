@@ -1,10 +1,13 @@
 package workbuddy
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"testing"
+	"time"
 )
 
 func TestExtractTokenUsageFromPayload(t *testing.T) {
@@ -128,5 +131,70 @@ func TestHandleManagementUsageEndpoints(t *testing.T) {
 	models, _, _ := svc.usage.snapshot()
 	if len(models) != 0 {
 		t.Fatalf("expected usage to be cleared after reset, got %d models", len(models))
+	}
+}
+
+func TestUsagePersistenceIndexedCompactJSONAndRetention(t *testing.T) {
+	usagePath := t.TempDir() + "/usage.json"
+	t.Setenv(UsagePathEnv, usagePath)
+
+	svc := New()
+	defer svc.Close()
+
+	now := time.Now().UTC()
+	// Record an old event (> 7 days) that should be pruned.
+	svc.usage.record(UsageEvent{
+		ID:           "old-1",
+		Timestamp:    now.Add(-8 * 24 * time.Hour),
+		AuthIndex:    "auth-old",
+		AccountLabel: "old@example.com",
+		Site:         "workbuddy",
+		Model:        "wb/glm-5.3",
+		Status:       "success",
+		Usage:        TokenUsage{InputTokens: 10, OutputTokens: 5, TotalTokens: 15},
+	})
+
+	// Record 505 recent events to verify 500-event cap and dictionary deduplication.
+	for i := range 505 {
+		svc.usage.record(UsageEvent{
+			Timestamp:        now.Add(-time.Duration(505-i) * time.Second),
+			AuthIndex:        "auth-1",
+			AccountLabel:     "alice@example.com",
+			Site:             "workbuddy",
+			Model:            "wb/glm-5.3",
+			Status:           "success",
+			DurationMs:       120,
+			Usage:            TokenUsage{InputTokens: 10, OutputTokens: 20, TotalTokens: 30},
+			EstimatedCredits: 0.5,
+		})
+	}
+
+	raw, err := os.ReadFile(usagePath)
+	if err != nil {
+		t.Fatalf("read persisted usage.json: %v", err)
+	}
+	if bytes.Contains(raw, []byte("\n")) {
+		t.Fatalf("expected compact JSON without newlines")
+	}
+	if got := bytes.Count(raw, []byte("alice@example.com")); got != 1 {
+		t.Fatalf("expected account label to be interned once, got %d occurrences", got)
+	}
+
+	// Reload in a fresh Service instance.
+	svc2 := New()
+	defer svc2.Close()
+
+	models, accounts, events := svc2.usage.snapshot()
+	if len(events) != 500 {
+		t.Fatalf("expected 500 retained events, got %d", len(events))
+	}
+	if events[0].AuthIndex != "auth-1" || events[0].AccountLabel != "alice@example.com" || events[0].Site != "workbuddy" || events[0].Model != "wb/glm-5.3" {
+		t.Fatalf("unexpected decoded event: %+v", events[0])
+	}
+	if _, ok := accounts["auth-old"]; ok {
+		t.Fatalf("expected >7d account summary to be pruned")
+	}
+	if len(models) != 1 || models[0].Requests != 505 {
+		t.Fatalf("unexpected model summary after reload: %+v", models)
 	}
 }

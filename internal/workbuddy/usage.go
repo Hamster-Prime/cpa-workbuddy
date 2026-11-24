@@ -4,16 +4,24 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"testing"
 	"time"
 )
 
-const maxRecentUsageEvents = 100
+const (
+	maxRecentUsageEvents = 500
+	usageRetentionWindow = 7 * 24 * time.Hour
+	UsagePathEnv         = "CPA_WORKBUDDY_USAGE_PATH"
+)
 
 // TokenUsage captures normalized token counts for a single chat execution.
 type TokenUsage struct {
@@ -121,11 +129,12 @@ type UsageStatisticsResponse struct {
 }
 
 type usageTracker struct {
-	mu      sync.RWMutex
-	seq     atomic.Uint64
-	models  map[string]*ModelUsageSummary
-	account map[string]*AccountUsageSummary
-	events  []UsageEvent
+	mu       sync.RWMutex
+	seq      atomic.Uint64
+	filePath string
+	models   map[string]*ModelUsageSummary
+	account  map[string]*AccountUsageSummary
+	events   []UsageEvent
 }
 
 func newUsageTracker() *usageTracker {
@@ -136,15 +145,44 @@ func newUsageTracker() *usageTracker {
 	}
 }
 
+// DefaultUsagePath returns the standalone compact JSON usage cache file path.
+func DefaultUsagePath() string {
+	if override := strings.TrimSpace(os.Getenv(UsagePathEnv)); override != "" {
+		return override
+	}
+	if testing.Testing() {
+		return ""
+	}
+	return filepath.Join("data", "cpa-workbuddy", "usage.json")
+}
+
+func (u *usageTracker) setPathAndLoad(path string) error {
+	if u == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(path)
+	u.mu.Lock()
+	u.filePath = trimmed
+	u.mu.Unlock()
+	if trimmed == "" {
+		return nil
+	}
+	return u.loadFromFile(trimmed)
+}
+
 func (u *usageTracker) reset() {
 	if u == nil {
 		return
 	}
 	u.mu.Lock()
-	defer u.mu.Unlock()
 	u.models = make(map[string]*ModelUsageSummary)
 	u.account = make(map[string]*AccountUsageSummary)
 	u.events = u.events[:0]
+	path := u.filePath
+	u.mu.Unlock()
+	if path != "" {
+		_ = u.saveToFile(path)
+	}
 }
 
 func (u *usageTracker) record(ev UsageEvent) {
@@ -165,7 +203,6 @@ func (u *usageTracker) record(ev UsageEvent) {
 	}
 
 	u.mu.Lock()
-	defer u.mu.Unlock()
 
 	modelKey := ev.Site + "|" + ev.Model
 	ms := u.models[modelKey]
@@ -228,6 +265,331 @@ func (u *usageTracker) record(ev UsageEvent) {
 	} else {
 		u.events = append(u.events, ev)
 	}
+	u.pruneLocked(time.Now().UTC())
+	path := u.filePath
+	u.mu.Unlock()
+	if path != "" {
+		_ = u.saveToFile(path)
+	}
+}
+
+func (u *usageTracker) pruneLocked(now time.Time) {
+	cutoff := now.Add(-usageRetentionWindow)
+	kept := u.events[:0]
+	for _, ev := range u.events {
+		if !ev.Timestamp.IsZero() && ev.Timestamp.Before(cutoff) {
+			continue
+		}
+		kept = append(kept, ev)
+	}
+	if len(kept) > maxRecentUsageEvents {
+		kept = kept[len(kept)-maxRecentUsageEvents:]
+	}
+	u.events = kept
+	for k, ms := range u.models {
+		if ms.LastUsedAt != nil && ms.LastUsedAt.Before(cutoff) {
+			delete(u.models, k)
+		}
+	}
+	for k, as := range u.account {
+		if as.LastUsedAt != nil && as.LastUsedAt.Before(cutoff) {
+			delete(u.account, k)
+		}
+	}
+}
+
+type persistedAccountRef struct {
+	AuthIndex string `json:"a"`
+	Label     string `json:"l,omitempty"`
+	SiteIdx   int    `json:"s"`
+}
+
+type persistedModelSummary struct {
+	ModelIdx         int        `json:"m"`
+	DisplayName      string     `json:"d,omitempty"`
+	SiteIdx          int        `json:"s"`
+	CreditFactor     float64    `json:"cf,omitempty"`
+	IsFree           bool       `json:"f,omitempty"`
+	Requests         int64      `json:"r"`
+	SuccessCount     int64      `json:"ok"`
+	ErrorCount       int64      `json:"err,omitempty"`
+	InputTokens      int64      `json:"in"`
+	OutputTokens     int64      `json:"out"`
+	CachedTokens     int64      `json:"ca,omitempty"`
+	TotalTokens      int64      `json:"tot"`
+	EstimatedCredits float64    `json:"ec,omitempty"`
+	LastUsedAt       *time.Time `json:"lu,omitempty"`
+}
+
+type persistedAccountSummary struct {
+	AccountIdx       int        `json:"a"`
+	Requests         int64      `json:"r"`
+	SuccessCount     int64      `json:"ok"`
+	ErrorCount       int64      `json:"err,omitempty"`
+	InputTokens      int64      `json:"in"`
+	OutputTokens     int64      `json:"out"`
+	TotalTokens      int64      `json:"tot"`
+	EstimatedCredits float64    `json:"ec,omitempty"`
+	LastUsedAt       *time.Time `json:"lu,omitempty"`
+}
+
+type persistedUsageEvent struct {
+	ID               string     `json:"id"`
+	Timestamp        time.Time  `json:"t"`
+	AccountIdx       int        `json:"a"`
+	SiteIdx          int        `json:"s"`
+	ModelIdx         int        `json:"m"`
+	Streaming        bool       `json:"st,omitempty"`
+	StatusIdx        int        `json:"stx"`
+	IsFree           bool       `json:"f,omitempty"`
+	DurationMs       int64      `json:"ms"`
+	Usage            TokenUsage `json:"u"`
+	CreditFactor     float64    `json:"cf,omitempty"`
+	EstimatedCredits float64    `json:"ec,omitempty"`
+	Error            string     `json:"e,omitempty"`
+}
+
+type persistedUsageStore struct {
+	Version          int                       `json:"v"`
+	Seq              uint64                    `json:"seq"`
+	Sites            []string                  `json:"sites"`
+	Models           []string                  `json:"models"`
+	Statuses         []string                  `json:"statuses"`
+	Accounts         []persistedAccountRef     `json:"accounts"`
+	ModelSummaries   []persistedModelSummary   `json:"ms,omitempty"`
+	AccountSummaries []persistedAccountSummary `json:"as,omitempty"`
+	Events           []persistedUsageEvent     `json:"events,omitempty"`
+}
+
+func (u *usageTracker) saveToFile(path string) error {
+	u.mu.RLock()
+	siteIdx := make(map[string]int)
+	modelIdx := make(map[string]int)
+	statusIdx := make(map[string]int)
+	accountIdx := make(map[string]int)
+
+	var sites, models, statuses []string
+	var accounts []persistedAccountRef
+
+	intern := func(m map[string]int, list *[]string, val string) int {
+		if idx, ok := m[val]; ok {
+			return idx
+		}
+		idx := len(*list)
+		m[val] = idx
+		*list = append(*list, val)
+		return idx
+	}
+	internAccount := func(authIndex, label, site string) int {
+		if authIndex == "" {
+			return -1
+		}
+		if idx, ok := accountIdx[authIndex]; ok {
+			if label != "" && accounts[idx].Label == "" {
+				accounts[idx].Label = label
+			}
+			return idx
+		}
+		idx := len(accounts)
+		accountIdx[authIndex] = idx
+		accounts = append(accounts, persistedAccountRef{
+			AuthIndex: authIndex,
+			Label:     label,
+			SiteIdx:   intern(siteIdx, &sites, site),
+		})
+		return idx
+	}
+
+	doc := persistedUsageStore{
+		Version: 1,
+		Seq:     u.seq.Load(),
+	}
+	for _, ms := range u.models {
+		doc.ModelSummaries = append(doc.ModelSummaries, persistedModelSummary{
+			ModelIdx:         intern(modelIdx, &models, ms.Model),
+			DisplayName:      ms.DisplayName,
+			SiteIdx:          intern(siteIdx, &sites, ms.Site),
+			CreditFactor:     ms.CreditFactor,
+			IsFree:           ms.IsFree,
+			Requests:         ms.Requests,
+			SuccessCount:     ms.SuccessCount,
+			ErrorCount:       ms.ErrorCount,
+			InputTokens:      ms.InputTokens,
+			OutputTokens:     ms.OutputTokens,
+			CachedTokens:     ms.CachedTokens,
+			TotalTokens:      ms.TotalTokens,
+			EstimatedCredits: ms.EstimatedCredits,
+			LastUsedAt:       ms.LastUsedAt,
+		})
+	}
+	for _, as := range u.account {
+		aIdx := internAccount(as.AuthIndex, as.Label, as.Site)
+		doc.AccountSummaries = append(doc.AccountSummaries, persistedAccountSummary{
+			AccountIdx:       aIdx,
+			Requests:         as.Requests,
+			SuccessCount:     as.SuccessCount,
+			ErrorCount:       as.ErrorCount,
+			InputTokens:      as.InputTokens,
+			OutputTokens:     as.OutputTokens,
+			TotalTokens:      as.TotalTokens,
+			EstimatedCredits: as.EstimatedCredits,
+			LastUsedAt:       as.LastUsedAt,
+		})
+	}
+	for _, ev := range u.events {
+		doc.Events = append(doc.Events, persistedUsageEvent{
+			ID:               ev.ID,
+			Timestamp:        ev.Timestamp,
+			AccountIdx:       internAccount(ev.AuthIndex, ev.AccountLabel, ev.Site),
+			SiteIdx:          intern(siteIdx, &sites, ev.Site),
+			ModelIdx:         intern(modelIdx, &models, ev.Model),
+			Streaming:        ev.Streaming,
+			StatusIdx:        intern(statusIdx, &statuses, ev.Status),
+			IsFree:           ev.IsFree,
+			DurationMs:       ev.DurationMs,
+			Usage:            ev.Usage,
+			CreditFactor:     ev.CreditFactor,
+			EstimatedCredits: ev.EstimatedCredits,
+			Error:            ev.Error,
+		})
+	}
+	doc.Sites = sites
+	doc.Models = models
+	doc.Statuses = statuses
+	doc.Accounts = accounts
+	u.mu.RUnlock()
+
+	data, err := json.Marshal(doc)
+	if err != nil {
+		return err
+	}
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, ".usage-*.json.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	cleanup := true
+	defer func() {
+		if cleanup {
+			_ = os.Remove(tmpName)
+		}
+	}()
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		return err
+	}
+	cleanup = false
+	return nil
+}
+
+func (u *usageTracker) loadFromFile(path string) error {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return nil
+	}
+	var doc persistedUsageStore
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return err
+	}
+	lookup := func(list []string, idx int) string {
+		if idx >= 0 && idx < len(list) {
+			return list[idx]
+		}
+		return ""
+	}
+
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if doc.Seq > u.seq.Load() {
+		u.seq.Store(doc.Seq)
+	}
+	u.models = make(map[string]*ModelUsageSummary, len(doc.ModelSummaries))
+	for _, ms := range doc.ModelSummaries {
+		site := lookup(doc.Sites, ms.SiteIdx)
+		model := lookup(doc.Models, ms.ModelIdx)
+		u.models[site+"|"+model] = &ModelUsageSummary{
+			Model:            model,
+			DisplayName:      ms.DisplayName,
+			Site:             site,
+			CreditFactor:     ms.CreditFactor,
+			IsFree:           ms.IsFree,
+			Requests:         ms.Requests,
+			SuccessCount:     ms.SuccessCount,
+			ErrorCount:       ms.ErrorCount,
+			InputTokens:      ms.InputTokens,
+			OutputTokens:     ms.OutputTokens,
+			CachedTokens:     ms.CachedTokens,
+			TotalTokens:      ms.TotalTokens,
+			EstimatedCredits: ms.EstimatedCredits,
+			LastUsedAt:       ms.LastUsedAt,
+		}
+	}
+	u.account = make(map[string]*AccountUsageSummary, len(doc.AccountSummaries))
+	for _, as := range doc.AccountSummaries {
+		if as.AccountIdx < 0 || as.AccountIdx >= len(doc.Accounts) {
+			continue
+		}
+		ref := doc.Accounts[as.AccountIdx]
+		u.account[ref.AuthIndex] = &AccountUsageSummary{
+			AuthIndex:        ref.AuthIndex,
+			Label:            ref.Label,
+			Site:             lookup(doc.Sites, ref.SiteIdx),
+			Requests:         as.Requests,
+			SuccessCount:     as.SuccessCount,
+			ErrorCount:       as.ErrorCount,
+			InputTokens:      as.InputTokens,
+			OutputTokens:     as.OutputTokens,
+			TotalTokens:      as.TotalTokens,
+			EstimatedCredits: as.EstimatedCredits,
+			LastUsedAt:       as.LastUsedAt,
+		}
+	}
+	u.events = make([]UsageEvent, 0, len(doc.Events))
+	for _, ev := range doc.Events {
+		var authIndex, accountLabel string
+		if ev.AccountIdx >= 0 && ev.AccountIdx < len(doc.Accounts) {
+			authIndex = doc.Accounts[ev.AccountIdx].AuthIndex
+			accountLabel = doc.Accounts[ev.AccountIdx].Label
+		}
+		u.events = append(u.events, UsageEvent{
+			ID:               ev.ID,
+			Timestamp:        ev.Timestamp,
+			AuthIndex:        authIndex,
+			AccountLabel:     accountLabel,
+			Site:             lookup(doc.Sites, ev.SiteIdx),
+			Model:            lookup(doc.Models, ev.ModelIdx),
+			Streaming:        ev.Streaming,
+			Status:           lookup(doc.Statuses, ev.StatusIdx),
+			IsFree:           ev.IsFree,
+			DurationMs:       ev.DurationMs,
+			Usage:            ev.Usage,
+			CreditFactor:     ev.CreditFactor,
+			EstimatedCredits: ev.EstimatedCredits,
+			Error:            ev.Error,
+		})
+	}
+	u.pruneLocked(time.Now().UTC())
+	return nil
 }
 
 func (u *usageTracker) snapshot() (models []ModelUsageSummary, accounts map[string]AccountUsageSummary, events []UsageEvent) {
