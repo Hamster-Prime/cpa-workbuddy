@@ -113,6 +113,7 @@ type Service struct {
 	schedStarted bool
 	schedWake    chan struct{}
 	schedState   SchedulerStatus
+	usage        *usageTracker
 }
 
 func New() *Service {
@@ -123,6 +124,7 @@ func New() *Service {
 		cancelExec: cancel,
 		cfg:        DefaultPluginConfig(),
 		schedWake:  make(chan struct{}, 1),
+		usage:      newUsageTracker(),
 	}
 }
 

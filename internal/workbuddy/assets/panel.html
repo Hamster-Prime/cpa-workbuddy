@@ -1437,6 +1437,100 @@
       .topbar { gap: 10px; }
       .topbar-actions { width: 100%; justify-content: flex-end; }
     }
+    #panelUsage:not([hidden]) {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-color) transparent;
+    }
+    #panelUsage::-webkit-scrollbar,
+    .usage-table-wrap::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    #panelUsage::-webkit-scrollbar-track,
+    .usage-table-wrap::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #panelUsage::-webkit-scrollbar-thumb,
+    .usage-table-wrap::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 999px;
+    }
+    #panelUsage::-webkit-scrollbar-thumb:hover,
+    .usage-table-wrap::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+    .usage-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .usage-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+    .usage-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .usage-section-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .usage-table-wrap {
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-color) transparent;
+    }
+    .usage-table-wrap.usage-events-scroll {
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .usage-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+    .usage-table th,
+    .usage-table td {
+      text-align: left;
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border-subtle);
+      white-space: nowrap;
+    }
+    .usage-table th {
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 11px;
+      background: var(--bg-subtle);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .usage-table td.num,
+    .usage-table th.num {
+      text-align: right;
+    }
+    .usage-empty {
+      padding: 16px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -1465,6 +1559,7 @@
 
     <nav class="tabs" aria-label="控制台导航">
       <button type="button" class="tab active" data-tab="overview" onclick="switchTab('overview')">概览与凭证</button>
+      <button type="button" class="tab" data-tab="usage" onclick="switchTab('usage')">📊 用量与积分统计</button>
       <button type="button" class="tab" data-tab="config" onclick="switchTab('config')">⚙️ 模型与调度配置</button>
     </nav>
 
@@ -1566,6 +1661,63 @@
         <div id="credentialsContainer" class="credentials-grid scroll-container">
           <div class="empty-state">加载中...</div>
         </div>
+      </div>
+    </section>
+
+    <section id="panelUsage" hidden>
+      <div class="summary-grid">
+        <div class="kpi-card">
+          <p class="kpi-title">总积分使用</p>
+          <div id="usageValCredits" class="kpi-value">--</div>
+          <div id="usageValCreditsDesc" class="kpi-desc">已用 -- / 总计 --</div>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-title">即将过期积分</p>
+          <div id="usageValExpiring" class="kpi-value">--</div>
+          <div id="usageValExpiringDesc" class="kpi-desc">活跃凭证 --</div>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-title">累计请求 / 成功率</p>
+          <div id="usageValRequests" class="kpi-value">--</div>
+          <div id="usageValRequestsDesc" class="kpi-desc">活跃模型 --</div>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-title">Token 消耗总量</p>
+          <div id="usageValTokens" class="kpi-value">--</div>
+          <div id="usageValTokensDesc" class="kpi-desc">输入 -- · 输出 --</div>
+        </div>
+      </div>
+
+      <div class="usage-toolbar">
+        <button type="button" id="btnRefreshUsage" class="btn-secondary" onclick="loadUsageStats(true)">
+          <span>🔄 刷新统计</span>
+        </button>
+        <button type="button" id="btnResetUsage" class="btn-secondary" onclick="resetUsageStats()">
+          <span>🧹 重置运行统计</span>
+        </button>
+        <div class="control-spacer"></div>
+        <span id="usageGeneratedAt" class="kpi-desc"></span>
+      </div>
+
+      <div class="usage-section">
+        <div class="usage-section-header">
+          <h3 class="usage-section-title">模型用量与积分统计</h3>
+        </div>
+        <div id="usageModelsWrap" class="usage-table-wrap"></div>
+      </div>
+
+      <div class="usage-section">
+        <div class="usage-section-header">
+          <h3 class="usage-section-title">账号积分与调用分布</h3>
+        </div>
+        <div id="usageAccountsWrap" class="usage-table-wrap"></div>
+      </div>
+
+      <div class="usage-section">
+        <div class="usage-section-header">
+          <h3 class="usage-section-title">最近请求记录</h3>
+        </div>
+        <div id="usageEventsWrap" class="usage-table-wrap usage-events-scroll"></div>
       </div>
     </section>
 
@@ -2244,7 +2396,184 @@
     function switchTab(tabId) {
       document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tabId));
       el("panelOverview").hidden = tabId !== "overview";
+      el("panelUsage").hidden = tabId !== "usage";
       el("panelConfig").hidden = tabId !== "config";
+      if (tabId === "usage") {
+        loadUsageStats(false);
+      }
+    }
+    function formatTokens(n) {
+      const v = Number(n || 0);
+      if (v >= 1000000) return (v / 1000000).toFixed(2) + "M";
+      if (v >= 1000) return (v / 1000).toFixed(1) + "K";
+      return String(v);
+    }
+
+    async function loadUsageStats(refresh) {
+      const btn = el("btnRefreshUsage");
+      if (btn) btn.disabled = true;
+      try {
+        const suffix = refresh ? "?refresh=1" : "";
+        const data = await apiFetch(MGMT_BASE + "/usage" + suffix);
+        renderUsageStats(data);
+      } catch (err) {
+        if (el("usageGeneratedAt")) {
+          el("usageGeneratedAt").textContent = "加载失败: " + (err && err.message ? err.message : String(err));
+        }
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function resetUsageStats() {
+      const btn = el("btnResetUsage");
+      if (btn) btn.disabled = true;
+      try {
+        await apiFetch(MGMT_BASE + "/usage/reset", { method: "POST", body: "{}" });
+        await loadUsageStats(false);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function renderUsageStats(data) {
+      if (!data) return;
+      const ov = data.overview || {};
+      el("usageValCredits").textContent = formatCredits(ov.remaining_credits || 0);
+      el("usageValCreditsDesc").textContent =
+        "已用 " + formatCredits(ov.used_credits || 0) + " / 总计 " + formatCredits(ov.total_credits || 0) +
+        " (" + Number(ov.usage_percent || 0).toFixed(1) + "%)";
+      el("usageValExpiring").textContent = formatCredits(ov.expiring_credits || 0);
+      el("usageValExpiringDesc").textContent = "活跃凭证 " + (ov.active_accounts || 0) + " / " + (ov.total_accounts || 0);
+      const totalReq = Number(ov.total_requests || 0);
+      const okReq = Number(ov.success_requests || 0);
+      const rate = totalReq > 0 ? ((okReq / totalReq) * 100).toFixed(1) + "%" : "--";
+      el("usageValRequests").textContent = totalReq + " (" + rate + ")";
+      el("usageValRequestsDesc").textContent = "活跃模型 " + (ov.active_models || 0) + " 个";
+      el("usageValTokens").textContent = formatTokens(ov.total_tokens || 0);
+      el("usageValTokensDesc").textContent =
+        "输入 " + formatTokens(ov.total_input_tokens || 0) + " · 输出 " + formatTokens(ov.total_output_tokens || 0);
+      if (data.generated_at) {
+        el("usageGeneratedAt").textContent = "统计时间: " + new Date(data.generated_at).toLocaleString();
+      }
+
+      const accWrap = el("usageAccountsWrap");
+      const accounts = data.accounts || [];
+      if (accounts.length === 0) {
+        accWrap.innerHTML = '<div class="usage-empty">暂无账号数据</div>';
+      } else {
+        const tbl = document.createElement("table");
+        tbl.className = "usage-table";
+        tbl.innerHTML =
+          "<thead><tr>" +
+          "<th>账号</th><th>站点</th><th>套餐</th>" +
+          "<th class='num'>已用积分</th><th class='num'>剩余积分</th><th class='num'>总积分</th>" +
+          "<th class='num'>即将过期</th><th class='num'>请求数</th><th class='num'>Token</th><th>资源包</th>" +
+          "</tr></thead><tbody></tbody>";
+        const tbody = tbl.querySelector("tbody");
+        accounts.forEach(a => {
+          const tr = document.createElement("tr");
+          const q = a.quota || {};
+          const pkgCount = (q.packages || []).length;
+          const cells = [
+            a.label || a.auth_index,
+            a.site === "workbuddy-ai" ? "Global" : "CN",
+            a.plan_name || (a.is_paid ? "Paid" : "Free"),
+            formatCredits(q.used || 0),
+            formatCredits(q.remaining || 0),
+            formatCredits(q.total || 0),
+            formatCredits(q.expiring_amount || 0),
+            String(a.requests || 0),
+            formatTokens(a.total_tokens || 0),
+            pkgCount > 0 ? pkgCount + " 个资源包" : "-"
+          ];
+          cells.forEach((txt, idx) => {
+            const td = document.createElement("td");
+            if (idx >= 3 && idx <= 8) td.className = "num";
+            td.textContent = txt;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        accWrap.textContent = "";
+        accWrap.appendChild(tbl);
+      }
+
+      const modWrap = el("usageModelsWrap");
+      const models = data.models || [];
+      if (models.length === 0) {
+        modWrap.innerHTML = '<div class="usage-empty">暂无模型调用记录</div>';
+      } else {
+        const tbl = document.createElement("table");
+        tbl.className = "usage-table";
+        tbl.innerHTML =
+          "<thead><tr>" +
+          "<th>模型</th><th>站点</th><th class='num'>积分倍率</th>" +
+          "<th class='num'>请求数</th><th class='num'>成功/失败</th>" +
+          "<th class='num'>输入 Token</th><th class='num'>输出 Token</th><th class='num'>总 Token</th><th>最近使用</th>" +
+          "</tr></thead><tbody></tbody>";
+        const tbody = tbl.querySelector("tbody");
+        models.forEach(m => {
+          const tr = document.createElement("tr");
+          const cells = [
+            m.display_name || m.model,
+            m.site === "workbuddy-ai" ? "Global" : "CN",
+            m.is_free ? "FREE · x0.00" : (m.credit_factor > 0 ? "x" + Number(m.credit_factor).toFixed(2) : "-"),
+            String(m.requests || 0),
+            (m.success_count || 0) + " / " + (m.error_count || 0),
+            formatTokens(m.input_tokens || 0),
+            formatTokens(m.output_tokens || 0),
+            formatTokens(m.total_tokens || 0),
+            m.last_used_at ? new Date(m.last_used_at).toLocaleTimeString() : "-"
+          ];
+          cells.forEach((txt, idx) => {
+            const td = document.createElement("td");
+            if (idx >= 2 && idx <= 7) td.className = "num";
+            td.textContent = txt;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        modWrap.textContent = "";
+        modWrap.appendChild(tbl);
+      }
+
+      const evWrap = el("usageEventsWrap");
+      const events = data.recent_events || [];
+      if (events.length === 0) {
+        evWrap.innerHTML = '<div class="usage-empty">暂无最近请求记录</div>';
+      } else {
+        const tbl = document.createElement("table");
+        tbl.className = "usage-table";
+        tbl.innerHTML =
+          "<thead><tr>" +
+          "<th>时间</th><th>账号</th><th>模型</th><th class='num'>倍率</th>" +
+          "<th class='num'>Token</th><th class='num'>耗时</th><th>状态</th>" +
+          "</tr></thead><tbody></tbody>";
+        const tbody = tbl.querySelector("tbody");
+        events.slice(0, 30).forEach(ev => {
+          const tr = document.createElement("tr");
+          const u = ev.usage || {};
+          const cells = [
+            ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString() : "-",
+            ev.account_label || ev.auth_index || "-",
+            ev.model || "-",
+            ev.is_free ? "FREE · x0.00" : (ev.credit_factor > 0 ? "x" + Number(ev.credit_factor).toFixed(2) : "-"),
+            formatTokens(u.total_tokens || 0),
+            (ev.duration_ms || 0) + " ms",
+            ev.status === "success" ? "成功" : "失败"
+          ];
+          cells.forEach((txt, idx) => {
+            const td = document.createElement("td");
+            if (idx >= 3 && idx <= 5) td.className = "num";
+            td.textContent = txt;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        evWrap.textContent = "";
+        evWrap.appendChild(tbl);
+      }
     }
 
     function toggleSiteMenu(event) {

@@ -24,6 +24,8 @@ const (
 	Name              = "cpa-workbuddy"
 	StatusPath        = "/v0/management/plugins/" + Name + "/status"
 	DashboardPath     = "/v0/management/plugins/" + Name + "/dashboard"
+	UsagePath         = "/v0/management/plugins/" + Name + "/usage"
+	UsageResetPath    = "/v0/management/plugins/" + Name + "/usage/reset"
 	CreditsPath       = "/v0/management/plugins/" + Name + "/credits"
 	CheckinPath       = "/v0/management/plugins/" + Name + "/checkin"
 	DailyBonusPath    = "/v0/management/plugins/" + Name + "/daily-bonus"
@@ -232,6 +234,8 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 				Routes: []managementRoute{
 					{Method: "GET", Path: StatusPath},
 					{Method: "GET", Path: DashboardPath},
+					{Method: "GET", Path: UsagePath},
+					{Method: "POST", Path: UsageResetPath},
 					{Method: "POST", Path: CreditsPath},
 					{Method: "POST", Path: CheckinPath},
 					{Method: "POST", Path: DailyBonusPath},

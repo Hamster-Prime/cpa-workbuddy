@@ -100,6 +100,18 @@ func (s *Service) HandleManagement(ctx context.Context, callbackID string, call 
 		}
 		return jsonManagementResult(http.StatusOK, resp)
 
+	case method == http.MethodGet && path == base+"/usage":
+		refresh := query.Get("refresh") == "1" || strings.EqualFold(query.Get("refresh"), "true")
+		resp, err := s.buildUsageStatistics(ctx, callbackID, call, refresh)
+		if err != nil {
+			return ManagementResult{}, err
+		}
+		return jsonManagementResult(http.StatusOK, resp)
+
+	case method == http.MethodPost && path == base+"/usage/reset":
+		s.usage.reset()
+		return jsonManagementResult(http.StatusOK, map[string]any{"ok": true})
+
 	case method == http.MethodGet && path == base+"/models":
 		authIndex := strings.TrimSpace(query.Get("auth_index"))
 		refresh := query.Get("refresh") == "1" || strings.EqualFold(query.Get("refresh"), "true")

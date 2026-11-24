@@ -130,7 +130,7 @@ func TestNativeABI(t *testing.T) {
 			if err := json.Unmarshal(envelope.Result, &result); err != nil {
 				t.Fatal(err)
 			}
-			if !envelope.OK || len(result.Routes) != 11 || result.Routes[0].Method != "GET" || result.Routes[0].Path != "/v0/management/plugins/cpa-workbuddy/status" || len(result.Resources) != 1 || result.Resources[0].Path != "/panel" {
+			if !envelope.OK || len(result.Routes) != 13 || result.Routes[0].Method != "GET" || result.Routes[0].Path != "/v0/management/plugins/cpa-workbuddy/status" || len(result.Resources) != 1 || result.Resources[0].Path != "/panel" {
 				t.Fatalf("unexpected management registration: %s", raw)
 			}
 			transferRoutes := map[string]bool{}

@@ -102,7 +102,7 @@ func TestPublicRegistrationAndLifecycle(t *testing.T) {
 	if err := json.Unmarshal(response["result"], &routes); err != nil {
 		t.Fatal(err)
 	}
-	if len(routes.Routes) != 11 || routes.Routes[0].Method != "GET" || routes.Routes[0].Path != "/v0/management/plugins/cpa-workbuddy/status" {
+	if len(routes.Routes) != 13 || routes.Routes[0].Method != "GET" || routes.Routes[0].Path != "/v0/management/plugins/cpa-workbuddy/status" {
 		t.Fatalf("unexpected routes: %s", response)
 	}
 	transferRoutes := map[string]bool{}
