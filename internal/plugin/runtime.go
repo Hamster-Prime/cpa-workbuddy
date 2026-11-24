@@ -29,6 +29,7 @@ const (
 	DailyBonusPath    = "/v0/management/plugins/" + Name + "/daily-bonus"
 	SettingsPath      = "/v0/management/plugins/" + Name + "/settings"
 	ModelsPath        = "/v0/management/plugins/" + Name + "/models"
+	TransferBasePath  = "/v0/management/plugins/" + Name + "/transfer"
 	PanelResourcePath = "/panel"
 	MaxRPCPayload     = 64 << 20
 )
@@ -237,6 +238,9 @@ func (r *Runtime) Handle(method string, raw []byte) []byte {
 					{Method: "GET", Path: SettingsPath},
 					{Method: "PUT", Path: SettingsPath},
 					{Method: "GET", Path: ModelsPath},
+					{Method: "POST", Path: TransferBasePath + "/preview"},
+					{Method: "POST", Path: TransferBasePath + "/export"},
+					{Method: "POST", Path: TransferBasePath + "/import"},
 				},
 				Resources: []resourceRoute{
 					{
