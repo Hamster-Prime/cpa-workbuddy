@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -43,6 +44,60 @@ func TestExtractTokenUsageFromPayload(t *testing.T) {
 			t.Fatalf("unexpected usage: %+v", u)
 		}
 	})
+
+	t.Run("translated claude sse", func(t *testing.T) {
+		payload := []byte("event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":80,\"output_tokens\":0,\"cache_read_input_tokens\":10}}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"usage\":{\"output_tokens\":30}}\n\n")
+		u, ok := extractTokenUsageFromPayload(payload)
+		if !ok {
+			t.Fatal("expected usage to be extracted from translated Claude SSE")
+		}
+		if u.InputTokens != 80 || u.OutputTokens != 30 || u.TotalTokens != 110 || u.CachedTokens != 10 {
+			t.Fatalf("unexpected usage: %+v", u)
+		}
+	})
+
+	t.Run("translated claude sse with id and retry", func(t *testing.T) {
+		payload := []byte("id: 1\nretry: 1000\nevent: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":80,\"output_tokens\":0,\"cache_read_input_tokens\":10}}}\n\nid: 2\nretry: 1000\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"usage\":{\"output_tokens\":30}}\n\n")
+		u, ok := extractTokenUsageFromPayload(payload)
+		if !ok {
+			t.Fatal("expected usage to be extracted from translated Claude SSE with id and retry")
+		}
+		if u.InputTokens != 80 || u.OutputTokens != 30 || u.TotalTokens != 110 || u.CachedTokens != 10 {
+			t.Fatalf("unexpected usage: %+v", u)
+		}
+	})
+
+	t.Run("oversized sse frame does not report usage", func(t *testing.T) {
+		payload := []byte("data: " + strings.Repeat("x", chatEventLimit+1) + "\n\n")
+		if _, ok := extractTokenUsageFromPayload(payload); ok {
+			t.Fatal("oversized SSE frame must not report partial usage")
+		}
+	})
+
+	t.Run("translated responses sse", func(t *testing.T) {
+		payload := []byte("event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":120,\"output_tokens\":45,\"total_tokens\":165,\"input_tokens_details\":{\"cached_tokens\":20}}}}\n\n")
+		u, ok := extractTokenUsageFromPayload(payload)
+		if !ok {
+			t.Fatal("expected usage to be extracted from translated Responses SSE")
+		}
+		if u.InputTokens != 120 || u.OutputTokens != 45 || u.TotalTokens != 165 || u.CachedTokens != 20 {
+			t.Fatalf("unexpected usage: %+v", u)
+		}
+	})
+}
+
+func TestMergeTokenUsagePreservesFieldsAcrossFrames(t *testing.T) {
+	start := TokenUsage{InputTokens: 80, OutputTokens: 0, CachedTokens: 10, TotalTokens: 80}
+	delta := TokenUsage{OutputTokens: 30, TotalTokens: 30}
+	merged := mergeTokenUsage(start, delta)
+	if merged.InputTokens != 80 || merged.OutputTokens != 30 || merged.TotalTokens != 110 || merged.CachedTokens != 10 {
+		t.Fatalf("unexpected merged usage: %+v", merged)
+	}
+
+	merged = mergeTokenUsage(merged, TokenUsage{InputTokens: 90, TotalTokens: 90})
+	if merged.InputTokens != 90 || merged.OutputTokens != 30 || merged.TotalTokens != 120 || merged.CachedTokens != 10 {
+		t.Fatalf("unexpected merged usage after later input frame: %+v", merged)
+	}
 }
 
 func TestUsageTrackerRecordSnapshotAndReset(t *testing.T) {
