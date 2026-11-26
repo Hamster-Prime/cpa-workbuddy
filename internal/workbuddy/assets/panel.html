@@ -69,7 +69,6 @@
       --destructive-10: color-mix(in srgb, var(--destructive-color) 10%, transparent);
       --destructive-30: color-mix(in srgb, var(--destructive-color) 30%, transparent);
 
-      /* Provider / Site soft badge palette matching CPAMC AuthFileCard */
       --site-cn-bg: #e8f4ff;
       --site-cn-text: #155e9b;
       --site-intl-bg: #eae7ff;
@@ -84,7 +83,7 @@
 
       --glass-blur: 14px;
       --glass-backdrop-filter: blur(var(--glass-blur));
-      --glass-bg: color-mix(in srgb, var(--bg-primary) 82%, transparent);
+      --glass-bg: color-mix(in srgb, var(--bg-primary) 84%, transparent);
       --glass-border: color-mix(in srgb, var(--border-color) 65%, transparent);
 
       --card-surface: color-mix(in srgb, var(--bg-primary) 82%, transparent);
@@ -92,9 +91,8 @@
       --inset-surface: color-mix(in srgb, var(--bg-secondary) 68%, transparent);
       --overlay-bg: rgba(0, 0, 0, 0.38);
 
-      --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
-      --dur-press: 0.16s;
-      --dur-hover: 0.2s;
+      --ease-out-strong: cubic-bezier(0.22, 1, 0.36, 1);
+      --dur-hover: 0.18s;
 
       --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
       --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, "Liberation Mono", monospace;
@@ -246,7 +244,7 @@
     }
 
     /* ==========================================================================
-       Base & Page Shell
+       Base & Editorial Canvas (CPAMC ambient grid wash + tight top geometry)
        ========================================================================== */
     *, *::before, *::after {
       box-sizing: border-box;
@@ -296,85 +294,126 @@
     }
 
     .icon {
-      width: 15px;
-      height: 15px;
+      width: 14px;
+      height: 14px;
       flex-shrink: 0;
       display: block;
     }
     .icon-sm {
-      width: 13px;
-      height: 13px;
+      width: 12.5px;
+      height: 12.5px;
     }
     .icon-lg {
       width: 18px;
       height: 18px;
     }
 
+    /* Subtle CPAMC Dashboard ambient light & architectural grid wash */
+    .ambient-backdrop {
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: 360px;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .ambient-wash {
+      position: absolute;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(920px, 94vw);
+      height: 320px;
+      background: radial-gradient(ellipse 72% 65% at 50% 20%, color-mix(in srgb, var(--viz-success) 7%, transparent), transparent 72%);
+    }
+    .ambient-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, var(--border-color) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--border-color) 1px, transparent 1px);
+      background-size: 64px 64px;
+      opacity: 0.18;
+      -webkit-mask-image: radial-gradient(68% 65% at 50% 0%, #000 0%, transparent 78%);
+      mask-image: radial-gradient(68% 65% at 50% 0%, #000 0%, transparent 78%);
+    }
+
     .page-shell {
+      position: relative;
+      z-index: 1;
       width: 100%;
       max-width: 1240px;
       margin: 0 auto;
-      padding: 28px clamp(20px, 3vw, 48px) 88px;
+      padding: 20px clamp(18px, 3vw, 40px) 92px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 16px;
       min-height: 100%;
     }
 
-    /* When embedded inside CPAMC iframe, match CPAMC .main-content top gutter so
-       parent floating .header-actions never overlaps our page header controls. */
-    html.in-cpa-host .page-shell {
-      padding-top: 70px;
-    }
-
     /* ==========================================================================
-       Page Header (CPAMC VaultHeader / QuotaHeader style)
+       Compact Editorial Masthead (Zero wasted 70px forehead; reserves right slot
+       for CPAMC floating top-right header-actions when embedded)
        ========================================================================== */
-    .page-header {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: flex-end;
-      gap: 14px 24px;
-    }
-
-    .page-header-copy {
+    .masthead {
       display: flex;
       flex-direction: column;
-      gap: 7px;
+      gap: 10px;
+    }
+
+    .masthead-top {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px 20px;
+      min-height: 46px;
+    }
+
+    /* When embedded inside CPAMC iframe, CPAMC's floating .header-actions occupies
+       only the top-right corner (~210px wide). Reserving right padding lets our title
+       start crisp at the top edge aligned with CPAMC's chrome instead of pushing the
+       entire page down by 70px of empty whitespace. */
+    html.in-cpa-host .masthead-top {
+      padding-right: 220px;
+    }
+
+    .masthead-title-block {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
       min-width: 0;
     }
 
-    .page-title-row {
+    .title-line {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 9px;
       min-width: 0;
     }
 
     h1.page-title {
       margin: 0;
-      font-size: clamp(24px, 3vw, 30px);
+      font-size: clamp(22px, 2.5vw, 27px);
       font-weight: 700;
-      letter-spacing: -0.025em;
-      line-height: 1.15;
+      letter-spacing: -0.028em;
+      line-height: 1.12;
       color: var(--text-primary);
     }
 
     .version-pill {
       display: inline-flex;
       align-items: center;
-      padding: 2px 9px;
+      padding: 1px 8px;
       border-radius: 9999px;
       border: 1px solid var(--border-color);
       background: var(--card-surface);
-      color: var(--text-secondary);
+      color: var(--text-tertiary);
       font-family: var(--font-mono);
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 600;
       font-variant-numeric: tabular-nums;
-      line-height: 1.5;
+      line-height: 1.6;
     }
 
     .page-meta {
@@ -384,7 +423,7 @@
       align-items: baseline;
       gap: 4px 8px;
       font-family: var(--font-mono);
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 500;
       letter-spacing: 0.015em;
       font-variant-numeric: tabular-nums;
@@ -395,7 +434,7 @@
       color: var(--viz-success);
       align-self: center;
       margin-right: 1px;
-      font-size: 12.5px;
+      font-size: 12px;
       line-height: 1;
     }
     .meta-dot {
@@ -406,158 +445,12 @@
     .meta-warn { color: var(--amber-text); }
     .meta-muted { color: var(--text-tertiary); }
 
-    .page-header-actions {
+    /* Unified Navigation & Utility Dock */
+    .nav-dock {
       display: flex;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    /* ==========================================================================
-       Buttons (CPAMC editorial monochrome pills + ghost + outline)
-       ========================================================================== */
-    .btn {
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      height: 34px;
-      padding: 0 14px;
-      border-radius: 9999px;
-      border: 1px solid transparent;
-      font-size: 12.5px;
-      font-weight: 600;
-      line-height: 1;
-      white-space: nowrap;
-      text-decoration: none;
-      transition:
-        background-color var(--dur-hover) var(--ease-out-strong),
-        border-color var(--dur-hover) var(--ease-out-strong),
-        color var(--dur-hover) var(--ease-out-strong),
-        box-shadow var(--dur-hover) var(--ease-out-strong);
-    }
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .btn:focus-visible {
-      outline: 2px solid var(--primary-color);
-      outline-offset: 2px;
-    }
-
-    /* Signature CPAMC Primary Pill (VaultHeader / QuotaHeader / FloatingSaveBar) */
-    .btn-primary {
-      background: var(--text-primary);
-      color: var(--bg-secondary);
-      border-color: transparent;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .btn-primary:hover:not(:disabled) {
-        background: color-mix(in srgb, var(--text-primary) 86%, var(--bg-secondary));
-        box-shadow: 0 10px 22px -6px color-mix(in srgb, var(--text-primary) 24%, transparent);
-      }
-    }
-    .btn-primary:active:not(:disabled) {
-      background: color-mix(in srgb, var(--text-primary) 78%, var(--bg-secondary));
-    }
-
-    /* CPAMC Outline / Secondary Pill */
-    .btn-secondary {
-      background: var(--bg-secondary);
-      border-color: var(--border-color);
-      color: var(--text-secondary);
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .btn-secondary:hover:not(:disabled) {
-        border-color: var(--border-hover);
-        background: color-mix(in srgb, var(--bg-tertiary) 55%, transparent);
-        color: var(--text-primary);
-      }
-    }
-    .btn-secondary:active:not(:disabled) {
-      background: var(--bg-tertiary);
-      color: var(--text-primary);
-    }
-
-    /* Subtle elevated chip button for header utilities */
-    .btn-ghost {
-      background: transparent;
-      border-color: transparent;
-      color: var(--text-secondary);
-      padding: 0 11px;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .btn-ghost:hover:not(:disabled) {
-        color: var(--text-primary);
-        background: color-mix(in srgb, var(--bg-tertiary) 65%, transparent);
-      }
-    }
-    .btn-ghost:active:not(:disabled) {
-      background: var(--bg-tertiary);
-      color: var(--text-primary);
-    }
-
-    .btn-danger-ghost {
-      background: transparent;
-      border-color: transparent;
-      color: var(--danger-color);
-      padding: 0 12px;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .btn-danger-ghost:hover:not(:disabled) {
-        background: var(--destructive-10);
-        border-color: var(--destructive-30);
-      }
-    }
-
-    .btn-sm {
-      height: 28px;
-      padding: 0 11px;
-      font-size: 11.5px;
-      gap: 5px;
-    }
-
-    .btn-count {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 18px;
-      height: 18px;
-      padding: 0 5px;
-      border-radius: 9999px;
-      font-family: var(--font-mono);
-      font-size: 10.5px;
-      font-weight: 650;
-      font-variant-numeric: tabular-nums;
-      background: var(--amber-10);
-      border: 1px solid var(--amber-30);
-      color: var(--amber-text);
-    }
-
-    @keyframes wb-spin {
-      to { transform: rotate(360deg); }
-    }
-    .btn-spinner {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
-      border-top-color: currentColor;
-      border-radius: 50%;
-      animation: wb-spin 0.75s linear infinite;
-      flex-shrink: 0;
-    }
-
-    /* ==========================================================================
-       Underline Tabs (CPAMC BrandTabs / ConfigTabs style)
-       ========================================================================== */
-    .tabs-bar {
-      display: flex;
-      align-items: stretch;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px 16px;
       border-bottom: 1px solid var(--border-color);
       min-width: 0;
     }
@@ -580,7 +473,7 @@
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      padding: 8px 13px 11px;
+      padding: 8px 12px 11px;
       border: 0;
       border-radius: 8px 8px 0 0;
       background: transparent;
@@ -658,19 +551,156 @@
       flex-shrink: 0;
     }
 
+    .dock-utilities {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding-bottom: 6px;
+      flex-shrink: 0;
+    }
+
+    /* ==========================================================================
+       Buttons (Strict zero-scale on hover/active — crisp tonal feedback only)
+       ========================================================================== */
+    .btn {
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 32px;
+      padding: 0 13px;
+      border-radius: 9999px;
+      border: 1px solid transparent;
+      font-size: 12.5px;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+      text-decoration: none;
+      transition:
+        background-color var(--dur-hover) var(--ease-out-strong),
+        border-color var(--dur-hover) var(--ease-out-strong),
+        color var(--dur-hover) var(--ease-out-strong),
+        box-shadow var(--dur-hover) var(--ease-out-strong);
+    }
+    .btn:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+    .btn:focus-visible {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 2px;
+    }
+
+    .btn-primary {
+      background: var(--text-primary);
+      color: var(--bg-secondary);
+      border-color: transparent;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .btn-primary:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--text-primary) 86%, var(--bg-secondary));
+        box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--text-primary) 24%, transparent);
+      }
+    }
+    .btn-primary:active:not(:disabled) {
+      background: color-mix(in srgb, var(--text-primary) 76%, var(--bg-secondary));
+    }
+
+    .btn-secondary {
+      background: var(--bg-secondary);
+      border-color: var(--border-color);
+      color: var(--text-secondary);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .btn-secondary:hover:not(:disabled) {
+        border-color: var(--border-hover);
+        background: color-mix(in srgb, var(--bg-tertiary) 55%, transparent);
+        color: var(--text-primary);
+      }
+    }
+    .btn-secondary:active:not(:disabled) {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--text-secondary);
+      padding: 0 10px;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .btn-ghost:hover:not(:disabled) {
+        color: var(--text-primary);
+        background: color-mix(in srgb, var(--bg-tertiary) 65%, transparent);
+      }
+    }
+    .btn-ghost:active:not(:disabled) {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .btn-danger-ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--danger-color);
+      padding: 0 11px;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .btn-danger-ghost:hover:not(:disabled) {
+        background: var(--destructive-10);
+        border-color: var(--destructive-30);
+      }
+    }
+    .btn-danger-ghost:active:not(:disabled) {
+      background: color-mix(in srgb, var(--destructive-color) 18%, transparent);
+    }
+
+    .btn-sm {
+      height: 27px;
+      padding: 0 10px;
+      font-size: 11.5px;
+      gap: 5px;
+    }
+
+    .btn-xs {
+      height: 25px;
+      padding: 0 9px;
+      font-size: 11px;
+      gap: 4px;
+    }
+
+    .btn-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 17px;
+      height: 17px;
+      padding: 0 5px;
+      border-radius: 9999px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+      background: var(--amber-10);
+      border: 1px solid var(--amber-30);
+      color: var(--amber-text);
+    }
+
     .schedule-pill {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      align-self: center;
-      margin-bottom: 6px;
-      padding: 4px 11px;
+      gap: 6px;
+      height: 27px;
+      padding: 0 10px;
       border-radius: 9999px;
       border: 1px solid var(--border-color);
       background: var(--card-surface);
       color: var(--text-secondary);
       font-family: var(--font-mono);
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 550;
       white-space: nowrap;
       cursor: pointer;
@@ -690,37 +720,54 @@
         color: var(--text-primary);
       }
     }
+    .schedule-pill:active {
+      background: var(--bg-tertiary);
+    }
     .schedule-dot {
-      width: 7px;
-      height: 7px;
+      width: 6.5px;
+      height: 6.5px;
       border-radius: 50%;
       background: var(--text-quaternary);
       flex-shrink: 0;
     }
-    .schedule-pill.active .schedule-dot {
-      background: var(--viz-success);
-    }
-    .schedule-pill.paused .schedule-dot {
-      background: var(--amber-color);
-    }
+    .schedule-pill.active .schedule-dot { background: var(--viz-success); }
+    .schedule-pill.paused .schedule-dot { background: var(--amber-color); }
     .schedule-pill.paused {
       color: var(--amber-text);
       border-color: var(--amber-30);
       background: var(--amber-10);
     }
 
+    @keyframes wb-spin {
+      to { transform: rotate(360deg); }
+    }
+    .btn-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: wb-spin 0.75s linear infinite;
+      flex-shrink: 0;
+    }
+
     /* ==========================================================================
-       Page Transitions & Section Panels (Clean directional enter, zero ghosting)
+       Unified Zero-Ghosting Horizontal Directional Transitions
+       (Shared across Main Tabs, Site Filter, View Mode, and Model Tier Switch)
        ========================================================================== */
-    .page-transition {
+    .page-transition,
+    .slide-stage {
       position: relative;
       display: flex;
       flex-direction: column;
       min-width: 0;
       flex: 1 0 auto;
     }
-    .page-transition.is-animating {
+    .page-transition.is-animating,
+    .slide-stage.is-animating {
       overflow-x: hidden;
+      overflow-x: clip;
     }
 
     section.tab-panel {
@@ -730,19 +777,15 @@
       min-width: 0;
     }
 
-    @keyframes cpamcEnterForward {
+    @keyframes slideEnterForward {
       from { opacity: 0; transform: translate3d(14px, 0, 0); }
       to   { opacity: 1; transform: translate3d(0, 0, 0); }
     }
-    @keyframes cpamcEnterBackward {
+    @keyframes slideEnterBackward {
       from { opacity: 0; transform: translate3d(-14px, 0, 0); }
       to   { opacity: 1; transform: translate3d(0, 0, 0); }
     }
-    @keyframes cpamcFadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
-    @keyframes credCardIn {
+    @keyframes slideFadeIn {
       from { opacity: 0; }
       to   { opacity: 1; }
     }
@@ -751,91 +794,215 @@
       to   { opacity: 1; transform: translate3d(-50%, 0, 0); }
     }
 
-    section.tab-panel.pt-enter-forward  { animation: cpamcEnterForward  190ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-    section.tab-panel.pt-enter-backward { animation: cpamcEnterBackward 190ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-    section.tab-panel.pt-enter-fade     { animation: cpamcFadeIn        120ms ease-out both; }
+    .pt-enter-forward  { animation: slideEnterForward  190ms var(--ease-out-strong) both; }
+    .pt-enter-backward { animation: slideEnterBackward 190ms var(--ease-out-strong) both; }
+    .pt-enter-fade     { animation: slideFadeIn        120ms ease-out both; }
 
-    .cred-card.card-enter {
-      animation: credCardIn 140ms ease-out both;
-    }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 14px;
-    }
-
-    .kpi-card {
+    /* ==========================================================================
+       Overview Telemetry Strip (CPAMC Hero Panel + VaultPulse — replaces old 4 KPI boxes)
+       ========================================================================== */
+    .overview-strip {
       border: 1px solid var(--border-color);
-      background: var(--card-surface);
-      border-radius: 14px;
+      background: linear-gradient(155deg, color-mix(in srgb, var(--bg-primary) 92%, transparent), color-mix(in srgb, var(--bg-secondary) 76%, transparent));
+      border-radius: 16px;
+      display: grid;
+      grid-template-columns: minmax(250px, 1.05fr) minmax(0, 1.95fr);
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .strip-hero {
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+      border-right: 1px solid var(--border-color);
+      min-width: 0;
+    }
+
+    .strip-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+
+    .strip-hero-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .strip-hero-figure {
+      font-family: var(--font-mono);
+      font-size: clamp(28px, 3vw, 34px);
+      font-weight: 650;
+      letter-spacing: -0.025em;
+      line-height: 1.05;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .strip-hero-unit {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+    }
+
+    .ratio-bar {
+      display: flex;
+      gap: 2px;
+      height: 5px;
+      width: 100%;
+      border-radius: 9999px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+    }
+    .ratio-seg-remain {
+      background: var(--viz-success);
+      border-radius: 9999px;
+      transition: width 0.36s var(--ease-out-strong);
+    }
+    .ratio-seg-used {
+      background: color-mix(in srgb, var(--text-quaternary) 45%, transparent);
+      border-radius: 9999px;
+      transition: width 0.36s var(--ease-out-strong);
+    }
+    .ratio-seg-fail {
+      background: var(--viz-failure);
+      border-radius: 9999px;
+    }
+
+    .strip-hero-meta {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .strip-cells {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      min-width: 0;
+    }
+
+    .strip-cell {
       padding: 16px 18px;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      justify-content: space-between;
+      gap: 6px;
       min-width: 0;
-      transition: border-color var(--dur-hover) var(--ease-out-strong);
+      border-right: 1px solid color-mix(in srgb, var(--border-color) 75%, transparent);
     }
-    .kpi-card::before {
-      content: "";
-      width: 26px;
-      height: 3px;
-      border-radius: 9999px;
-      background: var(--tile-accent, var(--border-hover));
-      margin-bottom: 3px;
+    .strip-cell:last-child {
+      border-right: 0;
     }
-    .kpi-card.accent-neutral { --tile-accent: var(--primary-color); }
-    .kpi-card.accent-success { --tile-accent: var(--viz-success); }
-    .kpi-card.accent-amber   { --tile-accent: var(--amber-color); }
-    .kpi-card.accent-stone   { --tile-accent: var(--text-secondary); }
-
+    .strip-cell.clickable {
+      cursor: pointer;
+      transition: background-color var(--dur-hover) var(--ease-out-strong);
+    }
     @media (hover: hover) and (pointer: fine) {
-      .kpi-card:hover {
-        border-color: var(--border-hover);
+      .strip-cell.clickable:hover {
+        background: color-mix(in srgb, var(--bg-tertiary) 42%, transparent);
       }
     }
 
-    .kpi-title {
-      margin: 0;
+    .cell-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
       font-size: 12px;
       font-weight: 600;
       color: var(--text-secondary);
     }
-
-    .kpi-value {
-      font-family: var(--font-mono);
-      font-size: 24px;
-      font-weight: 650;
-      letter-spacing: -0.02em;
-      line-height: 1.18;
-      color: var(--text-primary);
-      font-variant-numeric: tabular-nums;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .cell-accent-bar {
+      width: 20px;
+      height: 3px;
+      border-radius: 9999px;
+      background: var(--cell-accent, var(--border-hover));
     }
 
-    .kpi-value-sm {
-      font-size: 18px;
+    .cell-value {
+      font-family: var(--font-mono);
+      font-size: 21px;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cell-value-sm {
+      font-size: 16px;
       line-height: 1.38;
     }
 
-    .kpi-desc {
+    .cell-desc {
       font-family: var(--font-mono);
-      font-size: 11.5px;
+      font-size: 11px;
       color: var(--text-tertiary);
+      font-variant-numeric: tabular-nums;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-variant-numeric: tabular-nums;
     }
 
-    /* Inline Warning Callout (CPAMC warning banner) */
+    /* Signature CPAMC VaultPulse live credential health strip */
+    .vault-pulse {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 18px;
+      padding-bottom: 2px;
+      border-bottom: 1px solid color-mix(in srgb, var(--border-color) 85%, transparent);
+    }
+    .pulse-bar {
+      flex: 1 1 0;
+      min-width: 3px;
+      max-width: 12px;
+      border-radius: 2px 2px 1px 1px;
+    }
+    .pulse-live     { background: var(--viz-success); height: 100%; }
+    .pulse-warning  { background: var(--amber-color); height: 70%; }
+    .pulse-problem  { background: var(--viz-failure); height: 55%; }
+    .pulse-disabled { background: var(--text-quaternary); opacity: 0.35; height: 32%; }
+    .pulse-idle-line {
+      flex: 1;
+      height: 0;
+      border-bottom: 1.5px dashed var(--text-quaternary);
+      opacity: 0.6;
+      margin-bottom: 4px;
+    }
+
+    .cell-inline-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 2px;
+    }
+
+    /* Inline Warning Callout */
     .inline-banner {
       display: flex;
       align-items: flex-start;
       gap: 9px;
-      padding: 10px 14px;
+      padding: 9px 13px;
       border-radius: 10px;
       font-size: 12.5px;
       font-weight: 500;
@@ -849,9 +1016,9 @@
     }
 
     /* ==========================================================================
-       Overview Toolbar (CPAMC AuthFilesToolbar / ResourceToolbar style)
+       Workbench Controls (CPAMC QuotaPage / AuthFilesToolbar style)
        ========================================================================== */
-    .toolbar {
+    .workbench-bar {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -860,8 +1027,8 @@
       min-width: 0;
     }
 
-    .toolbar-left,
-    .toolbar-right {
+    .workbench-left,
+    .workbench-right {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -869,7 +1036,7 @@
       min-width: 0;
     }
 
-    /* CPAMC Segmented Pill Switch */
+    /* CPAMC Segmented Pill Switch (strict zero press scale) */
     .segmented {
       display: inline-flex;
       align-items: center;
@@ -886,7 +1053,7 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      padding: 5px 12px;
+      padding: 5px 11px;
       border: 0;
       border-radius: 9999px;
       background: transparent;
@@ -909,11 +1076,15 @@
         color: var(--text-primary);
       }
     }
+    .segment:active:not(.active) {
+      color: var(--text-primary);
+      background: color-mix(in srgb, var(--floating-surface) 55%, transparent);
+    }
     .segment.active {
       color: var(--text-primary);
       background: var(--floating-surface);
       font-weight: 650;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.11), 0 1px 2px rgba(0, 0, 0, 0.07);
     }
     .segment-count {
       font-family: var(--font-mono);
@@ -926,15 +1097,15 @@
       color: var(--text-secondary);
     }
 
-    /* CPAMC ResourceToolbar Search Input */
+    /* Search Input (CPAMC ResourceToolbar style) */
     .search-box {
       position: relative;
       display: flex;
       align-items: center;
-      height: 34px;
-      width: 220px;
-      min-width: 160px;
-      padding: 0 10px 0 32px;
+      height: 32px;
+      width: 210px;
+      min-width: 150px;
+      padding: 0 9px 0 30px;
       border-radius: 10px;
       border: 1px solid var(--border-color);
       background: var(--bg-secondary);
@@ -948,7 +1119,7 @@
     }
     .search-box-icon {
       position: absolute;
-      left: 10px;
+      left: 9px;
       color: var(--text-quaternary);
       pointer-events: none;
     }
@@ -970,8 +1141,8 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 20px;
-      height: 20px;
+      width: 19px;
+      height: 19px;
       margin-right: -3px;
       border: 0;
       border-radius: 9999px;
@@ -984,7 +1155,7 @@
     }
 
     /* ==========================================================================
-       Credentials Grid & Cards (CPAMC QuotaCard + AuthFileCard style)
+       Credentials Grid & Open CPAMC QuotaCards + Compact List View
        ========================================================================== */
     .credentials-wrapper {
       position: relative;
@@ -998,31 +1169,30 @@
       gap: 14px;
     }
 
+    /* Open CPAMC QuotaCard (no clunky nested inner box around quota bars!) */
     .cred-card {
       position: relative;
       display: flex;
       flex-direction: column;
-      gap: 11px;
+      gap: 12px;
       padding: 15px 16px;
       border-radius: 14px;
       border: 1px solid var(--border-color);
       background: var(--card-surface);
       cursor: pointer;
       transition:
-        transform var(--dur-hover) var(--ease-out-strong),
         border-color var(--dur-hover) var(--ease-out-strong),
         box-shadow var(--dur-hover) var(--ease-out-strong);
     }
     @media (hover: hover) and (pointer: fine) {
       .cred-card:hover {
         border-color: var(--border-hover);
-        transform: translateY(-2px);
-        box-shadow: 0 12px 26px -14px rgba(0, 0, 0, 0.18);
+        box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.16);
       }
     }
     .cred-card.is-selected {
-      border-color: color-mix(in srgb, var(--primary-color) 60%, transparent);
-      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary-color) 38%, transparent);
+      border-color: color-mix(in srgb, var(--primary-color) 62%, transparent);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary-color) 40%, transparent);
     }
     .cred-card-disabled {
       background: var(--card-disabled-surface);
@@ -1038,12 +1208,28 @@
       min-width: 0;
     }
 
-    .cred-name {
+    .site-monogram {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 750;
+      letter-spacing: 0.02em;
+    }
+    .site-monogram.cn   { background: var(--site-cn-bg);   color: var(--site-cn-text); }
+    .site-monogram.intl { background: var(--site-intl-bg); color: var(--site-intl-text); }
+
+    .cred-identity {
       flex: 1;
       min-width: 0;
       display: flex;
-      align-items: center;
-      gap: 8px;
+      flex-direction: column;
+      gap: 2px;
     }
 
     .cred-email {
@@ -1052,13 +1238,72 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       font-family: var(--font-mono);
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 600;
       letter-spacing: -0.005em;
       color: var(--text-primary);
     }
 
-    /* CPAMC SelectionCheckbox style */
+    .cred-meta-line {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+
+    /* Compact List View (CPAMC PluginRow / AuthFile compact list rhythm) */
+    .credentials-list {
+      border: 1px solid var(--border-color);
+      background: var(--card-surface);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .cred-list-row {
+      display: grid;
+      grid-template-columns: auto auto minmax(0, 1.35fr) minmax(170px, 1.15fr) auto auto;
+      align-items: center;
+      gap: 10px 14px;
+      padding: 11px 15px;
+      border-bottom: 1px solid color-mix(in srgb, var(--border-color) 75%, transparent);
+      cursor: pointer;
+      transition: background-color 0.14s ease;
+    }
+    .cred-list-row:last-child {
+      border-bottom: 0;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .cred-list-row:hover {
+        background: color-mix(in srgb, var(--bg-tertiary) 45%, transparent);
+      }
+    }
+    .cred-list-row.is-selected {
+      background: color-mix(in srgb, var(--primary-color) 9%, transparent);
+    }
+    .cred-list-row.cred-card-disabled {
+      opacity: 0.68;
+    }
+    .cred-list-meter {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .cred-list-meter-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Selection Checkbox (zero press scale) */
     .transfer-select-hit {
       display: inline-flex;
       align-items: center;
@@ -1074,11 +1319,11 @@
       appearance: none;
       -webkit-appearance: none;
       flex: 0 0 auto;
-      width: 18px;
-      height: 18px;
+      width: 17px;
+      height: 17px;
       margin: 0;
       border: 1px solid var(--border-primary);
-      border-radius: 6px;
+      border-radius: 5.5px;
       background: color-mix(in srgb, var(--bg-secondary) 92%, transparent);
       cursor: pointer;
       display: inline-grid;
@@ -1099,8 +1344,8 @@
     }
     .wb-checkbox:checked::after {
       content: "";
-      width: 9px;
-      height: 5px;
+      width: 8.5px;
+      height: 4.5px;
       border-left: 2px solid var(--primary-contrast);
       border-bottom: 2px solid var(--primary-contrast);
       transform: rotate(-45deg) translate(0.5px, -0.5px);
@@ -1126,14 +1371,7 @@
       cursor: not-allowed;
     }
 
-    /* Badges & Chips (CPAMC AuthFileCard / ResourceCard / QuotaBody style) */
-    .cred-badge-row {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 5px;
-    }
-
+    /* Badges & Status Indicators */
     .badge {
       display: inline-flex;
       align-items: center;
@@ -1167,15 +1405,19 @@
       border: 1px solid var(--plan-pro-border);
       color: var(--plan-pro-text);
       font-weight: 700;
+      padding: 0 7px;
+      font-size: 10.5px;
     }
     .badge-plan-free {
       background: color-mix(in srgb, var(--text-quaternary) 12%, transparent);
       border: 1px solid color-mix(in srgb, var(--text-quaternary) 26%, transparent);
       color: var(--text-secondary);
+      padding: 0 7px;
+      font-size: 10.5px;
     }
     .badge-success {
       background: color-mix(in srgb, var(--viz-success) 11%, transparent);
-      border: 1px solid color-mix(in srgb, var(--viz-success) 32%, transparent);
+      border: 1px solid color-mix(in srgb, var(--viz-success) 30%, transparent);
       color: var(--success-badge-text);
     }
     .badge-warning {
@@ -1194,25 +1436,33 @@
       color: var(--text-secondary);
     }
 
-    /* Quota Body (CPAMC QuotaBody style — clean open rows, smooth rounded bars) */
-    .meter-container {
+    /* Open Quota Rows directly inside card (CPAMC QuotaBody style) */
+    .quota-body {
       display: flex;
       flex-direction: column;
       gap: 9px;
       min-width: 0;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid color-mix(in srgb, var(--border-color) 75%, transparent);
-      background: var(--inset-surface);
     }
-    .meter-container.meter-error {
-      background: color-mix(in srgb, var(--viz-failure) 8%, transparent);
-      border-color: color-mix(in srgb, var(--viz-failure) 32%, transparent);
+
+    .quota-error-strip {
       color: var(--viz-failure);
+      background: color-mix(in srgb, var(--viz-failure) 8%, transparent);
+      border: 1px solid color-mix(in srgb, var(--viz-failure) 30%, transparent);
+      border-radius: 9px;
+      padding: 8px 10px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
     }
-    .meter-container.meter-idle {
-      border-style: dashed;
-      background: transparent;
+
+    .quota-idle-strip {
+      border: 1px dashed var(--border-color);
+      border-radius: 10px;
+      padding: 12px 10px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
       color: var(--text-tertiary);
     }
 
@@ -1265,7 +1515,7 @@
       width: 100%;
       height: 6px;
       border-radius: 9999px;
-      background: color-mix(in srgb, var(--text-primary) 9%, transparent);
+      background: color-mix(in srgb, var(--text-primary) 8%, transparent);
       overflow: hidden;
     }
 
@@ -1284,7 +1534,6 @@
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 4px 10px;
-      padding-top: 2px;
       font-family: var(--font-mono);
       font-size: 11px;
       font-variant-numeric: tabular-nums;
@@ -1295,15 +1544,7 @@
       font-weight: 600;
     }
 
-    .meter-empty-msg {
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      line-height: 1.5;
-      text-align: center;
-      padding: 6px 4px;
-    }
-
-    /* Card Footer (CPAMC AuthFileCard / QuotaCard action row) */
+    /* Card Footer */
     .cred-footer {
       display: flex;
       align-items: center;
@@ -1344,7 +1585,7 @@
       font-weight: 600;
     }
 
-    /* Loading Overlay (CPAMC frosted surface) */
+    /* Frosted Loading Overlay */
     .credentials-loading-overlay {
       position: absolute;
       inset: 0;
@@ -1354,14 +1595,14 @@
       justify-content: center;
       padding: 24px;
       border-radius: 14px;
-      background: color-mix(in srgb, var(--bg-secondary) 68%, transparent);
+      background: color-mix(in srgb, var(--bg-secondary) 72%, transparent);
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
     }
 
     .credentials-loading-card {
-      width: min(360px, 100%);
-      padding: 22px 24px;
+      width: min(350px, 100%);
+      padding: 20px 24px;
       border-radius: 14px;
       border: 1px solid var(--border-color);
       background: var(--floating-surface);
@@ -1369,14 +1610,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 12px;
+      gap: 11px;
       text-align: center;
-      animation: modalScaleIn 0.24s var(--ease-out-strong) both;
     }
 
     .loading-emblem {
-      width: 42px;
-      height: 42px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       border: 1px solid var(--border-color);
       background: var(--bg-primary);
@@ -1385,14 +1625,13 @@
       place-items: center;
     }
     .loading-emblem svg {
-      animation: wb-spin 1.1s linear infinite;
+      animation: wb-spin 1.05s linear infinite;
     }
 
     .quota-loading-title {
       font-size: 14px;
       font-weight: 650;
       color: var(--text-primary);
-      letter-spacing: -0.01em;
     }
     .quota-loading-desc {
       font-size: 12px;
@@ -1414,7 +1653,7 @@
       width: 36%;
       border-radius: 9999px;
       background: var(--text-primary);
-      animation: indeterminateBar 1.35s var(--ease-out-strong) infinite;
+      animation: indeterminateBar 1.3s var(--ease-out-strong) infinite;
     }
     @keyframes indeterminateBar {
       0% { left: -36%; width: 32%; }
@@ -1422,7 +1661,7 @@
       100% { left: 100%; width: 32%; }
     }
 
-    /* Empty State (CPAMC empty-state style) */
+    /* Empty State */
     .empty-state {
       grid-column: 1 / -1;
       display: flex;
@@ -1433,7 +1672,7 @@
       padding: 44px 24px;
       border-radius: 14px;
       border: 1px dashed var(--border-color);
-      background: color-mix(in srgb, var(--bg-primary) 45%, transparent);
+      background: color-mix(in srgb, var(--bg-primary) 42%, transparent);
       color: var(--text-secondary);
       text-align: center;
       font-size: 13px;
@@ -1449,7 +1688,7 @@
     }
 
     /* ==========================================================================
-       Floating Batch Action Bar (CPAMC BatchActionBar style)
+       Floating Glassmorphic Bars (BatchActionBar & FloatingSaveBar)
        ========================================================================== */
     .floating-bar-wrap {
       position: fixed;
@@ -1457,9 +1696,9 @@
       bottom: calc(14px + env(safe-area-inset-bottom, 0px));
       transform: translateX(-50%);
       z-index: 90;
-      width: min(740px, calc(100vw - 24px));
+      width: min(720px, calc(100vw - 24px));
       pointer-events: none;
-      animation: floatingBarIn 220ms var(--ease-out-strong) both;
+      animation: floatingBarIn 200ms var(--ease-out-strong) both;
     }
 
     .floating-bar {
@@ -1469,7 +1708,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px 16px;
-      padding: 10px 14px;
+      padding: 9px 14px;
       border-radius: 16px;
       border: 1px solid var(--glass-border);
       background: var(--glass-bg);
@@ -1500,7 +1739,7 @@
     }
 
     /* ==========================================================================
-       Usage & Analytics Tab (CPAMC dashboard panels + ThroughputChart tables)
+       Usage & Analytics Tab (CPAMC Dashboard Telemetry Split + Tables)
        ========================================================================== */
     .usage-toolbar {
       display: flex;
@@ -1521,7 +1760,7 @@
       border: 1px solid var(--border-color);
       background: var(--card-surface);
       border-radius: 14px;
-      padding: 18px 20px;
+      padding: 16px 20px;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -1542,10 +1781,16 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 650;
       letter-spacing: -0.01em;
       color: var(--text-primary);
+    }
+    .section-eyebrow-mark {
+      color: var(--viz-success);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1;
     }
 
     .usage-table-wrap {
@@ -1588,7 +1833,7 @@
     }
     @media (hover: hover) and (pointer: fine) {
       .usage-table tbody tr:hover {
-        background: color-mix(in srgb, var(--bg-tertiary) 55%, transparent);
+        background: color-mix(in srgb, var(--bg-tertiary) 52%, transparent);
       }
     }
     .usage-table tbody tr:last-child td {
@@ -1608,6 +1853,23 @@
       color: var(--text-primary);
     }
 
+    .inline-share-bar {
+      display: inline-block;
+      width: 48px;
+      height: 5px;
+      border-radius: 9999px;
+      background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+      overflow: hidden;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    .inline-share-fill {
+      display: block;
+      height: 100%;
+      border-radius: 9999px;
+      background: var(--viz-success);
+    }
+
     .usage-empty {
       padding: 24px 16px;
       text-align: center;
@@ -1616,13 +1878,13 @@
     }
 
     /* ==========================================================================
-       Config Tab (CPAMC SectionCard + Field-module__list + ToggleSwitch)
+       Config Tab (CPAMC SectionCard + Field-module__list + 24h Schedule Ruler)
        ========================================================================== */
     .config-stack {
       display: flex;
       flex-direction: column;
       gap: 16px;
-      padding-bottom: 72px;
+      padding-bottom: 68px;
     }
 
     .section-card {
@@ -1672,7 +1934,7 @@
 
     .section-card-title {
       margin: 0;
-      font-size: 17px;
+      font-size: 16.5px;
       font-weight: 680;
       letter-spacing: -0.01em;
       line-height: 1.25;
@@ -1686,7 +1948,6 @@
       line-height: 1.55;
     }
 
-    /* CPAMC Field-module__list inset grouped setting rows */
     .field-list {
       border: 1px solid var(--border-color);
       background: var(--inset-surface);
@@ -1708,6 +1969,7 @@
     }
     .field-row.full-width {
       grid-column: 1 / -1;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .field-copy {
@@ -1742,7 +2004,50 @@
       flex-shrink: 0;
     }
 
-    /* Inputs (CPAMC Field / sharedForm style) */
+    /* Live 24-hour floating window visualization */
+    .schedule-ruler-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .schedule-ruler {
+      position: relative;
+      height: 10px;
+      border-radius: 9999px;
+      background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+      overflow: hidden;
+      transition: opacity var(--dur-hover) var(--ease-out-strong);
+    }
+    .schedule-ruler.is-paused {
+      opacity: 0.38;
+    }
+    .schedule-ruler-band {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: color-mix(in srgb, var(--viz-success) 38%, transparent);
+      border-radius: 9999px;
+      transition: left 0.2s var(--ease-out-strong), width 0.2s var(--ease-out-strong);
+    }
+    .schedule-ruler-anchor {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      margin-left: -1.5px;
+      background: var(--viz-success);
+      border-radius: 9999px;
+      transition: left 0.2s var(--ease-out-strong);
+    }
+    .schedule-ruler-ticks {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-tertiary);
+    }
+
     .cp-input {
       height: 36px;
       min-height: 36px;
@@ -1758,9 +2063,7 @@
         background-color var(--dur-hover) var(--ease-out-strong),
         box-shadow var(--dur-hover) var(--ease-out-strong);
     }
-    .cp-input::placeholder {
-      color: var(--text-tertiary);
-    }
+    .cp-input::placeholder { color: var(--text-tertiary); }
     .cp-input:focus {
       background: var(--bg-primary);
       border-color: var(--text-primary);
@@ -1778,7 +2081,6 @@
       font-variant-numeric: tabular-nums;
     }
 
-    /* CPAMC ToggleSwitch */
     .toggle-switch {
       position: relative;
       display: inline-flex;
@@ -1826,7 +2128,7 @@
     }
 
     /* ==========================================================================
-       Modals (CPAMC .modal-overlay / .modal / AuthFileModelsModal style)
+       Modals (CPAMC Modal + AuthFileModelsModal)
        ========================================================================== */
     .modal-backdrop {
       position: fixed;
@@ -1839,7 +2141,7 @@
       background: var(--overlay-bg);
       backdrop-filter: blur(2px);
       -webkit-backdrop-filter: blur(2px);
-      animation: fadeIn 0.18s ease-out both;
+      animation: slideFadeIn 150ms ease-out both;
     }
 
     .modal {
@@ -1853,7 +2155,7 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      animation: modalScaleIn 0.24s var(--ease-out-strong) both;
+      animation: modalScaleIn 200ms var(--ease-out-strong) both;
     }
     .modal.modal-wide {
       width: min(760px, 100%);
@@ -1864,13 +2166,9 @@
       max-height: 86vh;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
     @keyframes modalScaleIn {
-      from { opacity: 0; transform: scale(0.95) translateY(8px); }
-      to { opacity: 1; transform: scale(1) translateY(0); }
+      from { opacity: 0; transform: translate3d(0, 8px, 0); }
+      to   { opacity: 1; transform: translate3d(0, 0, 0); }
     }
 
     .modal-header {
@@ -1878,7 +2176,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 16px 20px;
+      padding: 15px 20px;
       border-bottom: 1px solid var(--border-color);
       flex-shrink: 0;
     }
@@ -1918,9 +2216,7 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition:
-        color 0.15s ease,
-        background-color 0.15s ease;
+      transition: color 0.15s ease, background-color 0.15s ease;
     }
     @media (hover: hover) and (pointer: fine) {
       .modal-close-btn:hover {
@@ -1936,7 +2232,7 @@
     .modal-body {
       flex: 1;
       min-height: 0;
-      padding: 18px 20px;
+      padding: 16px 20px;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -1955,7 +2251,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 14px 20px;
+      padding: 13px 20px;
       border-top: 1px solid var(--border-color);
       background: var(--bg-primary);
       font-size: 12px;
@@ -1983,7 +2279,6 @@
       border: 1px solid var(--warning-border);
     }
 
-    /* Password field with eye toggle (CPAMC sharedForm style) */
     .password-field {
       position: relative;
       display: flex;
@@ -2030,7 +2325,6 @@
       color: var(--text-secondary);
     }
 
-    /* Models Modal List (CPAMC AuthFileModelsModal style) */
     .models-toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -2046,26 +2340,29 @@
       gap: 8px;
     }
     .models-search-box {
-      width: 240px;
-      height: 32px;
+      width: 230px;
+      height: 30px;
     }
 
-    .models-list {
+    .models-list-shell {
       flex: 1;
       min-height: 0;
-      overflow-y: auto;
       border: 1px solid var(--border-color);
       border-radius: 12px;
       background: var(--bg-secondary);
+      overflow-y: auto;
+      overflow-x: hidden;
       padding: 6px;
+    }
+
+    .models-list {
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
 
     .models-loading-state {
-      height: 100%;
-      min-height: 160px;
+      min-height: 180px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2083,9 +2380,7 @@
       border-radius: 8px;
       border: 1px solid transparent;
       cursor: pointer;
-      transition:
-        background-color 0.14s ease,
-        border-color 0.14s ease;
+      transition: background-color 0.14s ease, border-color 0.14s ease;
     }
     @media (hover: hover) and (pointer: fine) {
       .model-row:hover {
@@ -2187,7 +2482,6 @@
       color: var(--text-secondary);
     }
 
-    /* Transfer Preview List */
     .transfer-preview-list {
       display: flex;
       flex-direction: column;
@@ -2207,9 +2501,7 @@
       cursor: pointer;
       transition: background-color 0.14s ease;
     }
-    .transfer-preview-row:last-child {
-      border-bottom: 0;
-    }
+    .transfer-preview-row:last-child { border-bottom: 0; }
     @media (hover: hover) and (pointer: fine) {
       .transfer-preview-row:hover:not(.unimportable) {
         background: var(--bg-tertiary);
@@ -2270,20 +2562,11 @@
       font-size: 13px;
       font-weight: 500;
       line-height: 1.45;
-      animation: toastIn 0.2s var(--ease-out-strong) both;
+      animation: toastIn 180ms var(--ease-out-strong) both;
     }
-    .toast-success {
-      --toast-accent: var(--success-badge-text);
-      --toast-tint: var(--success-badge-bg);
-    }
-    .toast-error {
-      --toast-accent: var(--failure-badge-text);
-      --toast-tint: var(--failure-badge-bg);
-    }
-    .toast-info {
-      --toast-accent: var(--text-secondary);
-      --toast-tint: var(--bg-tertiary);
-    }
+    .toast-success { --toast-accent: var(--success-badge-text); --toast-tint: var(--success-badge-bg); }
+    .toast-error   { --toast-accent: var(--failure-badge-text); --toast-tint: var(--failure-badge-bg); }
+    .toast-info    { --toast-accent: var(--text-secondary);     --toast-tint: var(--bg-tertiary); }
     .toast-icon {
       width: 26px;
       height: 26px;
@@ -2299,56 +2582,86 @@
       overflow-wrap: anywhere;
     }
     .toast.toast-exit {
-      animation: toastOut 0.16s ease forwards;
+      animation: toastOut 140ms ease forwards;
     }
     @keyframes toastIn {
-      from { opacity: 0; transform: translateY(-8px) scale(0.98); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
+      from { opacity: 0; transform: translate3d(0, -6px, 0); }
+      to   { opacity: 1; transform: translate3d(0, 0, 0); }
     }
     @keyframes toastOut {
-      from { opacity: 1; transform: translateY(0) scale(1); }
-      to { opacity: 0; transform: translateY(-6px) scale(0.98); }
+      from { opacity: 1; transform: translate3d(0, 0, 0); }
+      to   { opacity: 0; transform: translate3d(0, -4px, 0); }
     }
 
     /* ==========================================================================
        Responsive & Reduced Motion
        ========================================================================== */
-    @media (max-width: 960px) {
-      .summary-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    @media (max-width: 1024px) {
+      .overview-strip {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .strip-hero {
+        border-right: 0;
+        border-bottom: 1px solid var(--border-color);
       }
       .field-list {
         grid-template-columns: minmax(0, 1fr);
+      }
+      .cred-list-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 12px;
+      }
+      .cred-list-row .cred-identity {
+        flex: 1 1 180px;
+      }
+      .cred-list-row .cred-list-meter {
+        flex: 1 0 100%;
+        order: 3;
+      }
+      .cred-list-row .cred-list-daily {
+        order: 4;
+      }
+      .cred-list-row .cred-actions {
+        order: 5;
+        margin-left: auto;
       }
     }
 
     @media (max-width: 768px) {
       .page-shell {
-        padding: 20px 16px 64px;
-        gap: 16px;
+        padding: 16px 14px 88px;
+        gap: 14px;
       }
-      html.in-cpa-host .page-shell {
-        padding-top: 80px;
+      html.in-cpa-host .masthead-top {
+        padding-right: 0;
+        padding-top: 52px;
       }
-      .page-header {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .page-header-actions {
-        justify-content: flex-start;
-      }
-      .tabs-bar {
+      .nav-dock {
         flex-wrap: wrap;
+        gap: 8px;
       }
-      .schedule-pill {
-        margin-top: 6px;
+      .dock-utilities {
+        width: 100%;
+        padding-bottom: 8px;
       }
-      .toolbar {
+      .strip-cells {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .strip-cell {
+        border-right: 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--border-color) 75%, transparent);
+      }
+      .strip-cell:last-child {
+        border-bottom: 0;
+      }
+      .workbench-bar {
         flex-direction: column;
         align-items: stretch;
       }
-      .toolbar-left,
-      .toolbar-right {
+      .workbench-left,
+      .workbench-right {
         width: 100%;
       }
       .search-box,
@@ -2385,9 +2698,6 @@
     }
 
     @media (max-width: 480px) {
-      .summary-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
       .field-row {
         grid-template-columns: minmax(0, 1fr);
         align-items: stretch;
@@ -2401,10 +2711,6 @@
       *, *::before, *::after {
         transition-duration: 0.01ms !important;
       }
-      .cred-card:hover {
-        transform: none !important;
-      }
-      .cred-card.card-enter,
       .floating-bar-wrap {
         animation: none !important;
       }
@@ -2412,389 +2718,482 @@
   </style>
 </head>
 <body>
+  <div class="ambient-backdrop" aria-hidden="true">
+    <div class="ambient-wash"></div>
+    <div class="ambient-grid"></div>
+  </div>
+
   <div id="toastRoot" class="toast-root" aria-live="polite"></div>
 
   <div class="page-shell">
-    <!-- Page Header (CPAMC VaultHeader / QuotaHeader style) -->
-    <header class="page-header">
-      <div class="page-header-copy">
-        <div class="page-title-row">
-          <h1 class="page-title">WorkBuddy 控制面板</h1>
-          <span id="pluginVersion" class="version-pill">v--</span>
+    <!-- ======================================================================
+         Compact Editorial Masthead + Unified Navigation Dock
+         ====================================================================== -->
+    <header class="masthead">
+      <div class="masthead-top">
+        <div class="masthead-title-block">
+          <div class="title-line">
+            <h1 class="page-title">WorkBuddy 控制面板</h1>
+            <span id="pluginVersion" class="version-pill">v--</span>
+          </div>
+          <p id="headerMeta" class="page-meta">
+            <span class="meta-muted">等待连接 CPA 管理接口</span>
+          </p>
         </div>
-        <p id="headerMeta" class="page-meta">
-          <span class="meta-muted">等待连接 CPA 管理接口</span>
-        </p>
       </div>
-      <div class="page-header-actions">
-        <button type="button" class="btn btn-secondary" onclick="openKeyModal()" title="配置 CPA Management Key">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-          </svg>
-          <span>管理密钥</span>
-        </button>
-        <button type="button" id="btnAccountMask" class="btn btn-secondary" onclick="toggleAccountMasking()" aria-pressed="true" title="切换账号名称脱敏显示">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-            <line x1="1" y1="1" x2="23" y2="23"/>
-          </svg>
-          <span>脱敏显示</span>
-        </button>
-        <button type="button" id="btnThemeToggle" class="btn btn-secondary" onclick="toggleTheme()" title="切换暖白 / 纯白 / 暗色主题">
-          <span id="themeIconWrap" aria-hidden="true"></span>
-          <span id="themeLabel">暖白</span>
-        </button>
+
+      <div class="nav-dock">
+        <nav class="tabs-strip" aria-label="控制台导航">
+          <button type="button" class="tab active" data-tab="overview" onclick="switchTab('overview')">
+            <svg class="icon tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+              <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+              <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+              <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+            </svg>
+            <span>概览与凭证</span>
+            <span id="tabCountOverview" class="tab-count">0</span>
+          </button>
+          <button type="button" class="tab" data-tab="usage" onclick="switchTab('usage')">
+            <svg class="icon tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="20" x2="18" y2="10"/>
+              <line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+            <span>用量与积分统计</span>
+          </button>
+          <button type="button" class="tab" data-tab="config" onclick="switchTab('config')">
+            <svg class="icon tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span>模型与调度配置</span>
+            <span id="configTabDirtyDot" class="tab-dirty-dot" hidden aria-label="有未保存更改"></span>
+          </button>
+        </nav>
+
+        <div class="dock-utilities">
+          <button type="button" id="scheduleStatusBadge" class="schedule-pill active" onclick="switchTab('config')" title="点击进入配置中心">
+            <span class="schedule-dot" aria-hidden="true"></span>
+            <span id="scheduleStatusText">自动调度</span>
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="openKeyModal()" title="配置 CPA Management Key">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+            </svg>
+            <span>密钥</span>
+          </button>
+          <button type="button" id="btnAccountMask" class="btn btn-secondary btn-sm" onclick="toggleAccountMasking()" aria-pressed="true" title="切换账号名称脱敏显示">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+            <span>脱敏</span>
+          </button>
+          <button type="button" id="btnThemeToggle" class="btn btn-secondary btn-sm" onclick="toggleTheme()" title="切换暖白 / 纯白 / 暗色主题">
+            <span id="themeIconWrap" aria-hidden="true"></span>
+            <span id="themeLabel">暖白</span>
+          </button>
+        </div>
       </div>
     </header>
 
-    <!-- Navigation Tabs (CPAMC BrandTabs / ConfigTabs style) -->
-    <div class="tabs-bar">
-      <nav class="tabs-strip" aria-label="控制台导航">
-        <button type="button" class="tab active" data-tab="overview" onclick="switchTab('overview')">
-          <svg class="icon tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="3" width="7" height="7" rx="1.5"/>
-            <rect x="14" y="3" width="7" height="7" rx="1.5"/>
-            <rect x="3" y="14" width="7" height="7" rx="1.5"/>
-            <rect x="14" y="14" width="7" height="7" rx="1.5"/>
-          </svg>
-          <span>概览与凭证</span>
-          <span id="tabCountOverview" class="tab-count">0</span>
-        </button>
-        <button type="button" class="tab" data-tab="usage" onclick="switchTab('usage')">
-          <svg class="icon tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="18" y1="20" x2="18" y2="10"/>
-            <line x1="12" y1="20" x2="12" y2="4"/>
-            <line x1="6" y1="20" x2="6" y2="14"/>
-          </svg>
-          <span>用量与积分统计</span>
-        </button>
-        <button type="button" class="tab" data-tab="config" onclick="switchTab('config')">
-          <svg class="icon tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-          <span>模型与调度配置</span>
-          <span id="configTabDirtyDot" class="tab-dirty-dot" hidden aria-label="有未保存更改"></span>
-        </button>
-      </nav>
-      <button type="button" id="scheduleStatusBadge" class="schedule-pill active" onclick="switchTab('config')" title="点击进入配置中心">
-        <span class="schedule-dot" aria-hidden="true"></span>
-        <span id="scheduleStatusText">自动调度运行中</span>
-      </button>
-    </div>
-
     <!-- ======================================================================
-         Animated Tab Stage (CPAMC PageTransition)
+         Animated Main Tab Stage (Horizontal Zero-Ghosting Slide)
          ====================================================================== -->
     <div id="pageStage" class="page-transition">
-    <!-- ======================================================================
-         Tab 1: Overview & Credentials
-         ====================================================================== -->
-    <section id="panelOverview" class="tab-panel">
-      <div class="summary-grid">
-        <div class="kpi-card accent-stone">
-          <p class="kpi-title">总凭证数</p>
-          <div id="valTotalCreds" class="kpi-value">--</div>
-          <div id="valTotalDesc" class="kpi-desc">等待加载</div>
-        </div>
-        <div class="kpi-card accent-success">
-          <p class="kpi-title">剩余总积分</p>
-          <div id="valTotalCredits" class="kpi-value">--</div>
-          <div id="valCreditsDesc" class="kpi-desc">总额度 --</div>
-        </div>
-        <div class="kpi-card accent-amber">
-          <p class="kpi-title">今日签到 / 点亮</p>
-          <div id="valDailyDone" class="kpi-value">--</div>
-          <div id="valDailyDesc" class="kpi-desc">待检测</div>
-        </div>
-        <div class="kpi-card accent-neutral">
-          <p class="kpi-title">每日自动调度 (±3h)</p>
-          <div id="valNextRun" class="kpi-value kpi-value-sm">--</div>
-          <div id="valLastRun" class="kpi-desc">尚无执行记录</div>
-        </div>
-      </div>
-
-      <div id="prefixWarningBanner" class="inline-banner" hidden>
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-          <line x1="12" y1="9" x2="12" y2="13"/>
-          <line x1="12" y1="17" x2="12.01" y2="17"/>
-        </svg>
-        <span>当前国内 <code>wb/</code> 与国际 <code>wb-ai/</code> 模型前缀均已关闭，同名模型将在两端账号间共同调度。</span>
-      </div>
-
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <div class="segmented" role="tablist" aria-label="按站点筛选">
-            <button type="button" class="segment active" data-site="all" onclick="selectSiteFilter('all')" role="tab" aria-selected="true">
-              <span>全部</span>
-              <span id="siteCntAll" class="segment-count">0</span>
-            </button>
-            <button type="button" class="segment" data-site="workbuddy" onclick="selectSiteFilter('workbuddy')" role="tab" aria-selected="false">
-              <span>国内 CN</span>
-              <span id="siteCntCn" class="segment-count">0</span>
-            </button>
-            <button type="button" class="segment" data-site="workbuddy-ai" onclick="selectSiteFilter('workbuddy-ai')" role="tab" aria-selected="false">
-              <span>国际 AI</span>
-              <span id="siteCntIntl" class="segment-count">0</span>
-            </button>
+      <!-- ====================================================================
+           Tab 1: Overview & Credentials
+           ==================================================================== -->
+      <section id="panelOverview" class="tab-panel">
+        <!-- Unified CPAMC Telemetry Strip (Replaces old 4 repetitive KPI boxes) -->
+        <div class="overview-strip">
+          <div class="strip-hero">
+            <div class="strip-eyebrow">
+              <span>REMAINING CREDITS · 剩余总积分</span>
+              <span id="valCreditsPct">--%</span>
+            </div>
+            <div class="strip-hero-value-row">
+              <div id="valTotalCredits" class="strip-hero-figure">--</div>
+              <span class="strip-hero-unit">积分</span>
+            </div>
+            <div class="ratio-bar" aria-hidden="true">
+              <span id="overviewRatioRemain" class="ratio-seg-remain" style="width:0%"></span>
+              <span id="overviewRatioUsed" class="ratio-seg-used" style="width:0%"></span>
+            </div>
+            <div id="valCreditsDesc" class="strip-hero-meta">总额度 --</div>
           </div>
 
-          <div class="search-box">
-            <svg class="icon icon-sm search-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input type="text" id="accountSearchInput" placeholder="搜索账号、套餐或 UID..." oninput="onAccountSearchInput()">
-            <button type="button" id="btnClearAccountSearch" class="search-clear" hidden onclick="clearAccountSearch()" aria-label="清除搜索">
-              <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="toolbar-right">
-          <button type="button" id="btnTransferSelectAll" class="btn btn-secondary" onclick="toggleDashboardTransferSelectAll()" disabled>
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="9 11 12 14 22 4"/>
-              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-            </svg>
-            <span>全选</span>
-          </button>
-          <button type="button" id="btnTransferExport" class="btn btn-secondary" onclick="exportSelectedAccounts()" title="导出选中账号为 JSON" disabled>
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <span>导出</span>
-          </button>
-          <button type="button" id="btnTransferImport" class="btn btn-secondary" onclick="el('transferImportFile').click()" title="从 JSON 文件导入账号">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            <span>导入</span>
-          </button>
-          <input id="transferImportFile" type="file" accept="application/json,.json" hidden onchange="importAccountsFromFile(event)">
-
-          <button type="button" id="btnBonusAll" class="btn btn-secondary" onclick="runBatch('/daily-bonus', 'btnBonusAll', '国际一键点亮')" disabled>
-            <span>国际点亮</span>
-          </button>
-          <button type="button" id="btnCheckinAll" class="btn btn-secondary" onclick="runBatch('/checkin', 'btnCheckinAll', '国内一键签到')" disabled>
-            <span>国内签到</span>
-          </button>
-          <button type="button" id="btnRefreshAll" class="btn btn-primary" onclick="refreshAllAccounts()" title="刷新全部账号配额与今日状态" disabled>
-            <span>刷新配额</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="credentials-wrapper">
-        <div id="credentialsLoadingOverlay" class="credentials-loading-overlay" hidden aria-live="polite">
-          <div class="credentials-loading-card">
-            <div class="loading-emblem" aria-hidden="true">
-              <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-              </svg>
+          <div class="strip-cells">
+            <div class="strip-cell">
+              <div class="cell-label">
+                <span>凭证池状态</span>
+                <span class="cell-accent-bar" style="--cell-accent: var(--primary-color)"></span>
+              </div>
+              <div id="valTotalCreds" class="cell-value">--</div>
+              <div id="vaultPulse" class="vault-pulse" aria-hidden="true">
+                <span class="pulse-idle-line"></span>
+              </div>
+              <div id="valTotalDesc" class="cell-desc">等待加载</div>
             </div>
-            <div>
-              <div class="quota-loading-title">正在刷新全局配额</div>
-              <div class="quota-loading-desc">正在向 WorkBuddy 服务探测最新积分与今日签到状态</div>
+
+            <div class="strip-cell">
+              <div class="cell-label">
+                <span>今日签到 / 点亮</span>
+                <span class="cell-accent-bar" style="--cell-accent: var(--amber-color)"></span>
+              </div>
+              <div id="valDailyDone" class="cell-value">--</div>
+              <div class="cell-inline-actions">
+                <button type="button" id="btnCheckinAll" class="btn btn-secondary btn-xs" onclick="runBatch('/checkin', 'btnCheckinAll', '国内一键签到')" disabled>
+                  <span>国内签到</span>
+                </button>
+                <button type="button" id="btnBonusAll" class="btn btn-secondary btn-xs" onclick="runBatch('/daily-bonus', 'btnBonusAll', '国际一键点亮')" disabled>
+                  <span>国际点亮</span>
+                </button>
+              </div>
+              <div id="valDailyDesc" class="cell-desc">待检测</div>
             </div>
-            <div class="quota-loading-bar">
-              <div class="quota-loading-bar-fill"></div>
+
+            <div class="strip-cell clickable" role="button" tabindex="0" onclick="switchTab('config')" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); switchTab('config'); }" title="点击进入调度配置">
+              <div class="cell-label">
+                <span>每日自动调度 (±3h)</span>
+                <span class="cell-accent-bar" style="--cell-accent: var(--viz-success)"></span>
+              </div>
+              <div id="valNextRun" class="cell-value cell-value-sm">--</div>
+              <div id="valScheduleHint" class="cell-desc">基准 09:00 · 点击配置 →</div>
+              <div id="valLastRun" class="cell-desc">尚无执行记录</div>
             </div>
           </div>
         </div>
 
-        <div id="credentialsContainer" class="credentials-grid">
-          <div class="empty-state">加载中...</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ======================================================================
-         Tab 2: Usage & Credits Statistics
-         ====================================================================== -->
-    <section id="panelUsage" class="tab-panel" hidden>
-      <div class="summary-grid">
-        <div class="kpi-card accent-success">
-          <p class="kpi-title">剩余积分总计</p>
-          <div id="usageValCredits" class="kpi-value">--</div>
-          <div id="usageValCreditsDesc" class="kpi-desc">已用 -- / 总计 --</div>
-        </div>
-        <div class="kpi-card accent-amber">
-          <p class="kpi-title">即将过期积分</p>
-          <div id="usageValExpiring" class="kpi-value">--</div>
-          <div id="usageValExpiringDesc" class="kpi-desc">活跃凭证 --</div>
-        </div>
-        <div class="kpi-card accent-stone">
-          <p class="kpi-title">累计请求 / 成功率</p>
-          <div id="usageValRequests" class="kpi-value">--</div>
-          <div id="usageValRequestsDesc" class="kpi-desc">活跃模型 --</div>
-        </div>
-        <div class="kpi-card accent-neutral">
-          <p class="kpi-title">Token 消耗总量</p>
-          <div id="usageValTokens" class="kpi-value">--</div>
-          <div id="usageValTokensDesc" class="kpi-desc">输入 -- · 输出 --</div>
-        </div>
-      </div>
-
-      <div class="usage-toolbar">
-        <button type="button" id="btnRefreshUsage" class="btn btn-primary" onclick="loadUsageStats(true)">
+        <div id="prefixWarningBanner" class="inline-banner" hidden>
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="23 4 23 10 17 10"/>
-            <polyline points="1 20 1 14 7 14"/>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
-          <span>刷新统计</span>
-        </button>
-        <button type="button" id="btnResetUsage" class="btn btn-danger-ghost" onclick="resetUsageStats()">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-            <path d="M10 11v6M14 11v6"/>
-            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-          </svg>
-          <span>重置运行统计</span>
-        </button>
-        <span id="usageGeneratedAt" class="usage-timestamp"></span>
-      </div>
-
-      <div class="usage-section">
-        <div class="usage-section-header">
-          <h3 class="usage-section-title">
-            <span>模型用量与积分统计</span>
-            <span id="usageModelsCount" class="tab-count">0</span>
-          </h3>
+          <span>当前国内 <code>wb/</code> 与国际 <code>wb-ai/</code> 模型前缀均已关闭，同名模型将在两端账号间共同调度。</span>
         </div>
-        <div id="usageModelsWrap" class="usage-table-wrap"></div>
-      </div>
 
-      <div class="usage-section">
-        <div class="usage-section-header">
-          <h3 class="usage-section-title">
-            <span>账号积分与调用分布</span>
-            <span id="usageAccountsCount" class="tab-count">0</span>
-          </h3>
-        </div>
-        <div id="usageAccountsWrap" class="usage-table-wrap"></div>
-      </div>
+        <!-- Streamlined CPAMC Workbench Toolbar -->
+        <div class="workbench-bar">
+          <div class="workbench-left">
+            <div class="segmented" role="tablist" aria-label="按站点筛选">
+              <button type="button" class="segment active" data-site="all" onclick="selectSiteFilter('all')" role="tab" aria-selected="true">
+                <span>全部</span>
+                <span id="siteCntAll" class="segment-count">0</span>
+              </button>
+              <button type="button" class="segment" data-site="workbuddy" onclick="selectSiteFilter('workbuddy')" role="tab" aria-selected="false">
+                <span>国内 CN</span>
+                <span id="siteCntCn" class="segment-count">0</span>
+              </button>
+              <button type="button" class="segment" data-site="workbuddy-ai" onclick="selectSiteFilter('workbuddy-ai')" role="tab" aria-selected="false">
+                <span>国际 AI</span>
+                <span id="siteCntIntl" class="segment-count">0</span>
+              </button>
+            </div>
 
-      <div class="usage-section">
-        <div class="usage-section-header">
-          <h3 class="usage-section-title">
-            <span>最近请求记录</span>
-            <span id="usageEventsCount" class="tab-count">0</span>
-          </h3>
-        </div>
-        <div id="usageEventsWrap" class="usage-table-wrap usage-events-scroll"></div>
-      </div>
-    </section>
-
-    <!-- ======================================================================
-         Tab 3: Model & Scheduler Configuration (CPAMC SectionCard + FloatingSaveBar)
-         ====================================================================== -->
-    <section id="panelConfig" class="tab-panel" hidden>
-      <div class="config-stack">
-        <div class="section-card">
-          <div class="section-card-header">
-            <span class="section-index-badge">01</span>
-            <div class="section-card-heading">
-              <h3 class="section-card-title">模型前缀路由</h3>
-              <p class="section-card-desc">分别控制国内与国际站点的模型列表前缀；关闭前缀后仍向后兼容带前缀的客户端请求。</p>
+            <div class="search-box">
+              <svg class="icon icon-sm search-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="text" id="accountSearchInput" placeholder="搜索账号、套餐或 UID..." oninput="onAccountSearchInput()">
+              <button type="button" id="btnClearAccountSearch" class="search-clear" hidden onclick="clearAccountSearch()" aria-label="清除搜索">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
             </div>
           </div>
 
-          <div class="field-list">
-            <div class="field-row">
-              <div class="field-copy">
-                <label class="field-title" for="cfgCnPrefix">国内模型前缀 (wb/)</label>
-                <span class="field-hint">关闭后国内列表返回无前缀模型名，请求仍兼容 wb/ 路由</span>
-              </div>
-              <div class="field-control">
-                <label class="toggle-switch">
-                  <input type="checkbox" id="cfgCnPrefix" checked onchange="onConfigFormInput()">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
+          <div class="workbench-right">
+            <div class="segmented" role="tablist" aria-label="视图模式">
+              <button type="button" class="segment active" data-view="cards" onclick="selectViewMode('cards')" role="tab" aria-selected="true" title="卡片网格视图">
+                <span>卡片</span>
+              </button>
+              <button type="button" class="segment" data-view="list" onclick="selectViewMode('list')" role="tab" aria-selected="false" title="紧凑列表视图">
+                <span>列表</span>
+              </button>
             </div>
 
-            <div class="field-row">
-              <div class="field-copy">
-                <label class="field-title" for="cfgIntlPrefix">国际模型前缀 (wb-ai/)</label>
-                <span class="field-hint">关闭后国际列表返回无前缀模型名，请求仍兼容 wb-ai/ 路由</span>
+            <button type="button" id="btnTransferSelectAll" class="btn btn-secondary" onclick="toggleDashboardTransferSelectAll()" disabled>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="9 11 12 14 22 4"/>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+              <span>全选</span>
+            </button>
+            <button type="button" id="btnTransferExport" class="btn btn-secondary" onclick="exportSelectedAccounts()" title="导出选中账号为 JSON" disabled>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span>导出</span>
+            </button>
+            <button type="button" id="btnTransferImport" class="btn btn-secondary" onclick="el('transferImportFile').click()" title="从 JSON 文件导入账号">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span>导入</span>
+            </button>
+            <input id="transferImportFile" type="file" accept="application/json,.json" hidden onchange="importAccountsFromFile(event)">
+
+            <button type="button" id="btnRefreshAll" class="btn btn-primary" onclick="refreshAllAccounts()" title="刷新全部账号配额与今日状态" disabled>
+              <span>刷新配额</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="credentials-wrapper">
+          <div id="credentialsLoadingOverlay" class="credentials-loading-overlay" hidden aria-live="polite">
+            <div class="credentials-loading-card">
+              <div class="loading-emblem" aria-hidden="true">
+                <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
               </div>
-              <div class="field-control">
-                <label class="toggle-switch">
-                  <input type="checkbox" id="cfgIntlPrefix" checked onchange="onConfigFormInput()">
-                  <span class="toggle-slider"></span>
-                </label>
+              <div>
+                <div class="quota-loading-title">正在刷新全局配额</div>
+                <div class="quota-loading-desc">正在向 WorkBuddy 服务探测最新积分与今日签到状态</div>
+              </div>
+              <div class="quota-loading-bar">
+                <div class="quota-loading-bar-fill"></div>
               </div>
             </div>
           </div>
 
-          <div id="configPrefixWarning" class="inline-banner" hidden>
+          <div id="credentialsStage" class="slide-stage">
+            <div id="credentialsContainer" class="credentials-grid">
+              <div class="empty-state">加载中...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           Tab 2: Usage & Credits Statistics
+           ==================================================================== -->
+      <section id="panelUsage" class="tab-panel" hidden>
+        <div class="overview-strip">
+          <div class="strip-hero">
+            <div class="strip-eyebrow">
+              <span>CREDITS POOL · 剩余积分总计</span>
+              <span id="usageCreditsPct">--%</span>
+            </div>
+            <div class="strip-hero-value-row">
+              <div id="usageValCredits" class="strip-hero-figure">--</div>
+              <span class="strip-hero-unit">积分</span>
+            </div>
+            <div class="ratio-bar" aria-hidden="true">
+              <span id="usageRatioRemain" class="ratio-seg-remain" style="width:0%"></span>
+              <span id="usageRatioUsed" class="ratio-seg-used" style="width:0%"></span>
+            </div>
+            <div id="usageValCreditsDesc" class="strip-hero-meta">已用 -- / 总计 --</div>
+          </div>
+
+          <div class="strip-cells">
+            <div class="strip-cell">
+              <div class="cell-label">
+                <span>即将过期积分</span>
+                <span class="cell-accent-bar" style="--cell-accent: var(--amber-color)"></span>
+              </div>
+              <div id="usageValExpiring" class="cell-value">--</div>
+              <div id="usageValExpiringDesc" class="cell-desc">活跃凭证 --</div>
+            </div>
+
+            <div class="strip-cell">
+              <div class="cell-label">
+                <span>累计请求 / 成功率</span>
+                <span class="cell-accent-bar" style="--cell-accent: var(--viz-success)"></span>
+              </div>
+              <div id="usageValRequests" class="cell-value">--</div>
+              <div class="ratio-bar" aria-hidden="true">
+                <span id="usageRatioOk" class="ratio-seg-remain" style="width:0%"></span>
+                <span id="usageRatioFail" class="ratio-seg-fail" style="width:0%"></span>
+              </div>
+              <div id="usageValRequestsDesc" class="cell-desc">活跃模型 --</div>
+            </div>
+
+            <div class="strip-cell">
+              <div class="cell-label">
+                <span>Token 消耗总量</span>
+                <span class="cell-accent-bar" style="--cell-accent: var(--primary-color)"></span>
+              </div>
+              <div id="usageValTokens" class="cell-value">--</div>
+              <div id="usageValTokensDesc" class="cell-desc">输入 -- · 输出 --</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="usage-toolbar">
+          <button type="button" id="btnRefreshUsage" class="btn btn-primary" onclick="loadUsageStats(true)">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
+              <polyline points="23 4 23 10 17 10"/>
+              <polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
             </svg>
-            <span>两侧前缀同时关闭时，同名模型将在国内与国际账号之间自动混用调度。</span>
-          </div>
+            <span>刷新统计</span>
+          </button>
+          <button type="button" id="btnResetUsage" class="btn btn-danger-ghost" onclick="resetUsageStats()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6M14 11v6"/>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+            <span>重置运行统计</span>
+          </button>
+          <span id="usageGeneratedAt" class="usage-timestamp"></span>
         </div>
 
-        <div class="section-card">
-          <div class="section-card-header">
-            <span class="section-index-badge">02</span>
-            <div class="section-card-heading">
-              <h3 class="section-card-title">每日自动签到与点亮调度</h3>
-              <p class="section-card-desc">在每日基准时间前后 ±3 小时内随机触发，避免固定整点并发请求。</p>
+        <div class="usage-section">
+          <div class="usage-section-header">
+            <h3 class="usage-section-title">
+              <span class="section-eyebrow-mark" aria-hidden="true">▍</span>
+              <span>模型用量与积分统计</span>
+              <span id="usageModelsCount" class="tab-count">0</span>
+            </h3>
+          </div>
+          <div id="usageModelsWrap" class="usage-table-wrap"></div>
+        </div>
+
+        <div class="usage-section">
+          <div class="usage-section-header">
+            <h3 class="usage-section-title">
+              <span class="section-eyebrow-mark" aria-hidden="true">▍</span>
+              <span>账号积分与调用分布</span>
+              <span id="usageAccountsCount" class="tab-count">0</span>
+            </h3>
+          </div>
+          <div id="usageAccountsWrap" class="usage-table-wrap"></div>
+        </div>
+
+        <div class="usage-section">
+          <div class="usage-section-header">
+            <h3 class="usage-section-title">
+              <span class="section-eyebrow-mark" aria-hidden="true">▍</span>
+              <span>最近请求记录</span>
+              <span id="usageEventsCount" class="tab-count">0</span>
+            </h3>
+          </div>
+          <div id="usageEventsWrap" class="usage-table-wrap usage-events-scroll"></div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           Tab 3: Model & Scheduler Configuration
+           ==================================================================== -->
+      <section id="panelConfig" class="tab-panel" hidden>
+        <div class="config-stack">
+          <div class="section-card">
+            <div class="section-card-header">
+              <span class="section-index-badge">01</span>
+              <div class="section-card-heading">
+                <h3 class="section-card-title">模型前缀路由</h3>
+                <p class="section-card-desc">分别控制国内与国际站点的模型列表前缀；关闭前缀后仍向后兼容带前缀的客户端请求。</p>
+              </div>
+            </div>
+
+            <div class="field-list">
+              <div class="field-row">
+                <div class="field-copy">
+                  <label class="field-title" for="cfgCnPrefix">国内模型前缀 (wb/)</label>
+                  <span class="field-hint">关闭后国内列表返回无前缀模型名，请求仍兼容 wb/ 路由</span>
+                </div>
+                <div class="field-control">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="cfgCnPrefix" checked onchange="onConfigFormInput()">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="field-row">
+                <div class="field-copy">
+                  <label class="field-title" for="cfgIntlPrefix">国际模型前缀 (wb-ai/)</label>
+                  <span class="field-hint">关闭后国际列表返回无前缀模型名，请求仍兼容 wb-ai/ 路由</span>
+                </div>
+                <div class="field-control">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="cfgIntlPrefix" checked onchange="onConfigFormInput()">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div id="configPrefixWarning" class="inline-banner" hidden>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span>两侧前缀同时关闭时，同名模型将在国内与国际账号之间自动混用调度。</span>
             </div>
           </div>
 
-          <div class="field-list">
-            <div class="field-row">
-              <div class="field-copy">
-                <label class="field-title" for="cfgAutoEnabled">开启每日自动执行</label>
-                <span class="field-hint">国内自动签到 +100 积分，国际自动上报热力图点亮 (+30/50)</span>
-              </div>
-              <div class="field-control">
-                <label class="toggle-switch">
-                  <input type="checkbox" id="cfgAutoEnabled" checked onchange="onConfigFormInput()">
-                  <span class="toggle-slider"></span>
-                </label>
+          <div class="section-card">
+            <div class="section-card-header">
+              <span class="section-index-badge">02</span>
+              <div class="section-card-heading">
+                <h3 class="section-card-title">每日自动签到与点亮调度</h3>
+                <p class="section-card-desc">在每日基准时间前后 ±3 小时内随机触发，避免固定整点并发请求。</p>
               </div>
             </div>
 
-            <div class="field-row">
-              <div class="field-copy">
-                <label class="field-title" for="cfgAnchorTime">每日基准时间 (24h ±3h 浮动)</label>
-                <span class="field-hint field-hint-mono" id="windowPreview">浮动触发窗口：06:00 ~ 12:00</span>
+            <div class="field-list">
+              <div class="field-row">
+                <div class="field-copy">
+                  <label class="field-title" for="cfgAutoEnabled">开启每日自动执行</label>
+                  <span class="field-hint">国内自动签到 +100 积分，国际自动上报热力图点亮 (+30/50)</span>
+                </div>
+                <div class="field-control">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="cfgAutoEnabled" checked onchange="onConfigFormInput()">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
               </div>
-              <div class="field-control">
-                <input type="text" id="cfgAnchorTime" class="cp-input config-time-input" value="09:00" maxlength="5" placeholder="09:00" oninput="onConfigFormInput()">
-              </div>
-            </div>
 
-            <div class="field-row full-width">
-              <div class="field-copy">
-                <span class="field-title">调度器状态</span>
-                <span class="field-hint field-hint-mono" id="cfgSchedulerDetail">下次运行：-- · 上次运行：--</span>
+              <div class="field-row">
+                <div class="field-copy">
+                  <label class="field-title" for="cfgAnchorTime">每日基准时间 (24h ±3h 浮动)</label>
+                  <span class="field-hint field-hint-mono" id="windowPreview">浮动触发窗口：06:00 ~ 12:00</span>
+                </div>
+                <div class="field-control">
+                  <input type="text" id="cfgAnchorTime" class="cp-input config-time-input" value="09:00" maxlength="5" placeholder="09:00" oninput="onConfigFormInput()">
+                </div>
+              </div>
+
+              <div class="field-row full-width">
+                <div class="field-copy">
+                  <span class="field-title">24 小时触发窗口与调度状态</span>
+                  <div class="schedule-ruler-wrap" aria-hidden="true">
+                    <div id="scheduleRuler" class="schedule-ruler">
+                      <span id="rulerBandPrimary" class="schedule-ruler-band" style="left:25%; width:25%;"></span>
+                      <span id="rulerBandWrap" class="schedule-ruler-band" hidden></span>
+                      <span id="rulerAnchor" class="schedule-ruler-anchor" style="left:37.5%;"></span>
+                    </div>
+                    <div class="schedule-ruler-ticks">
+                      <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+                    </div>
+                  </div>
+                  <span class="field-hint field-hint-mono" id="cfgSchedulerDetail">下次运行：-- · 上次运行：--</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
     </div>
 
-    <!-- Floating Batch Action Bar (CPAMC BatchActionBar, outside transformed page stage) -->
+    <!-- Floating Batch Action Bar (outside transformed page stage) -->
     <div id="batchSelectionBar" class="floating-bar-wrap" hidden>
       <div class="floating-bar">
         <span id="batchSelectionCount" class="floating-bar-status is-strong">已选择 0 个账号</span>
@@ -2812,7 +3211,7 @@
       </div>
     </div>
 
-    <!-- Floating Config Save Bar (CPAMC FloatingSaveBar, outside transformed page stage) -->
+    <!-- Floating Config Save Bar (outside transformed page stage) -->
     <div id="configSaveBar" class="floating-bar-wrap" hidden>
       <div class="floating-bar">
         <span id="configSaveStatus" class="floating-bar-status">当前配置已同步</span>
@@ -2896,15 +3295,15 @@
         <div class="models-toolbar">
           <div class="models-toolbar-left">
             <div class="segmented" role="tablist" aria-label="模型计费筛选">
-              <button type="button" class="segment active" data-model-tier="all" onclick="selectModelTier('all')">
+              <button type="button" class="segment active" data-model-tier="all" onclick="selectModelTier('all')" role="tab" aria-selected="true">
                 <span>全部</span>
                 <span id="cntModelsAll" class="segment-count">0</span>
               </button>
-              <button type="button" class="segment" data-model-tier="free" onclick="selectModelTier('free')">
+              <button type="button" class="segment" data-model-tier="free" onclick="selectModelTier('free')" role="tab" aria-selected="false">
                 <span>免费</span>
                 <span id="cntModelsFree" class="segment-count">0</span>
               </button>
-              <button type="button" class="segment" data-model-tier="paid" onclick="selectModelTier('paid')">
+              <button type="button" class="segment" data-model-tier="paid" onclick="selectModelTier('paid')" role="tab" aria-selected="false">
                 <span>消耗积分</span>
                 <span id="cntModelsPaid" class="segment-count">0</span>
               </button>
@@ -2918,8 +3317,10 @@
             <input type="text" id="modelsSearchInput" placeholder="搜索模型 ID 或名称..." oninput="renderModelsList()">
           </div>
         </div>
-        <div id="modelsListBody" class="models-list">
-          <div class="models-loading-state">加载中...</div>
+        <div class="models-list-shell">
+          <div id="modelsListBody" class="models-list">
+            <div class="models-loading-state">加载中...</div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -2981,6 +3382,7 @@
     const SESSION_KEY_STORAGE = "cpa_workbuddy_mgmt_key_session";
     const MASK_STORAGE_KEY = "cpa_workbuddy_account_masking";
     const THEME_STORAGE_KEY = "cpa_workbuddy_theme";
+    const VIEW_STORAGE_KEY = "cpa_workbuddy_view_mode";
 
     const CPA_VAR_NAMES = [
       "--bg-secondary", "--bg-primary", "--bg-tertiary", "--bg-hover", "--bg-quinary",
@@ -3001,13 +3403,13 @@
 
     const ICONS = {
       refresh: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
-      spark: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8L20 10.5l-6.1 1.7L12 18l-1.9-5.8L4 10.5l6.1-1.7z"/></svg>',
-      bolt: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
-      eyeOff: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
-      eye: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
-      sun: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>',
-      whiteSun: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>',
-      moon: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+      spark: '<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8L20 10.5l-6.1 1.7L12 18l-1.9-5.8L4 10.5l6.1-1.7z"/></svg>',
+      bolt: '<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+      eyeOff: '<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
+      eye: '<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+      sun: '<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>',
+      whiteSun: '<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>',
+      moon: '<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
       check: '<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>',
       alert: '<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
       info: '<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
@@ -3015,7 +3417,19 @@
       inbox: '<svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>'
     };
 
+    const PT_CLASSES = ["pt-enter-forward", "pt-enter-backward", "pt-enter-fade"];
+    const TAB_ORDER = { overview: 0, usage: 1, config: 2 };
+    const TAB_PANEL_IDS = { overview: "panelOverview", usage: "panelUsage", config: "panelConfig" };
+    const SITE_ORDER = { all: 0, workbuddy: 1, "workbuddy-ai": 2 };
+    const VIEW_ORDER = { cards: 0, list: 1 };
+    const MODEL_TIER_ORDER = { all: 0, free: 1, paid: 2 };
+
+    let currentTabId = "overview";
     let siteFilter = "all";
+    let viewMode = "cards";
+    try {
+      if (localStorage.getItem(VIEW_STORAGE_KEY) === "list") viewMode = "list";
+    } catch (_) {}
     let accountSearchQuery = "";
     let modelTierFilter = "all";
     let dashboardData = null;
@@ -3031,8 +3445,33 @@
     let activeBatchOp = null;
     let activeTransferOp = null;
     let lastToolbarCounts = { cnCount: 0, cnPending: 0, intlCount: 0, intlPending: 0 };
+    const slideTimers = new Map();
 
     function el(id) { return document.getElementById(id); }
+
+    // Unified crisp directional horizontal transition helper (zero ghosting)
+    function playDirectionalSlide(targetEl, forward, stageEl) {
+      if (!targetEl) return;
+      const key = targetEl.id || "default";
+      if (slideTimers.has(key)) {
+        clearTimeout(slideTimers.get(key));
+        slideTimers.delete(key);
+      }
+      targetEl.classList.remove(...PT_CLASSES);
+      if (stageEl) stageEl.classList.add("is-animating");
+      void targetEl.offsetWidth;
+
+      const reduced = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+      const cls = reduced ? "pt-enter-fade" : (forward ? "pt-enter-forward" : "pt-enter-backward");
+      targetEl.classList.add(cls);
+      const ms = reduced ? 140 : 210;
+      const timer = setTimeout(() => {
+        targetEl.classList.remove(...PT_CLASSES);
+        if (stageEl) stageEl.classList.remove("is-animating");
+        slideTimers.delete(key);
+      }, ms);
+      slideTimers.set(key, timer);
+    }
 
     function setButtonContent(btn, isLoading, loadingText, idleText, idleIconSvg, badgeCount) {
       if (!btn) return;
@@ -3066,6 +3505,16 @@
       return accountActionsLocked() || busyKeys.size > 0;
     }
 
+    function updateFloatingBarsVisibility() {
+      const configBar = el("configSaveBar");
+      if (configBar) configBar.hidden = currentTabId !== "config";
+      const batchBar = el("batchSelectionBar");
+      if (batchBar) {
+        const selected = document.querySelectorAll(".transfer-select:checked").length;
+        batchBar.hidden = currentTabId !== "overview" || selected === 0;
+      }
+    }
+
     function updateTransferControls() {
       const hasData = Boolean(dashboardData && Array.isArray(dashboardData.accounts));
       const busy = toolbarBusy();
@@ -3074,7 +3523,7 @@
       let selected = 0;
       checkboxes.forEach(input => {
         if (input.checked) selected++;
-        const card = input.closest(".cred-card");
+        const card = input.closest(".cred-card, .cred-list-row");
         if (card) card.classList.toggle("is-selected", input.checked);
       });
 
@@ -3195,7 +3644,7 @@
       root.appendChild(toast);
       setTimeout(() => {
         toast.classList.add("toast-exit");
-        setTimeout(() => toast.remove(), 170);
+        setTimeout(() => toast.remove(), 160);
       }, 2800);
     }
 
@@ -3228,7 +3677,7 @@
       return ok;
     }
 
-    // ---- Theme extraction & CPA parent sync (1:1 CPAMC variable parity) ----
+    // ---- Theme extraction & CPA parent sync ----
     function clearInjectedCPAVars() {
       const root = document.documentElement;
       for (const name of CPA_VAR_NAMES) root.style.removeProperty(name);
@@ -3289,12 +3738,8 @@
       const lbl = el("themeLabel");
       const iconWrap = el("themeIconWrap");
       const cur = document.documentElement.getAttribute("data-theme") || "light";
-      if (lbl) {
-        lbl.textContent = cur === "dark" ? "暗色" : cur === "white" ? "纯白" : "暖白";
-      }
-      if (iconWrap) {
-        iconWrap.innerHTML = cur === "dark" ? ICONS.moon : cur === "white" ? ICONS.whiteSun : ICONS.sun;
-      }
+      if (lbl) lbl.textContent = cur === "dark" ? "暗色" : cur === "white" ? "纯白" : "暖白";
+      if (iconWrap) iconWrap.innerHTML = cur === "dark" ? ICONS.moon : cur === "white" ? ICONS.whiteSun : ICONS.sun;
     }
 
     function toggleTheme() {
@@ -3526,7 +3971,7 @@
       if (!btn) return;
       btn.setAttribute("aria-pressed", accountMaskingEnabled ? "true" : "false");
       btn.innerHTML = (accountMaskingEnabled ? ICONS.eyeOff : ICONS.eye) +
-        "<span>" + (accountMaskingEnabled ? "脱敏显示" : "明文显示") + "</span>";
+        "<span>" + (accountMaskingEnabled ? "脱敏" : "明文") + "</span>";
     }
 
     function toggleAccountMasking() {
@@ -3566,34 +4011,7 @@
       return data || {};
     }
 
-    // ---- Tabs & Crisp Horizontal Page Transitions (no overlapping ghosting) ----
-    const TAB_ORDER = { overview: 0, usage: 1, config: 2 };
-    const TAB_PANEL_IDS = { overview: "panelOverview", usage: "panelUsage", config: "panelConfig" };
-    const PT_CLASSES = ["pt-enter-forward", "pt-enter-backward", "pt-enter-fade"];
-    let currentTabId = "overview";
-    let tabEnterTimer = null;
-    let animateCardsNextRender = true;
-
-    function updateFloatingBarsVisibility() {
-      const configBar = el("configSaveBar");
-      if (configBar) configBar.hidden = currentTabId !== "config";
-      const batchBar = el("batchSelectionBar");
-      if (batchBar) {
-        const selected = document.querySelectorAll(".transfer-select:checked").length;
-        batchBar.hidden = currentTabId !== "overview" || selected === 0;
-      }
-    }
-
-    function clearTabTransitionState() {
-      if (tabEnterTimer) { clearTimeout(tabEnterTimer); tabEnterTimer = null; }
-      const stage = el("pageStage");
-      if (stage) stage.classList.remove("is-animating");
-      Object.values(TAB_PANEL_IDS).forEach(id => {
-        const p = el(id);
-        if (p) p.classList.remove(...PT_CLASSES);
-      });
-    }
-
+    // ---- Tabs, Site Filter & View Mode (All share unified horizontal slide) ----
     function switchTab(tabId) {
       if (!TAB_PANEL_IDS[tabId]) return;
       document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tabId));
@@ -3605,30 +4023,16 @@
 
       const prevTabId = currentTabId;
       currentTabId = tabId;
-      const nextPanel = el(TAB_PANEL_IDS[tabId]);
-      const stage = el("pageStage");
-
-      clearTabTransitionState();
       Object.entries(TAB_PANEL_IDS).forEach(([k, id]) => {
         const p = el(id);
-        if (p) p.hidden = k !== tabId;
+        if (p) {
+          p.classList.remove(...PT_CLASSES);
+          p.hidden = k !== tabId;
+        }
       });
 
-      const reduced = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
       const forward = (TAB_ORDER[tabId] || 0) >= (TAB_ORDER[prevTabId] || 0);
-
-      if (nextPanel) {
-        if (stage) stage.classList.add("is-animating");
-        void nextPanel.offsetWidth;
-        const enterCls = reduced ? "pt-enter-fade" : (forward ? "pt-enter-forward" : "pt-enter-backward");
-        nextPanel.classList.add(enterCls);
-        const enterMs = reduced ? 140 : 210;
-        tabEnterTimer = setTimeout(() => {
-          nextPanel.classList.remove(...PT_CLASSES);
-          if (stage) stage.classList.remove("is-animating");
-          tabEnterTimer = null;
-        }, enterMs);
-      }
+      playDirectionalSlide(el(TAB_PANEL_IDS[tabId]), forward, el("pageStage"));
 
       updateFloatingBarsVisibility();
       if (tabId === "usage") {
@@ -3638,14 +4042,34 @@
 
     function selectSiteFilter(value) {
       if (siteFilter === value) return;
+      const forward = (SITE_ORDER[value] || 0) >= (SITE_ORDER[siteFilter] || 0);
       siteFilter = value;
-      animateCardsNextRender = true;
       document.querySelectorAll("[data-site]").forEach(btn => {
         const active = btn.getAttribute("data-site") === value;
         btn.classList.toggle("active", active);
         btn.setAttribute("aria-selected", active ? "true" : "false");
       });
       renderDashboard();
+      playDirectionalSlide(el("credentialsContainer"), forward, el("credentialsStage"));
+    }
+
+    function applyViewModeButtons() {
+      document.querySelectorAll("[data-view]").forEach(btn => {
+        const active = btn.getAttribute("data-view") === viewMode;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-selected", active ? "true" : "false");
+      });
+    }
+
+    function selectViewMode(mode) {
+      if (mode !== "cards" && mode !== "list") return;
+      if (viewMode === mode) return;
+      const forward = (VIEW_ORDER[mode] || 0) >= (VIEW_ORDER[viewMode] || 0);
+      viewMode = mode;
+      try { localStorage.setItem(VIEW_STORAGE_KEY, mode); } catch (_) {}
+      applyViewModeButtons();
+      renderDashboard();
+      playDirectionalSlide(el("credentialsContainer"), forward, el("credentialsStage"));
     }
 
     function onAccountSearchInput() {
@@ -3734,17 +4158,32 @@
     function renderUsageStats(data) {
       if (!data) return;
       const ov = data.overview || {};
-      el("usageValCredits").textContent = formatCredits(ov.remaining_credits || 0);
+      const rem = Number(ov.remaining_credits || 0);
+      const tot = Number(ov.total_credits || 0);
+      const used = Number(ov.used_credits || 0);
+      const remPct = tot > 0 ? Math.max(0, Math.min(100, (rem / tot) * 100)) : 0;
+      const usedPct = tot > 0 ? Math.max(0, Math.min(100 - remPct, (used / tot) * 100)) : 0;
+
+      el("usageValCredits").textContent = formatCredits(rem);
+      el("usageCreditsPct").textContent = tot > 0 ? `${remPct.toFixed(0)}% 剩余` : "--%";
+      el("usageRatioRemain").style.width = remPct.toFixed(1) + "%";
+      el("usageRatioUsed").style.width = usedPct.toFixed(1) + "%";
       el("usageValCreditsDesc").textContent =
-        "已用 " + formatCredits(ov.used_credits || 0) + " / 总计 " + formatCredits(ov.total_credits || 0) +
+        "已用 " + formatCredits(used) + " / 总计 " + formatCredits(tot) +
         " (" + Number(ov.usage_percent || 0).toFixed(1) + "%)";
+
       el("usageValExpiring").textContent = formatCredits(ov.expiring_credits || 0);
       el("usageValExpiringDesc").textContent = "活跃凭证 " + (ov.active_accounts || 0) + " / " + (ov.total_accounts || 0);
+
       const totalReq = Number(ov.total_requests || 0);
       const okReq = Number(ov.success_requests || 0);
-      const rate = totalReq > 0 ? ((okReq / totalReq) * 100).toFixed(1) + "%" : "--";
-      el("usageValRequests").textContent = totalReq + " (" + rate + ")";
+      const okPct = totalReq > 0 ? (okReq / totalReq) * 100 : 0;
+      const failPct = totalReq > 0 ? Math.max(0, 100 - okPct) : 0;
+      el("usageRatioOk").style.width = okPct.toFixed(1) + "%";
+      el("usageRatioFail").style.width = failPct.toFixed(1) + "%";
+      el("usageValRequests").textContent = totalReq + (totalReq > 0 ? ` (${okPct.toFixed(1)}%)` : "");
       el("usageValRequestsDesc").textContent = "活跃模型 " + (ov.active_models || 0) + " 个";
+
       el("usageValTokens").textContent = formatTokens(ov.total_tokens || 0);
       el("usageValTokensDesc").textContent =
         "输入 " + formatTokens(ov.total_input_tokens || 0) + " · 输出 " + formatTokens(ov.total_output_tokens || 0);
@@ -3759,6 +4198,7 @@
       if (models.length === 0) {
         modWrap.innerHTML = '<div class="usage-empty">暂无模型调用记录</div>';
       } else {
+        const maxTok = Math.max(1, ...models.map(m => Number(m.total_tokens || 0)));
         const tbl = document.createElement("table");
         tbl.className = "usage-table";
         tbl.innerHTML =
@@ -3785,19 +4225,30 @@
           tdRate.appendChild(makeRateBadge(m.is_free, m.credit_factor));
           tr.appendChild(tdRate);
 
-          const numValues = [
+          [
             String(m.requests || 0),
             (m.success_count || 0) + " / " + (m.error_count || 0),
             formatTokens(m.input_tokens || 0),
-            formatTokens(m.output_tokens || 0),
-            formatTokens(m.total_tokens || 0)
-          ];
-          numValues.forEach(txt => {
+            formatTokens(m.output_tokens || 0)
+          ].forEach(txt => {
             const td = document.createElement("td");
             td.className = "num";
             td.textContent = txt;
             tr.appendChild(td);
           });
+
+          const tdTot = document.createElement("td");
+          tdTot.className = "num";
+          const shareBar = document.createElement("span");
+          shareBar.className = "inline-share-bar";
+          const shareFill = document.createElement("span");
+          shareFill.className = "inline-share-fill";
+          shareFill.style.width = Math.max(4, Math.round((Number(m.total_tokens || 0) / maxTok) * 100)) + "%";
+          shareBar.appendChild(shareFill);
+          const totTxt = document.createElement("span");
+          totTxt.textContent = formatTokens(m.total_tokens || 0);
+          tdTot.append(shareBar, totTxt);
+          tr.appendChild(tdTot);
 
           const tdLast = document.createElement("td");
           tdLast.style.fontFamily = "var(--font-mono)";
@@ -4001,14 +4452,63 @@
       addPart(`国内 ${cnCount} / 国际 ${intlCount}`, "meta-muted");
       if (scheduler) {
         addPart(
-          scheduler.enabled ? `自动调度已开启` : `自动调度已暂停`,
+          scheduler.enabled ? "自动调度运行中" : "自动调度已暂停",
           scheduler.enabled ? "meta-ok" : "meta-warn"
         );
       }
     }
 
-    // ---- Config form state ----
+    function renderVaultPulse(accounts) {
+      const host = el("vaultPulse");
+      if (!host) return;
+      host.textContent = "";
+      if (!accounts || accounts.length === 0) {
+        const line = document.createElement("span");
+        line.className = "pulse-idle-line";
+        host.appendChild(line);
+        return;
+      }
+      accounts.slice(0, 32).forEach(acc => {
+        const bar = document.createElement("span");
+        let cls = "pulse-live";
+        if (acc.disabled) cls = "pulse-disabled";
+        else if (acc.unavailable || (acc.error && !acc.quota)) cls = "pulse-problem";
+        else if (acc.token_expired) cls = "pulse-warning";
+        bar.className = "pulse-bar " + cls;
+        host.appendChild(bar);
+      });
+    }
+
+    // ---- Config form state & 24h Window Ruler ----
     let savedConfigSnapshot = null;
+
+    function updateScheduleRuler(h, min) {
+      const band1 = el("rulerBandPrimary");
+      const band2 = el("rulerBandWrap");
+      const anchor = el("rulerAnchor");
+      if (!band1 || !band2 || !anchor) return;
+      const center = h + min / 60;
+      const start = center - 3;
+      const end = center + 3;
+      anchor.style.left = ((center / 24) * 100).toFixed(2) + "%";
+      if (start >= 0 && end <= 24) {
+        band1.style.left = ((start / 24) * 100).toFixed(2) + "%";
+        band1.style.width = ((6 / 24) * 100).toFixed(2) + "%";
+        band2.hidden = true;
+      } else if (start < 0) {
+        band1.style.left = "0%";
+        band1.style.width = ((end / 24) * 100).toFixed(2) + "%";
+        band2.hidden = false;
+        band2.style.left = (((24 + start) / 24) * 100).toFixed(2) + "%";
+        band2.style.width = (((-start) / 24) * 100).toFixed(2) + "%";
+      } else {
+        band1.style.left = ((start / 24) * 100).toFixed(2) + "%";
+        band1.style.width = (((24 - start) / 24) * 100).toFixed(2) + "%";
+        band2.hidden = false;
+        band2.style.left = "0%";
+        band2.style.width = (((end - 24) / 24) * 100).toFixed(2) + "%";
+      }
+    }
 
     function updateWindowPreview(hhmm) {
       const preview = el("windowPreview");
@@ -4030,6 +4530,7 @@
       const startH = (h + 24 - 3) % 24;
       const endH = (h + 3) % 24;
       preview.textContent = `浮动触发窗口：${pad(startH)}:${pad(min)} ~ ${pad(endH)}:${pad(min)}`;
+      updateScheduleRuler(h, min);
       return true;
     }
 
@@ -4045,6 +4546,8 @@
     function onConfigFormInput() {
       const cur = readConfigFormState();
       el("configPrefixWarning").hidden = cur.cn_model_prefix || cur.intl_model_prefix;
+      const ruler = el("scheduleRuler");
+      if (ruler) ruler.classList.toggle("is-paused", !cur.auto_checkin_enabled);
       const validTime = updateWindowPreview(cur.auto_checkin_time);
       const dirty = !savedConfigSnapshot ||
         cur.cn_model_prefix !== savedConfigSnapshot.cn_model_prefix ||
@@ -4093,10 +4596,16 @@
         const nextText = scheduler.enabled ? (scheduler.next_run_at ? formatTime(scheduler.next_run_at) : "计算中") : "已关闭";
         const lastText = scheduler.last_run_at ? `${formatTime(scheduler.last_run_at)} · ${scheduler.last_run_summary || ""}` : "尚无执行记录";
         el("valNextRun").textContent = nextText;
+        const hintEl = el("valScheduleHint");
+        if (hintEl) {
+          hintEl.textContent = scheduler.enabled
+            ? `基准 ${savedConfigSnapshot.auto_checkin_time} · 点击配置 →`
+            : "已暂停自动执行 · 点击开启 →";
+        }
         el("valLastRun").textContent = lastText;
         el("cfgSchedulerDetail").textContent = `下次运行：${nextText} · 上次运行：${lastText}`;
         badge.className = "schedule-pill " + (scheduler.enabled ? "active" : "paused");
-        badgeTxt.textContent = scheduler.enabled ? `自动调度 ${savedConfigSnapshot.auto_checkin_time}` : "自动调度已暂停";
+        badgeTxt.textContent = scheduler.enabled ? `自动调度 ${savedConfigSnapshot.auto_checkin_time}` : "调度已暂停";
       }
     }
 
@@ -4138,6 +4647,295 @@
         if (err.status !== 401) showToast("保存失败：" + err.message, "error");
         onConfigFormInput();
       }
+    }
+
+    // ---- Card / List Row Builders ----
+    function buildAccountActionButtons(acc, completedToday) {
+      const actions = document.createElement("div");
+      actions.className = "cred-actions";
+
+      const mBtn = document.createElement("button");
+      mBtn.type = "button";
+      mBtn.className = "btn btn-secondary btn-card-action";
+      mBtn.textContent = "模型";
+      mBtn.title = "查看该账号的模型列表与消耗倍率";
+      mBtn.onclick = (e) => {
+        e.stopPropagation();
+        openModelsModal(acc);
+      };
+      actions.appendChild(mBtn);
+
+      const qBtn = document.createElement("button");
+      qBtn.type = "button";
+      const qBusy = busyKeys.has("q:" + acc.auth_index);
+      qBtn.className = "btn btn-secondary btn-card-action" + (qBusy ? "" : " account-action-ready");
+      setButtonContent(qBtn, qBusy, "刷新中", "刷新");
+      qBtn.disabled = qBusy || accountActionsLocked();
+      qBtn.onclick = (e) => {
+        e.stopPropagation();
+        refreshSingleQuota(acc.auth_index);
+      };
+      actions.appendChild(qBtn);
+
+      const dBtn = document.createElement("button");
+      dBtn.type = "button";
+      dBtn.className = "btn " + (completedToday ? "btn-secondary" : "btn-primary") + " btn-card-action";
+      const dBusy = busyKeys.has("d:" + acc.auth_index);
+      if (dBusy) {
+        setButtonContent(dBtn, true, "...", "...");
+      } else if (completedToday) {
+        dBtn.textContent = acc.site === "workbuddy" ? "已签到" : "已点亮";
+      } else {
+        dBtn.textContent = acc.site === "workbuddy" ? "签到" : "点亮";
+      }
+      const dailyUnavailable = acc.disabled || completedToday || dBusy;
+      if (!dailyUnavailable) dBtn.className += " account-action-ready";
+      dBtn.disabled = dailyUnavailable || accountActionsLocked();
+      if (completedToday) dBtn.title = "今日已完成，无需重复操作";
+      dBtn.onclick = (e) => {
+        e.stopPropagation();
+        runSingleDaily(acc);
+      };
+      actions.appendChild(dBtn);
+      return actions;
+    }
+
+    function buildAccountStatusBadge(acc) {
+      if (acc.disabled) return makeBadge("已禁用", "badge-subtle", true);
+      if (acc.unavailable) return makeBadge("不可用", "badge-danger", true);
+      if (acc.token_expired) return makeBadge("Token 过期", "badge-warning", true);
+      return makeBadge("正常", "badge-success", true);
+    }
+
+    function buildSelectCheckbox(acc, checkedAuthIndexes) {
+      const selectHit = document.createElement("label");
+      selectHit.className = "transfer-select-hit";
+      selectHit.title = "选择此账号用于导出";
+      selectHit.onclick = (e) => e.stopPropagation();
+      const selectBox = document.createElement("input");
+      selectBox.type = "checkbox";
+      selectBox.className = "wb-checkbox transfer-select";
+      selectBox.dataset.authIndex = acc.auth_index || "";
+      selectBox.checked = checkedAuthIndexes.has(selectBox.dataset.authIndex);
+      selectBox.onchange = updateTransferControls;
+      selectHit.appendChild(selectBox);
+      return selectHit;
+    }
+
+    function buildCredentialCard(acc, checkedAuthIndexes) {
+      const completedToday = isDailyCompleted(acc);
+      const card = document.createElement("div");
+      card.className = "cred-card" + (acc.disabled ? " cred-card-disabled" : "");
+      card.title = "点击查看该账号的模型列表与消耗倍率";
+      card.onclick = (e) => {
+        if (e.target && e.target.closest("button, label.transfer-select-hit, input")) return;
+        openModelsModal(acc);
+      };
+
+      // Head: Checkbox + Monogram + Account Identity + Status
+      const head = document.createElement("div");
+      head.className = "cred-head";
+      head.appendChild(buildSelectCheckbox(acc, checkedAuthIndexes));
+
+      const mono = document.createElement("span");
+      const isIntl = acc.site === "workbuddy-ai";
+      mono.className = "site-monogram " + (isIntl ? "intl" : "cn");
+      mono.textContent = isIntl ? "AI" : "CN";
+      mono.title = isIntl ? "国际 WorkBuddy AI" : "国内 WorkBuddy";
+      head.appendChild(mono);
+
+      const ident = document.createElement("div");
+      ident.className = "cred-identity";
+      const emailSpan = document.createElement("span");
+      emailSpan.className = "cred-email";
+      const rawTitle = acc.label || acc.name || acc.id || acc.auth_index;
+      emailSpan.textContent = formatAccountName(rawTitle);
+      emailSpan.title = accountMaskingEnabled ? "" : rawTitle;
+      ident.appendChild(emailSpan);
+
+      const metaLine = document.createElement("div");
+      metaLine.className = "cred-meta-line";
+      const scopeTxt = document.createElement("span");
+      scopeTxt.textContent = acc.scope === "enterprise"
+        ? ("企业" + (acc.enterprise_id ? " · " + acc.enterprise_id : ""))
+        : "个人";
+      metaLine.appendChild(scopeTxt);
+      if (acc.quota && acc.quota.plan_name) {
+        const isPro = /pro|plus|enterprise|vip/i.test(acc.quota.plan_name);
+        metaLine.appendChild(makeBadge(acc.quota.plan_name, isPro ? "badge-plan-pro" : "badge-plan-free"));
+      }
+      ident.appendChild(metaLine);
+
+      head.append(ident, buildAccountStatusBadge(acc));
+      card.appendChild(head);
+
+      // Open CPAMC QuotaBody directly on card surface
+      const body = document.createElement("div");
+      body.className = "quota-body";
+
+      if (acc.quota) {
+        const appendQuotaMeter = (label, remain, total) => {
+          const pct = total > 0 ? Math.max(0, Math.min(100, (remain / total) * 100)) : 0;
+          const row = document.createElement("div");
+          row.className = "meter-row";
+
+          const lblRow = document.createElement("div");
+          lblRow.className = "meter-label-row";
+          const titleEl = document.createElement("span");
+          titleEl.className = "meter-title";
+          titleEl.textContent = label;
+          const valWrap = document.createElement("span");
+          valWrap.className = "meter-meta";
+          const credSpan = document.createElement("span");
+          credSpan.className = "meter-credits";
+          credSpan.textContent = `${formatCredits(remain)} / ${formatCredits(total)}`;
+          const pctEl = document.createElement("span");
+          pctEl.className = "meter-pct";
+          pctEl.textContent = `${pct.toFixed(0)}%`;
+          valWrap.append(credSpan, pctEl);
+          lblRow.append(titleEl, valWrap);
+
+          const track = document.createElement("div");
+          track.className = "meter-track";
+          const fill = document.createElement("div");
+          fill.className = "meter-fill " + (pct <= 10 ? "meter-fill-danger" : pct <= 30 ? "meter-fill-warning" : "meter-fill-healthy");
+          fill.style.width = pct.toFixed(1) + "%";
+          track.appendChild(fill);
+
+          row.append(lblRow, track);
+          body.appendChild(row);
+        };
+
+        if (acc.quota.plan_total > 0 || acc.quota.extra_total <= 0) {
+          appendQuotaMeter("标准额度", acc.quota.plan_remain, acc.quota.plan_total);
+        }
+        if (acc.quota.extra_total > 0) {
+          appendQuotaMeter("额外额度", acc.quota.extra_remain, acc.quota.extra_total);
+        }
+
+        const subRow = document.createElement("div");
+        subRow.className = "meter-sub-row";
+        const leftMeta = document.createElement("span");
+        if (acc.quota.expiring_amount > 0 && acc.quota.expiring_at) {
+          leftMeta.className = "meter-sub-soon";
+          leftMeta.textContent = `近期到期 ${formatCredits(acc.quota.expiring_amount)} (${formatTime(acc.quota.expiring_at)})`;
+        } else if (acc.quota.resets_at) {
+          leftMeta.textContent = "重置 " + formatTime(acc.quota.resets_at);
+        } else {
+          leftMeta.textContent = "更新 " + formatTime(acc.quota.fetched_at);
+        }
+        const rightMeta = document.createElement("span");
+        rightMeta.textContent = acc.expires_at ? ("Access " + formatTime(acc.expires_at)) : (acc.status_message || "");
+        subRow.append(leftMeta, rightMeta);
+        body.appendChild(subRow);
+      } else if (acc.error) {
+        const errEl = document.createElement("div");
+        errEl.className = "quota-error-strip";
+        errEl.textContent = acc.error;
+        body.appendChild(errEl);
+      } else {
+        const idleEl = document.createElement("div");
+        idleEl.className = "quota-idle-strip";
+        idleEl.textContent = "暂未获取配额，点击刷新探测";
+        body.appendChild(idleEl);
+      }
+      card.appendChild(body);
+
+      // Footer
+      const footer = document.createElement("div");
+      footer.className = "cred-footer";
+      const reason = document.createElement("div");
+      reason.className = "cred-reason";
+      reason.appendChild(renderDailyBadge(acc));
+      if (acc.daily_status && acc.daily_status.message) {
+        const msgSpan = document.createElement("span");
+        msgSpan.className = "cred-reason-msg";
+        msgSpan.textContent = acc.daily_status.message;
+        msgSpan.title = acc.daily_status.message;
+        reason.appendChild(msgSpan);
+      }
+      footer.append(reason, buildAccountActionButtons(acc, completedToday));
+      card.appendChild(footer);
+      return card;
+    }
+
+    function buildCredentialListRow(acc, checkedAuthIndexes) {
+      const completedToday = isDailyCompleted(acc);
+      const row = document.createElement("div");
+      row.className = "cred-list-row" + (acc.disabled ? " cred-card-disabled" : "");
+      row.title = "点击查看该账号的模型列表与消耗倍率";
+      row.onclick = (e) => {
+        if (e.target && e.target.closest("button, label.transfer-select-hit, input")) return;
+        openModelsModal(acc);
+      };
+
+      row.appendChild(buildSelectCheckbox(acc, checkedAuthIndexes));
+
+      const mono = document.createElement("span");
+      const isIntl = acc.site === "workbuddy-ai";
+      mono.className = "site-monogram " + (isIntl ? "intl" : "cn");
+      mono.textContent = isIntl ? "AI" : "CN";
+      row.appendChild(mono);
+
+      const ident = document.createElement("div");
+      ident.className = "cred-identity";
+      const emailSpan = document.createElement("span");
+      emailSpan.className = "cred-email";
+      const rawTitle = acc.label || acc.name || acc.id || acc.auth_index;
+      emailSpan.textContent = formatAccountName(rawTitle);
+      emailSpan.title = accountMaskingEnabled ? "" : rawTitle;
+      ident.appendChild(emailSpan);
+
+      const metaLine = document.createElement("div");
+      metaLine.className = "cred-meta-line";
+      const scopeSpan = document.createElement("span");
+      scopeSpan.textContent = acc.scope === "enterprise" ? ("企业" + (acc.enterprise_id ? " · " + acc.enterprise_id : "")) : "个人";
+      metaLine.appendChild(scopeSpan);
+      if (acc.quota && acc.quota.plan_name) {
+        const isPro = /pro|plus|enterprise|vip/i.test(acc.quota.plan_name);
+        metaLine.appendChild(makeBadge(acc.quota.plan_name, isPro ? "badge-plan-pro" : "badge-plan-free"));
+      }
+      metaLine.appendChild(buildAccountStatusBadge(acc));
+      ident.appendChild(metaLine);
+      row.appendChild(ident);
+
+      const meter = document.createElement("div");
+      meter.className = "cred-list-meter";
+      if (acc.quota) {
+        const rem = Number(acc.quota.remaining || 0);
+        const tot = Number(acc.quota.total || 0);
+        const pct = tot > 0 ? Math.max(0, Math.min(100, (rem / tot) * 100)) : 0;
+        const head = document.createElement("div");
+        head.className = "cred-list-meter-head";
+        const val = document.createElement("span");
+        val.className = "meter-credits";
+        val.textContent = `${formatCredits(rem)} / ${formatCredits(tot)}`;
+        const pctEl = document.createElement("span");
+        pctEl.className = "meter-pct";
+        pctEl.textContent = `${pct.toFixed(0)}%`;
+        head.append(val, pctEl);
+        const track = document.createElement("div");
+        track.className = "meter-track";
+        const fill = document.createElement("div");
+        fill.className = "meter-fill " + (pct <= 10 ? "meter-fill-danger" : pct <= 30 ? "meter-fill-warning" : "meter-fill-healthy");
+        fill.style.width = pct.toFixed(1) + "%";
+        track.appendChild(fill);
+        meter.append(head, track);
+      } else {
+        const txt = document.createElement("span");
+        txt.className = "meter-sub-row";
+        txt.style.color = acc.error ? "var(--viz-failure)" : "var(--text-tertiary)";
+        txt.textContent = acc.error || "暂未获取配额";
+        meter.appendChild(txt);
+      }
+      row.appendChild(meter);
+
+      const dailyWrap = document.createElement("div");
+      dailyWrap.className = "cred-list-daily";
+      dailyWrap.appendChild(renderDailyBadge(acc));
+      row.appendChild(dailyWrap);
+      row.appendChild(buildAccountActionButtons(acc, completedToday));
+      return row;
     }
 
     // ---- Render Dashboard ----
@@ -4182,9 +4980,16 @@
       el("siteCntCn").textContent = String(cnCount);
       el("siteCntIntl").textContent = String(intlCount);
       renderHeaderMeta(all.length, activeCount, cnCount, intlCount, dashboardData.scheduler);
+      renderVaultPulse(all);
 
       lastToolbarCounts = { cnCount, cnPending, intlCount, intlPending };
       updateToolbarButtons(cnCount, cnPending, intlCount, intlPending);
+
+      const remPct = totSum > 0 ? Math.max(0, Math.min(100, (remSum / totSum) * 100)) : 0;
+      const usedPct = totSum > 0 ? Math.max(0, 100 - remPct) : 0;
+      el("valCreditsPct").textContent = totSum > 0 ? `${remPct.toFixed(0)}% 剩余` : "--%";
+      el("overviewRatioRemain").style.width = remPct.toFixed(1) + "%";
+      el("overviewRatioUsed").style.width = usedPct.toFixed(1) + "%";
 
       el("valTotalCreds").textContent = String(all.length);
       el("valTotalDesc").textContent = `国内 ${cnCount} · 国际 ${intlCount} · 活跃 ${activeCount}`;
@@ -4210,6 +5015,8 @@
       container.textContent = "";
 
       if (filtered.length === 0) {
+        container.classList.remove("credentials-list");
+        container.classList.add("credentials-grid");
         const empty = document.createElement("div");
         empty.className = "empty-state";
         const iconBox = document.createElement("div");
@@ -4225,203 +5032,18 @@
         return;
       }
 
-      const shouldAnimateCards = animateCardsNextRender;
-      animateCardsNextRender = false;
-
-      for (const acc of filtered) {
-        const completedToday = isDailyCompleted(acc);
-        const card = document.createElement("div");
-        card.className = "cred-card" + (acc.disabled ? " cred-card-disabled" : "") + (shouldAnimateCards ? " card-enter" : "");
-        card.title = "点击查看该账号的模型列表与消耗倍率";
-        card.onclick = (e) => {
-          if (e.target && e.target.closest("button, label.transfer-select-hit, input")) return;
-          openModelsModal(acc);
-        };
-
-        // Card Head
-        const head = document.createElement("div");
-        head.className = "cred-head";
-
-        const selectHit = document.createElement("label");
-        selectHit.className = "transfer-select-hit";
-        selectHit.title = "选择此账号用于导出";
-        selectHit.onclick = (e) => e.stopPropagation();
-        const selectBox = document.createElement("input");
-        selectBox.type = "checkbox";
-        selectBox.className = "wb-checkbox transfer-select";
-        selectBox.dataset.authIndex = acc.auth_index || "";
-        selectBox.checked = checkedAuthIndexes.has(selectBox.dataset.authIndex);
-        selectBox.onchange = updateTransferControls;
-        selectHit.appendChild(selectBox);
-
-        const nameWrap = document.createElement("div");
-        nameWrap.className = "cred-name";
-        const emailSpan = document.createElement("span");
-        emailSpan.className = "cred-email";
-        const rawTitle = acc.label || acc.name || acc.id || acc.auth_index;
-        emailSpan.textContent = formatAccountName(rawTitle);
-        emailSpan.title = accountMaskingEnabled ? "" : rawTitle;
-        nameWrap.appendChild(emailSpan);
-
-        let statusBadge;
-        if (acc.disabled) statusBadge = makeBadge("已禁用", "badge-subtle", true);
-        else if (acc.unavailable) statusBadge = makeBadge("不可用", "badge-danger", true);
-        else if (acc.token_expired) statusBadge = makeBadge("Token 过期", "badge-warning", true);
-        else statusBadge = makeBadge("正常", "badge-success", true);
-
-        head.append(selectHit, nameWrap, statusBadge);
-        card.appendChild(head);
-
-        // Badges row
-        const badgeRow = document.createElement("div");
-        badgeRow.className = "cred-badge-row";
-        badgeRow.appendChild(makeBadge(
-          acc.site === "workbuddy" ? "国内 CN" : acc.site === "workbuddy-ai" ? "国际 AI" : (acc.site || "未知"),
-          acc.site === "workbuddy" ? "badge-cn" : "badge-intl"
-        ));
-        badgeRow.appendChild(makeBadge(
-          acc.scope === "enterprise" ? ("企业" + (acc.enterprise_id ? " · " + acc.enterprise_id : "")) : "个人",
-          "badge-subtle"
-        ));
-        if (acc.quota && acc.quota.plan_name) {
-          const isPro = /pro|plus|enterprise|vip/i.test(acc.quota.plan_name);
-          badgeRow.appendChild(makeBadge(acc.quota.plan_name, isPro ? "badge-plan-pro" : "badge-plan-free"));
+      if (viewMode === "list") {
+        container.classList.remove("credentials-grid");
+        container.classList.add("credentials-list");
+        for (const acc of filtered) {
+          container.appendChild(buildCredentialListRow(acc, checkedAuthIndexes));
         }
-        card.appendChild(badgeRow);
-
-        // Quota meter section (CPAMC QuotaBody style)
-        const meter = document.createElement("div");
-        meter.className = "meter-container" + (acc.error && !acc.quota ? " meter-error" : !acc.quota ? " meter-idle" : "");
-
-        if (acc.quota) {
-          const appendQuotaMeter = (label, remain, total) => {
-            const pct = total > 0 ? Math.max(0, Math.min(100, (remain / total) * 100)) : 0;
-            const row = document.createElement("div");
-            row.className = "meter-row";
-
-            const lblRow = document.createElement("div");
-            lblRow.className = "meter-label-row";
-            const titleEl = document.createElement("span");
-            titleEl.className = "meter-title";
-            titleEl.textContent = label;
-            const valWrap = document.createElement("span");
-            valWrap.className = "meter-meta";
-            const credSpan = document.createElement("span");
-            credSpan.className = "meter-credits";
-            credSpan.textContent = `${formatCredits(remain)} / ${formatCredits(total)}`;
-            const pctEl = document.createElement("span");
-            pctEl.className = "meter-pct";
-            pctEl.textContent = `${pct.toFixed(0)}%`;
-            valWrap.append(credSpan, pctEl);
-            lblRow.append(titleEl, valWrap);
-
-            const track = document.createElement("div");
-            track.className = "meter-track";
-            const fill = document.createElement("div");
-            fill.className = "meter-fill " + (pct <= 10 ? "meter-fill-danger" : pct <= 30 ? "meter-fill-warning" : "meter-fill-healthy");
-            fill.style.width = pct.toFixed(1) + "%";
-            track.appendChild(fill);
-
-            row.append(lblRow, track);
-            meter.appendChild(row);
-          };
-
-          if (acc.quota.plan_total > 0 || acc.quota.extra_total <= 0) {
-            appendQuotaMeter("标准额度", acc.quota.plan_remain, acc.quota.plan_total);
-          }
-          if (acc.quota.extra_total > 0) {
-            appendQuotaMeter("额外额度", acc.quota.extra_remain, acc.quota.extra_total);
-          }
-
-          const subRow = document.createElement("div");
-          subRow.className = "meter-sub-row";
-          const leftMeta = document.createElement("span");
-          if (acc.quota.expiring_amount > 0 && acc.quota.expiring_at) {
-            leftMeta.className = "meter-sub-soon";
-            leftMeta.textContent = `近期到期 ${formatCredits(acc.quota.expiring_amount)} (${formatTime(acc.quota.expiring_at)})`;
-          } else if (acc.quota.resets_at) {
-            leftMeta.textContent = "重置 " + formatTime(acc.quota.resets_at);
-          } else {
-            leftMeta.textContent = "更新 " + formatTime(acc.quota.fetched_at);
-          }
-          const rightMeta = document.createElement("span");
-          rightMeta.textContent = acc.expires_at ? ("Access " + formatTime(acc.expires_at)) : (acc.status_message || "");
-          subRow.append(leftMeta, rightMeta);
-
-          meter.appendChild(subRow);
-        } else {
-          const emptyRow = document.createElement("div");
-          emptyRow.className = "meter-empty-msg";
-          emptyRow.textContent = acc.error || "暂未获取配额，点击刷新探测";
-          meter.appendChild(emptyRow);
+      } else {
+        container.classList.remove("credentials-list");
+        container.classList.add("credentials-grid");
+        for (const acc of filtered) {
+          container.appendChild(buildCredentialCard(acc, checkedAuthIndexes));
         }
-        card.appendChild(meter);
-
-        // Card footer
-        const footer = document.createElement("div");
-        footer.className = "cred-footer";
-
-        const reason = document.createElement("div");
-        reason.className = "cred-reason";
-        reason.appendChild(renderDailyBadge(acc));
-        if (acc.daily_status && acc.daily_status.message) {
-          const msgSpan = document.createElement("span");
-          msgSpan.className = "cred-reason-msg";
-          msgSpan.textContent = acc.daily_status.message;
-          msgSpan.title = acc.daily_status.message;
-          reason.appendChild(msgSpan);
-        }
-
-        const actions = document.createElement("div");
-        actions.className = "cred-actions";
-
-        const mBtn = document.createElement("button");
-        mBtn.type = "button";
-        mBtn.className = "btn btn-secondary btn-card-action";
-        mBtn.textContent = "模型";
-        mBtn.title = "查看该账号的模型列表与消耗倍率";
-        mBtn.onclick = (e) => {
-          e.stopPropagation();
-          openModelsModal(acc);
-        };
-        actions.appendChild(mBtn);
-
-        const qBtn = document.createElement("button");
-        qBtn.type = "button";
-        const qBusy = busyKeys.has("q:" + acc.auth_index);
-        qBtn.className = "btn btn-secondary btn-card-action" + (qBusy ? "" : " account-action-ready");
-        setButtonContent(qBtn, qBusy, "刷新中", "刷新");
-        qBtn.disabled = qBusy || accountActionsLocked();
-        qBtn.onclick = (e) => {
-          e.stopPropagation();
-          refreshSingleQuota(acc.auth_index);
-        };
-        actions.appendChild(qBtn);
-
-        const dBtn = document.createElement("button");
-        dBtn.type = "button";
-        dBtn.className = "btn " + (completedToday ? "btn-secondary" : "btn-primary") + " btn-card-action";
-        const dBusy = busyKeys.has("d:" + acc.auth_index);
-        if (dBusy) {
-          setButtonContent(dBtn, true, "...", "...");
-        } else if (completedToday) {
-          dBtn.textContent = acc.site === "workbuddy" ? "已签到" : "已点亮";
-        } else {
-          dBtn.textContent = acc.site === "workbuddy" ? "签到" : "点亮";
-        }
-        const dailyUnavailable = acc.disabled || completedToday || dBusy;
-        if (!dailyUnavailable) dBtn.className += " account-action-ready";
-        dBtn.disabled = dailyUnavailable || accountActionsLocked();
-        if (completedToday) dBtn.title = "今日已完成，无需重复操作";
-        dBtn.onclick = (e) => {
-          e.stopPropagation();
-          runSingleDaily(acc);
-        };
-        actions.appendChild(dBtn);
-
-        footer.append(reason, actions);
-        card.appendChild(footer);
-        container.appendChild(card);
       }
       updateTransferControls();
     }
@@ -4430,20 +5052,27 @@
       return !!(acc && acc.daily_status && ["claimed", "done", "lit", "already_lit"].includes(acc.daily_status.outcome));
     }
 
-    // ---- Account Models Modal ----
+    // ---- Account Models Modal (same horizontal directional slide on tier switch) ----
     function selectModelTier(tier) {
+      if (modelTierFilter === tier) return;
+      const forward = (MODEL_TIER_ORDER[tier] || 0) >= (MODEL_TIER_ORDER[modelTierFilter] || 0);
       modelTierFilter = tier;
       document.querySelectorAll("[data-model-tier]").forEach(btn => {
-        btn.classList.toggle("active", btn.getAttribute("data-model-tier") === tier);
+        const active = btn.getAttribute("data-model-tier") === tier;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-selected", active ? "true" : "false");
       });
       renderModelsList();
+      playDirectionalSlide(el("modelsListBody"), forward, null);
     }
 
     function openModelsModal(acc) {
       currentModelsData = { auth_index: acc.auth_index, label: acc.label || acc.name || acc.auth_index, site: acc.site, models: [] };
       modelTierFilter = "all";
       document.querySelectorAll("[data-model-tier]").forEach(btn => {
-        btn.classList.toggle("active", btn.getAttribute("data-model-tier") === "all");
+        const active = btn.getAttribute("data-model-tier") === "all";
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-selected", active ? "true" : "false");
       });
       el("modelsSearchInput").value = "";
       el("modelsModalTitle").textContent = formatAccountName(currentModelsData.label);
@@ -4894,12 +5523,14 @@
     // ---- Boot ----
     async function initializeApp() {
       updateMaskButton();
+      applyViewModeButtons();
       updateToolbarButtons();
+      updateFloatingBarsVisibility();
       const key = getManagementKey();
       if (!key) {
         el("credentialsContainer").innerHTML =
           '<div class="empty-state"><div class="empty-state-icon">' + ICONS.inbox +
-          '</div><div>等待连接 CPA 管理接口，请点击右上角「管理密钥」完成认证。</div></div>';
+          '</div><div>等待连接 CPA 管理接口，请点击上方「密钥」完成认证。</div></div>';
         openKeyModal();
         return;
       }
